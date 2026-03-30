@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import electroDef from '@renderData/models/industrial_electrolyzer.simple.json'
+import { applyInitialCamera } from '@/render/initialCamera'
 import { loadSimpleModel } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
 
@@ -55,9 +56,8 @@ onMounted(async () => {
       0.1,
       500,
     )
-    const target = new THREE.Vector3(0, 2, 0)
-    camera.position.set(8, 6, 10)
-    camera.lookAt(target)
+    const fallbackTarget = new THREE.Vector3(0, 2, 0)
+    const fallbackPosition = new THREE.Vector3(8, 6, 10)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
     renderer.setPixelRatio(window.devicePixelRatio)
@@ -66,7 +66,7 @@ onMounted(async () => {
     el.appendChild(renderer.domElement)
 
     const controls = new OrbitControls(camera, renderer.domElement)
-    controls.target.copy(target)
+    applyInitialCamera(camera, controls, def, fallbackTarget, fallbackPosition)
     controls.enableDamping = true
     controls.dampingFactor = 0.08
     controls.rotateSpeed = 0.9

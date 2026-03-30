@@ -56,6 +56,17 @@ export interface BlockRegistryData {
  * data/models 下的纯结构体（不含方块外观）。
  * 外观由 block_registry 在合并阶段注入。
  */
+/**
+ * 初始相机：存在控制器方块时，注视其体素中心，并从「正面」外侧观察。
+ * controllerFacing 为控制器**正面**朝外的世界空间法线（与 FaceName 一致）。
+ * 与 GT5U 一致时默认朝北，对应 **-z**（StructureLib ExtendedFacing.DEFAULT = NORTH）。
+ */
+export interface InitialCameraDef {
+  controllerFacing?: FaceName
+  /** 相机沿正面法线到控制器中心的距离（世界单位） */
+  distance?: number
+}
+
 export interface SimpleModel {
   schemaVersion: number
   mode: 'simple'
@@ -69,6 +80,8 @@ export interface SimpleModel {
   }
   layers: string[][]
   symbolMap: Record<string, string>
+  /** 可选：有控制器时用于对准正面与轨道中心 */
+  initialCamera?: InitialCameraDef
 }
 
 /**
@@ -81,6 +94,7 @@ export interface SimpleDefinition {
   layers: string[][]
   symbolMap: Record<string, string>
   blocks: Record<string, BlockEntry>
+  initialCamera?: InitialCameraDef
 }
 
 /**

@@ -21,5 +21,6 @@ export function mergeSimpleModel(model: SimpleModel): SimpleDefinition {
     layers: model.layers,
     symbolMap: model.symbolMap,
     blocks: { ...blockRegistry.blocks },
+    initialCamera: model.initialCamera,
   }
 }
