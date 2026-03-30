@@ -1,39 +1,46 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 
-const container = ref<HTMLDivElement | null>(null)
-let animationId = 0
-let dispose: (() => void) | undefined
+import electroDef from '@renderData/industrial_electrolyzer.simple.json'
+import { loadSimpleDefinition } from '@/render/pipeline'
+import { buildSimpleMesh } from '@/render/simpleMesh'
 
-onMounted(() => {
+const container = ref<HTMLDivElement | null>(null)
+let disposeScene: (() => void) | undefined
+
+onMounted(async () => {
   const el = container.value
   if (!el) return
 
+  const def = loadSimpleDefinition(electroDef)
+  const { group, dispose: disposeMesh } = await buildSimpleMesh(def)
+
   const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x111827)
+  scene.add(group)
+
   const camera = new THREE.PerspectiveCamera(
     50,
     Math.max(el.clientWidth, 1) / Math.max(el.clientHeight, 1),
     0.1,
-    1000,
+    500,
   )
-  camera.position.z = 3
+  camera.position.set(8, 6, 10)
+  camera.lookAt(0, 1, 0)
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(el.clientWidth, el.clientHeight)
+  renderer.outputColorSpace = THREE.SRGBColorSpace
   el.appendChild(renderer.domElement)
 
-  const geometry = new THREE.BoxGeometry(1, 1, 1)
-  const material = new THREE.MeshStandardMaterial({ color: 0x4ade80 })
-  const cube = new THREE.Mesh(geometry, material)
-  scene.add(cube)
-
-  const ambient = new THREE.AmbientLight(0xffffff, 0.6)
-  const dir = new THREE.DirectionalLight(0xffffff, 0.8)
-  dir.position.set(2, 3, 4)
+  const ambient = new THREE.AmbientLight(0xffffff, 0.55)
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9)
+  dir.position.set(6, 10, 8)
   scene.add(ambient, dir)
 
+  let animationId = 0
   const onResize = () => {
     const w = el.clientWidth
     const h = el.clientHeight
@@ -45,17 +52,15 @@ onMounted(() => {
 
   const tick = () => {
     animationId = requestAnimationFrame(tick)
-    cube.rotation.x += 0.01
-    cube.rotation.y += 0.012
+    group.rotation.y += 0.0025
     renderer.render(scene, camera)
   }
   tick()
 
-  dispose = () => {
+  disposeScene = () => {
     cancelAnimationFrame(animationId)
     window.removeEventListener('resize', onResize)
-    geometry.dispose()
-    material.dispose()
+    disposeMesh()
     renderer.dispose()
     if (renderer.domElement.parentNode === el) {
       el.removeChild(renderer.domElement)
@@ -63,14 +68,14 @@ onMounted(() => {
   }
 })
 
-onUnmounted(() => {
-  dispose?.()
+onBeforeUnmount(() => {
+  disposeScene?.()
 })
 </script>
 
 <template>
   <div class="wm-root">
-    <p class="wm-title">Wiki Multi Structure Render（开发预览）</p>
+    <p class="wm-title">Industrial Electrolyzer — Simple 结构预览（GT5U 数据）</p>
     <div ref="container" class="wm-viewport" />
   </div>
 </template>
@@ -88,9 +93,9 @@ onUnmounted(() => {
 }
 .wm-viewport {
   width: 100%;
-  min-height: 280px;
+  min-height: 320px;
   border-radius: 8px;
-  background: #111827;
+  background: #0f172a;
   overflow: hidden;
 }
 </style>

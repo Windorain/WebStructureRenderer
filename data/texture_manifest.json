@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "description": "与 GT5-Unofficial src/main/resources 中路径一致",
+  "textures": {
+    "tex_white": "assets/_stub/tex_white.png",
+    "tex_potin": "assets/miscutils/textures/blocks/TileEntities/MACHINE_CASING_STABLE_Potin.png",
+    "tex_tin_pipe": "assets/gregtech/textures/blocks/iconsets/MACHINE_CASING_ITEM_PIPE_TIN.png",
+    "tex_brass_pipe": "assets/gregtech/textures/blocks/iconsets/MACHINE_CASING_ITEM_PIPE_BRASS.png",
+    "tex_controller": "assets/miscutils/textures/blocks/iconsets/controllerFaces/industrialElectrolyzer.png"
+  }
+}
