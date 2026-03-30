@@ -1,5 +1,13 @@
-/** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
+/**
+ * Simple 模式下的类型定义。
+ *
+ * 数据流概览：
+ *   JSON（模型 + 注册表）→ SimpleDefinition
+ *   SimpleDefinition → VoxelGrid（符号 → 方块 id）
+ *   方块 id + BlockEntry → 面与材质层 → Three.js 网格
+ */
 
+/** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
 export type ResourceLocator = string
 
 export type MaterialKind = 'static16' | 'animated'
@@ -9,6 +17,7 @@ export interface MaterialEntry {
   kind: MaterialKind
 }
 
+/** material_registry.json 根结构 */
 export interface MaterialRegistryData {
   schemaVersion: number
   materials: Record<string, MaterialEntry>
@@ -16,6 +25,7 @@ export interface MaterialRegistryData {
 
 export type FaceName = '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
 
+/** 多层贴花时：底层不透明，上层可透明镂空 */
 export type LayerRole = 'base' | 'cutout'
 
 export interface FaceLayerDef {
@@ -28,6 +38,7 @@ export interface FaceLayersDef {
   layers: FaceLayerDef[]
 }
 
+/** 方块在六个方向上的贴图层；可只写 all 表示六面相同 */
 export interface BlockEntry {
   label?: string
   faces: {
@@ -35,12 +46,16 @@ export interface BlockEntry {
   } & Partial<Record<FaceName, FaceLayersDef>>
 }
 
+/** block_registry.json 根结构 */
 export interface BlockRegistryData {
   schemaVersion: number
   blocks: Record<string, BlockEntry>
 }
 
-/** data/models 下纯结构体，不含方块外观（由 BlockRegistry 提供） */
+/**
+ * data/models 下的纯结构体（不含方块外观）。
+ * 外观由 block_registry 在合并阶段注入。
+ */
 export interface SimpleModel {
   schemaVersion: number
   mode: 'simple'
@@ -56,7 +71,9 @@ export interface SimpleModel {
   symbolMap: Record<string, string>
 }
 
-/** Simple 渲染器使用的运行时定义：结构 + 已合并的方块外观 */
+/**
+ * Simple 渲染器使用的运行时定义：多层结构 + 符号表 + 已合并的方块外观表。
+ */
 export interface SimpleDefinition {
   schemaVersion: number
   mode: 'simple'
@@ -66,6 +83,10 @@ export interface SimpleDefinition {
   blocks: Record<string, BlockEntry>
 }
 
+/**
+ * 体素查询接口：坐标为整数格点，原点在模型包围盒中心附近（见 simpleMesh 中顶点公式）。
+ * get(x,y,z) 返回方块逻辑 id；空气为内部常量 'air'。
+ */
 export interface VoxelGrid {
   sizeX: number
   sizeY: number

@@ -1,3 +1,15 @@
+/**
+ * Simple 模式：体素 → 外露面四边形 → 按材质批次合并 → THREE.Group。
+ *
+ * 数据流：
+ *   SimpleDefinition
+ *     → buildVoxelGrid（符号 → 方块 id）
+ *     → 遍历格点：非空气且邻格为空气则该朝向外露
+ *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
+ *     → mergeGeometries 合并同批几何体；材质来自 material_registry + resolveLocatorToUrl
+ *     → TextureLoader 加载 URL；返回 Group 与 dispose（几何/材质/纹理释放）
+ */
+
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
@@ -10,6 +22,9 @@ import materialRegistryJson from '@renderData/registries/material_registry.json'
 
 const AIR = 'air'
 const materialRegistry = materialRegistryJson as MaterialRegistryData
+
+/** 批次 Map 的键：材质 id | 色调 hex | 层序 | role（材质 id 勿含分隔符 '|'） */
+const BATCH_SEP = '|' as const
 
 const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
   '+x': new THREE.Vector3(1, 0, 0),
@@ -62,6 +77,29 @@ function createFaceMaterial(
   })
 }
 
+function makeBatchKey(
+  materialId: string,
+  tint: THREE.Color,
+  layerIdx: number,
+  role: LayerRole,
+): string {
+  return [materialId, tint.getHexString(), String(layerIdx), role].join(BATCH_SEP)
+}
+
+function parseBatchKey(key: string): {
+  materialId: string
+  tintHex: string
+  layerIdx: number
+  role: LayerRole
+} {
+  const parts = key.split(BATCH_SEP)
+  const materialId = parts[0] ?? ''
+  const tintHex = parts[1] ?? 'ffffff'
+  const layerIdx = Number(parts[2] ?? 0)
+  const role = (parts[3] ?? 'base') as LayerRole
+  return { materialId, tintHex, layerIdx, role }
+}
+
 export interface SimpleMeshResult {
   group: THREE.Group
   dispose: () => void
@@ -94,7 +132,6 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
 
   type BatchKey = string
   const batches = new Map<BatchKey, THREE.BufferGeometry[]>()
-
   const faces = listFaceNames()
 
   for (let y = 0; y < sizeY; y++) {
@@ -119,8 +156,7 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
             const materialId = layer.materialId
             const tint = parseTint(layer.tint)
             const role = effectiveLayerRole(layer, layerIdx)
-            const key =
-              `${materialId}|${tint.getHexString()}|${layerIdx}|${role}` as BatchKey
+            const key = makeBatchKey(materialId, tint, layerIdx, role)
             const geom = quadGeometryForFace(
               face,
               x,
@@ -147,11 +183,7 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
 
   for (const [key, geoms] of batches) {
     if (!geoms.length) continue
-    const parts = key.split('|')
-    const materialId = parts[0]
-    const tintHex = parts[1]
-    const layerIdx = Number(parts[2])
-    const role = (parts[3] ?? 'base') as LayerRole
+    const { materialId, tintHex, layerIdx, role } = parseBatchKey(key)
 
     const merged = mergeGeometries(geoms, false)
     if (!merged) continue
@@ -180,6 +212,7 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
   return { group, dispose }
 }
 
+/** 单格单面四边形：略沿法线偏移以避免多层 z-fighting */
 function quadGeometryForFace(
   face: FaceName,
   x: number,

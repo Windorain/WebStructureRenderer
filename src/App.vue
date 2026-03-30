@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 预览页：串联 JSON → loadSimpleModel → buildSimpleMesh → Scene / Renderer / Camera / Controls。
+ * 生命周期：onMounted 中异步建网格；onBeforeUnmount 释放 disposeScene（含 WebGL 与几何体）。
+ */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'

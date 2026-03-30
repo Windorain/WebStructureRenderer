@@ -1,3 +1,9 @@
+/**
+ * 库入口：挂载 Vue 应用。
+ *
+ * 数据流：选择 DOM 节点 → createApp(App) → 子组件内完成模型加载与 Three.js 场景（见 App.vue）。
+ */
+
 import { createApp } from 'vue'
 import App from './App.vue'
 
