@@ -1,8 +1,5 @@
 /**
- * 从「原始 JSON」到「可渲染的 SimpleDefinition」的入口。
- *
- * 数据流：
- *   unknown（通常为 import 的 .json）→ 校验为 SimpleModel → mergeSimpleModel → SimpleDefinition
+ * 数据入口：unknown → SimpleModel 校验 → mergeSimpleModel → SimpleDefinition（无 Three）。
  */
 
 import type { SimpleDefinition, SimpleModel } from './types'

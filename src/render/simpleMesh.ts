@@ -6,22 +6,20 @@
  *     → buildVoxelGrid（符号 → 方块 id）
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
  *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
- *     → mergeGeometries 合并同批几何体；材质来自 material_registry + resolveLocatorToUrl
- *     → TextureLoader 加载 URL；返回 Group 与 dispose（几何/材质/纹理释放）
+ *     → mergeGeometries 合并同批几何体
+ *     → SimpleMaterialLibrary.getMaterialForBatch（纹理 / mcmeta / 动画由库负责）
+ *   几何 dispose 在本模块；材质与纹理由库的 dispose() 释放。
  */
 
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import type { FaceName, LayerRole, MaterialRegistryData, SimpleDefinition } from './types'
+import type { FaceName, LayerRole, SimpleDefinition } from './types'
 import { buildVoxelGrid } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
-import { resolveLocatorToUrl } from './resolveAssetUrl'
-
-import materialRegistryJson from '@renderData/registries/material_registry.json'
+import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 
 const AIR = 'air'
-const materialRegistry = materialRegistryJson as MaterialRegistryData
 
 /** 批次 Map 的键：材质 id | 色调 hex | 层序 | role（材质 id 勿含分隔符 '|'） */
 const BATCH_SEP = '|' as const
@@ -54,30 +52,6 @@ function effectiveLayerRole(layer: { layerRole?: LayerRole }, layerIdx: number):
   return layer.layerRole ?? (layerIdx === 0 ? 'base' : 'cutout')
 }
 
-function createFaceMaterial(
-  tex: THREE.Texture,
-  tint: THREE.Color,
-  layerRole: LayerRole,
-): THREE.MeshStandardMaterial {
-  if (layerRole === 'cutout') {
-    return new THREE.MeshStandardMaterial({
-      map: tex,
-      color: tint,
-      transparent: true,
-      alphaTest: 0.5,
-      depthWrite: false,
-      roughness: 0.85,
-      metalness: 0.05,
-    })
-  }
-  return new THREE.MeshStandardMaterial({
-    map: tex,
-    color: tint,
-    roughness: 0.85,
-    metalness: 0.05,
-  })
-}
-
 function makeBatchKey(
   materialId: string,
   tint: THREE.Color,
@@ -103,33 +77,16 @@ function parseBatchKey(key: string): {
 
 export interface SimpleMeshResult {
   group: THREE.Group
+  /** 仅释放合并后的几何体；材质由 SimpleMaterialLibrary.dispose 释放 */
   dispose: () => void
 }
 
-export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMeshResult> {
+export async function buildSimpleMesh(
+  def: SimpleDefinition,
+  library: SimpleMaterialLibrary,
+): Promise<SimpleMeshResult> {
   const grid = buildVoxelGrid(def)
   const { sizeA, sizeB, sizeC } = grid
-  const loader = new THREE.TextureLoader()
-  const textureCache = new Map<string, THREE.Texture>()
-
-  async function loadTextureForMaterial(materialId: string): Promise<THREE.Texture> {
-    const hit = textureCache.get(materialId)
-    if (hit) return hit
-    const entry = materialRegistry.materials[materialId]
-    if (!entry) throw new Error(`材质未注册: ${materialId}`)
-    if (entry.kind === 'animated') {
-      console.warn(`[simpleMesh] 动画材质暂按首帧静态处理: ${materialId}`)
-    }
-    const url = resolveLocatorToUrl(entry.locator)
-    const tex = await new Promise<THREE.Texture>((resolve, reject) => {
-      loader.load(url, resolve, undefined, reject)
-    })
-    tex.colorSpace = THREE.SRGBColorSpace
-    tex.magFilter = THREE.NearestFilter
-    tex.minFilter = THREE.NearestFilter
-    textureCache.set(materialId, tex)
-    return tex
-  }
 
   type BatchKey = string
   const batches = new Map<BatchKey, THREE.BufferGeometry[]>()
@@ -179,7 +136,6 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
   }
 
   const group = new THREE.Group()
-  const materials: THREE.MeshStandardMaterial[] = []
   const meshes: THREE.Mesh[] = []
 
   for (const [key, geoms] of batches) {
@@ -188,10 +144,8 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
 
     const merged = mergeGeometries(geoms, false)
     if (!merged) continue
-    const tex = await loadTextureForMaterial(materialId)
     const tint = new THREE.Color(`#${tintHex}`)
-    const mat = createFaceMaterial(tex, tint, role)
-    materials.push(mat)
+    const mat = await library.getMaterialForBatch(key, materialId, tint, role)
     const mesh = new THREE.Mesh(merged, mat)
     mesh.renderOrder = layerIdx
     group.add(mesh)
@@ -201,12 +155,6 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
   const dispose = () => {
     for (const m of meshes) {
       m.geometry.dispose()
-    }
-    for (const m of materials) {
-      m.dispose()
-    }
-    for (const t of textureCache.values()) {
-      t.dispose()
     }
   }
 

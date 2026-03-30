@@ -1,16 +1,19 @@
 <script setup lang="ts">
 /**
- * 预览页：串联 JSON → loadSimpleModel → buildSimpleMesh → Scene / Renderer / Camera / Controls。
- * 生命周期：onMounted 中异步建网格；onBeforeUnmount 释放 disposeScene（含 WebGL 与几何体）。
+ * 预览页：loadSimpleModel → SimpleMaterialLibrary + buildSimpleMesh → Scene / Renderer / Controls。
+ * RAF：Clock → materialLibrary.tick（mcmeta 动画）→ controls → render。
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import electroDef from '@renderData/models/industrial_electrolyzer.simple.json'
+import materialRegistryJson from '@renderData/registries/material_registry.json'
 import { applyInitialCamera } from '@/render/initialCamera'
+import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { loadSimpleModel } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
+import type { MaterialRegistryData } from '@/render/types'
 
 type ViewStatus = 'loading' | 'ok' | 'error'
 
@@ -44,7 +47,10 @@ onMounted(async () => {
 
   try {
     const def = loadSimpleModel(electroDef)
-    const { group, dispose: disposeMesh } = await buildSimpleMesh(def)
+    const materialLibrary = new SimpleMaterialLibrary(
+      materialRegistryJson as MaterialRegistryData,
+    )
+    const { group, dispose: disposeMesh } = await buildSimpleMesh(def, materialLibrary)
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x111827)
@@ -89,8 +95,10 @@ onMounted(async () => {
     const resizeObserver = new ResizeObserver(() => onResize())
     resizeObserver.observe(el)
 
+    const clock = new THREE.Clock()
     const tick = () => {
       animationId = requestAnimationFrame(tick)
+      materialLibrary.tick(clock.getDelta() * 1000)
       controls.update()
       renderer.render(scene, camera)
     }
@@ -105,6 +113,7 @@ onMounted(async () => {
       window.removeEventListener('resize', onResize)
       controls.dispose()
       disposeMesh()
+      materialLibrary.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode === el) {
         el.removeChild(renderer.domElement)

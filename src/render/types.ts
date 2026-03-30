@@ -4,7 +4,9 @@
  * 数据流概览：
  *   JSON（layers[c][b] 与 StructureLib 一致 + 注册表）→ SimpleDefinition
  *   SimpleDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
- *   方块 id + BlockEntry → 面与材质层 → Three.js 网格
+ *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
+ *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial，tick 驱动动画
+ *   simpleMesh：体素 → 几何批次；从库取材质
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
@@ -12,6 +14,9 @@ export type ResourceLocator = string
 
 export type MaterialKind = 'static16' | 'animated'
 
+/**
+ * kind 为提示；运行时是否播放动画以「存在 `.png.mcmeta` 且含 `animation`、且 PNG 为竖直多帧条」为准。
+ */
 export interface MaterialEntry {
   locator: ResourceLocator
   kind: MaterialKind

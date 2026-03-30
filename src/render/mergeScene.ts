@@ -1,10 +1,5 @@
 /**
- * 将「结构模型」与「方块注册表」合并为运行时定义。
- *
- * 数据流：
- *   SimpleModel（layers[c][b] 与 StructureLib addShape 一致 + symbolMap）+ block_registry.json → SimpleDefinition
- *
- * 方块表在构建时从 JSON 读入并浅拷贝进定义，避免 SimpleModel JSON 重复存放大块外观数据。
+ * 合并层：SimpleModel + block_registry → SimpleDefinition（外观表来自全局注册表，非 Three）。
  */
 
 import type { BlockRegistryData, SimpleDefinition, SimpleModel } from './types'
