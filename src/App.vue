@@ -3,8 +3,8 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-import electroDef from '@renderData/industrial_electrolyzer.simple.json'
-import { loadSimpleDefinition } from '@/render/pipeline'
+import electroDef from '@renderData/models/industrial_electrolyzer.simple.json'
+import { loadSimpleModel } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
 
 const container = ref<HTMLDivElement | null>(null)
@@ -14,7 +14,7 @@ onMounted(async () => {
   const el = container.value
   if (!el) return
 
-  const def = loadSimpleDefinition(electroDef)
+  const def = loadSimpleModel(electroDef)
   const { group, dispose: disposeMesh } = await buildSimpleMesh(def)
 
   const scene = new THREE.Scene()

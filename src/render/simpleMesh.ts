@@ -1,12 +1,15 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import type { FaceName, SimpleDefinition } from './types'
+import type { FaceName, LayerRole, MaterialRegistryData, SimpleDefinition } from './types'
 import { buildVoxelGrid } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
-import { TEXTURE_URL_BY_ID } from './textureRegistry'
+import { resolveLocatorToUrl } from './resolveAssetUrl'
+
+import materialRegistryJson from '@renderData/registries/material_registry.json'
 
 const AIR = 'air'
+const materialRegistry = materialRegistryJson as MaterialRegistryData
 
 const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
   '+x': new THREE.Vector3(1, 0, 0),
@@ -17,7 +20,6 @@ const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
   '-z': new THREE.Vector3(0, 0, -1),
 }
 
-/** 邻居方向：当前格 → 邻居格（用于判断外露面） */
 const NEIGHBOR_D: Record<FaceName, [number, number, number]> = {
   '+x': [1, 0, 0],
   '-x': [-1, 0, 0],
@@ -32,34 +34,63 @@ function parseTint(hex?: string): THREE.Color {
   return new THREE.Color(hex.startsWith('#') ? hex : `#${hex}`)
 }
 
+function effectiveLayerRole(layer: { layerRole?: LayerRole }, layerIdx: number): LayerRole {
+  return layer.layerRole ?? (layerIdx === 0 ? 'base' : 'cutout')
+}
+
+function createFaceMaterial(
+  tex: THREE.Texture,
+  tint: THREE.Color,
+  layerRole: LayerRole,
+): THREE.MeshStandardMaterial {
+  if (layerRole === 'cutout') {
+    return new THREE.MeshStandardMaterial({
+      map: tex,
+      color: tint,
+      transparent: true,
+      alphaTest: 0.5,
+      depthWrite: false,
+      roughness: 0.85,
+      metalness: 0.05,
+    })
+  }
+  return new THREE.MeshStandardMaterial({
+    map: tex,
+    color: tint,
+    roughness: 0.85,
+    metalness: 0.05,
+  })
+}
+
 export interface SimpleMeshResult {
   group: THREE.Group
   dispose: () => void
 }
 
-/**
- * Simple 模式：体素栅格 → 外露面 Quad → 按材质合并（多层叠加用微小偏移避免 z-fighting）
- */
 export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMeshResult> {
   const grid = buildVoxelGrid(def)
   const { sizeX, sizeY, sizeZ } = grid
   const loader = new THREE.TextureLoader()
   const textureCache = new Map<string, THREE.Texture>()
 
-  async function loadTexture(id: string): Promise<THREE.Texture> {
-    const hit = textureCache.get(id)
+  async function loadTextureForMaterial(materialId: string): Promise<THREE.Texture> {
+    const hit = textureCache.get(materialId)
     if (hit) return hit
-    const url = TEXTURE_URL_BY_ID[id]
-    if (!url) throw new Error(`未知纹理 id: ${id}`)
+    const entry = materialRegistry.materials[materialId]
+    if (!entry) throw new Error(`材质未注册: ${materialId}`)
+    if (entry.kind === 'animated') {
+      console.warn(`[simpleMesh] 动画材质暂按首帧静态处理: ${materialId}`)
+    }
+    const url = resolveLocatorToUrl(entry.locator)
     const tex = await new Promise<THREE.Texture>((resolve, reject) => {
       loader.load(url, resolve, undefined, reject)
     })
     tex.colorSpace = THREE.SRGBColorSpace
     tex.magFilter = THREE.NearestFilter
     tex.minFilter = THREE.NearestFilter
-    textureCache.set(id, tex)
+    textureCache.set(materialId, tex)
     return tex
- }
+  }
 
   type BatchKey = string
   const batches = new Map<BatchKey, THREE.BufferGeometry[]>()
@@ -77,10 +108,7 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
 
         for (const face of faces) {
           const [dx, dy, dz] = NEIGHBOR_D[face]
-          const nx = x + dx
-          const ny = y + dy
-          const nz = z + dz
-          const neighbor = grid.get(nx, ny, nz)
+          const neighbor = grid.get(x + dx, y + dy, z + dz)
           if (neighbor !== AIR) continue
 
           const layerDefs = layersForFace(block, face)
@@ -88,9 +116,11 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
 
           const n = FACE_NORMAL[face]
           layerDefs.forEach((layer, layerIdx) => {
-            const texId = layer.texture
+            const materialId = layer.materialId
             const tint = parseTint(layer.tint)
-            const key = `${texId}|${tint.getHexString()}|${layerIdx}` as BatchKey
+            const role = effectiveLayerRole(layer, layerIdx)
+            const key =
+              `${materialId}|${tint.getHexString()}|${layerIdx}|${role}` as BatchKey
             const geom = quadGeometryForFace(
               face,
               x,
@@ -117,19 +147,20 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
 
   for (const [key, geoms] of batches) {
     if (!geoms.length) continue
-    const [texId, tintHex] = key.split('|')
+    const parts = key.split('|')
+    const materialId = parts[0]
+    const tintHex = parts[1]
+    const layerIdx = Number(parts[2])
+    const role = (parts[3] ?? 'base') as LayerRole
+
     const merged = mergeGeometries(geoms, false)
     if (!merged) continue
-    const tex = await loadTexture(texId)
+    const tex = await loadTextureForMaterial(materialId)
     const tint = new THREE.Color(`#${tintHex}`)
-    const mat = new THREE.MeshStandardMaterial({
-      map: tex,
-      color: tint,
-      roughness: 0.85,
-      metalness: 0.05,
-    })
+    const mat = createFaceMaterial(tex, tint, role)
     materials.push(mat)
     const mesh = new THREE.Mesh(merged, mat)
+    mesh.renderOrder = layerIdx
     group.add(mesh)
     meshes.push(mesh)
   }
@@ -149,9 +180,6 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
   return { group, dispose }
 }
 
-/**
- * 在网格坐标 (x,y,z) 的立方体单元上生成外法线为 n 的一个 quad（单位立方体角 [x,y,z]→[x+1,y+1,z+1]）
- */
 function quadGeometryForFace(
   face: FaceName,
   x: number,
@@ -175,13 +203,11 @@ function quadGeometryForFace(
 
   const p = (v: THREE.Vector3) => v.add(push)
 
-  const geo = new THREE.BufferGeometry()
   let a: THREE.Vector3
   let b: THREE.Vector3
   let c: THREE.Vector3
   let d: THREE.Vector3
 
-  // 顶点顺序：从面外侧看为逆时针（CCW），与 Three.js FrontSide 背面剔除一致；法线指向立方体外部
   switch (face) {
     case '+x':
       a = p(new THREE.Vector3(maxX, minY, minZ))
@@ -242,6 +268,7 @@ function quadGeometryForFace(
   const uvs = new Float32Array([0, 1, 0, 0, 1, 0, 1, 1])
   const index = new Uint16Array([0, 1, 2, 0, 2, 3])
 
+  const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
