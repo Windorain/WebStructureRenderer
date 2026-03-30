@@ -2,8 +2,8 @@
  * Simple 模式下的类型定义。
  *
  * 数据流概览：
- *   JSON（模型 + 注册表）→ SimpleDefinition
- *   SimpleDefinition → VoxelGrid（符号 → 方块 id）
+ *   JSON（layers[c][b] 与 StructureLib 一致 + 注册表）→ SimpleDefinition
+ *   SimpleDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
  *   方块 id + BlockEntry → 面与材质层 → Three.js 网格
  */
 
@@ -53,13 +53,8 @@ export interface BlockRegistryData {
 }
 
 /**
- * data/models 下的纯结构体（不含方块外观）。
- * 外观由 block_registry 在合并阶段注入。
- */
-/**
- * 初始相机：存在控制器方块时，注视其体素中心，并从「正面」外侧观察。
- * controllerFacing 为控制器**正面**朝外的世界空间法线（与 FaceName 一致）。
- * 与 GT5U 一致时默认朝北，对应 **-z**（StructureLib ExtendedFacing.DEFAULT = NORTH）。
+ * 初始相机：controllerFacing 为控制器正面朝外的世界法线（FaceName）。
+ * GT5U 默认朝北对应 **-z**（ExtendedFacing.DEFAULT = NORTH）。
  */
 export interface InitialCameraDef {
   controllerFacing?: FaceName
@@ -67,17 +62,24 @@ export interface InitialCameraDef {
   distance?: number
 }
 
+/**
+ * 与 StructureLib `StructureDefinition.Builder.addShape(name, structurePiece)` 一致：
+ * `structurePiece[c][b]` 为第 c 片 slice、第 b 行，行内字符为 a（next char / next line / next slice）。
+ * 体素索引 (a,b,c) 与 NORTH_DEFAULT 下世界轴对齐：a→X、b→Y、c→Z（见 ExtendedFacing）。
+ */
 export interface SimpleModel {
   schemaVersion: number
   mode: 'simple'
   id: string
   source?: { javaClass?: string; structurePiece?: string; note?: string }
+  /** 可选：仅作文档/工具提示，不参与解析 */
   axis?: {
-    yLayers?: string
-    rowsInLayer?: string
-    charsInRow?: string
+    sliceC?: string
+    lineB?: string
+    charA?: string
     spaceChar?: string
   }
+  /** StructureLib 形状：`layers[c][b]`，每行字符串长度为 sizeA */
   layers: string[][]
   symbolMap: Record<string, string>
   /** 可选：有控制器时用于对准正面与轨道中心 */
@@ -91,6 +93,7 @@ export interface SimpleDefinition {
   schemaVersion: number
   mode: 'simple'
   id: string
+  /** 与 StructureLib `addShape` 一致：`layers[c][b]` */
   layers: string[][]
   symbolMap: Record<string, string>
   blocks: Record<string, BlockEntry>
@@ -98,12 +101,12 @@ export interface SimpleDefinition {
 }
 
 /**
- * 体素查询接口：坐标为整数格点，原点在模型包围盒中心附近（见 simpleMesh 中顶点公式）。
- * get(x,y,z) 返回方块逻辑 id；空气为内部常量 'air'。
+ * 体素查询：整数格点 (a,b,c) 与 layers 下标一致；世界顶点见 simpleMesh（a≈X、b≈Y、c≈Z）。
+ * get(a,b,c) 返回方块逻辑 id；空气为内部常量 'air'。
  */
 export interface VoxelGrid {
-  sizeX: number
-  sizeY: number
-  sizeZ: number
-  get(x: number, y: number, z: number): string
+  sizeA: number
+  sizeB: number
+  sizeC: number
+  get(a: number, b: number, c: number): string
 }

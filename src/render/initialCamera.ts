@@ -29,28 +29,28 @@ const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
 const DEFAULT_FACING: FaceName = '-z'
 const DEFAULT_DISTANCE = 10
 
-/** 与 simpleMesh 中体素中心一致：格点 (x,y,z) 对应世界中心 (x+0.5-sx/2, …) */
+/** 与 simpleMesh 中体素中心一致：格点 (a,b,c) 对应世界中心 (a+0.5-sa/2, …) */
 export function voxelCenterWorld(
-  x: number,
-  y: number,
-  z: number,
-  sizeX: number,
-  sizeY: number,
-  sizeZ: number,
+  a: number,
+  b: number,
+  c: number,
+  sizeA: number,
+  sizeB: number,
+  sizeC: number,
   out?: THREE.Vector3,
 ): THREE.Vector3 {
   const v = out ?? new THREE.Vector3()
-  v.set(x + 0.5 - sizeX / 2, y + 0.5 - sizeY / 2, z + 0.5 - sizeZ / 2)
+  v.set(a + 0.5 - sizeA / 2, b + 0.5 - sizeB / 2, c + 0.5 - sizeC / 2)
   return v
 }
 
 /** 在网格中查找第一个方块 id 为 controller 的体素（symbolMap 中 ~ → controller 等） */
-export function findFirstControllerVoxel(def: SimpleDefinition): { x: number; y: number; z: number } | null {
+export function findFirstControllerVoxel(def: SimpleDefinition): { a: number; b: number; c: number } | null {
   const grid = buildVoxelGrid(def)
-  for (let y = 0; y < grid.sizeY; y++) {
-    for (let z = 0; z < grid.sizeZ; z++) {
-      for (let x = 0; x < grid.sizeX; x++) {
-        if (grid.get(x, y, z) === 'controller') return { x, y, z }
+  for (let c = 0; c < grid.sizeC; c++) {
+    for (let b = 0; b < grid.sizeB; b++) {
+      for (let a = 0; a < grid.sizeA; a++) {
+        if (grid.get(a, b, c) === 'controller') return { a, b, c }
       }
     }
   }
@@ -99,8 +99,8 @@ export function applyInitialCamera(
   }
 
   const grid = buildVoxelGrid(def)
-  const { sizeX, sizeY, sizeZ } = grid
-  const target = voxelCenterWorld(cell.x, cell.y, cell.z, sizeX, sizeY, sizeZ)
+  const { sizeA, sizeB, sizeC } = grid
+  const target = voxelCenterWorld(cell.a, cell.b, cell.c, sizeA, sizeB, sizeC)
 
   const facing = (def.initialCamera?.controllerFacing ?? DEFAULT_FACING) as FaceName
   const frontOut = FACE_NORMAL[facing]?.clone() ?? FACE_NORMAL[DEFAULT_FACING].clone()

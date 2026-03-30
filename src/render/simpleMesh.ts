@@ -35,6 +35,7 @@ const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
   '-z': new THREE.Vector3(0, 0, -1),
 }
 
+/** 结构索引 (a,b,c) 与 NORTH_DEFAULT 下世界 X/Y/Z 一致；邻格为面法线方向一步 */
 const NEIGHBOR_D: Record<FaceName, [number, number, number]> = {
   '+x': [1, 0, 0],
   '-x': [-1, 0, 0],
@@ -107,7 +108,7 @@ export interface SimpleMeshResult {
 
 export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMeshResult> {
   const grid = buildVoxelGrid(def)
-  const { sizeX, sizeY, sizeZ } = grid
+  const { sizeA, sizeB, sizeC } = grid
   const loader = new THREE.TextureLoader()
   const textureCache = new Map<string, THREE.Texture>()
 
@@ -134,18 +135,18 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
   const batches = new Map<BatchKey, THREE.BufferGeometry[]>()
   const faces = listFaceNames()
 
-  for (let y = 0; y < sizeY; y++) {
-    for (let z = 0; z < sizeZ; z++) {
-      for (let x = 0; x < sizeX; x++) {
-        const id = grid.get(x, y, z)
+  for (let c = 0; c < sizeC; c++) {
+    for (let b = 0; b < sizeB; b++) {
+      for (let a = 0; a < sizeA; a++) {
+        const id = grid.get(a, b, c)
         if (id === AIR) continue
 
         const block = def.blocks[id]
         if (!block) continue
 
         for (const face of faces) {
-          const [dx, dy, dz] = NEIGHBOR_D[face]
-          const neighbor = grid.get(x + dx, y + dy, z + dz)
+          const [da, db, dc] = NEIGHBOR_D[face]
+          const neighbor = grid.get(a + da, b + db, c + dc)
           if (neighbor !== AIR) continue
 
           const layerDefs = layersForFace(block, face)
@@ -159,12 +160,12 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
             const key = makeBatchKey(materialId, tint, layerIdx, role)
             const geom = quadGeometryForFace(
               face,
-              x,
-              y,
-              z,
-              sizeX,
-              sizeY,
-              sizeZ,
+              a,
+              b,
+              c,
+              sizeA,
+              sizeB,
+              sizeC,
               n,
               layerIdx,
             )
@@ -212,71 +213,71 @@ export async function buildSimpleMesh(def: SimpleDefinition): Promise<SimpleMesh
   return { group, dispose }
 }
 
-/** 单格单面四边形：略沿法线偏移以避免多层 z-fighting */
+/** 单格单面四边形：格点 (a,b,c) 与 layers 一致；略沿法线偏移以避免多层 z-fighting */
 function quadGeometryForFace(
   face: FaceName,
-  x: number,
-  y: number,
-  z: number,
-  sx: number,
-  sy: number,
-  sz: number,
+  a: number,
+  b: number,
+  c: number,
+  sa: number,
+  sb: number,
+  sc: number,
   normal: THREE.Vector3,
   layerIdx: number,
 ): THREE.BufferGeometry {
   const ox = 0.002 * layerIdx
   const push = normal.clone().multiplyScalar(ox)
 
-  const minX = x - sx / 2
-  const maxX = x + 1 - sx / 2
-  const minY = y - sy / 2
-  const maxY = y + 1 - sy / 2
-  const minZ = z - sz / 2
-  const maxZ = z + 1 - sz / 2
+  const minX = a - sa / 2
+  const maxX = a + 1 - sa / 2
+  const minY = b - sb / 2
+  const maxY = b + 1 - sb / 2
+  const minZ = c - sc / 2
+  const maxZ = c + 1 - sc / 2
 
   const p = (v: THREE.Vector3) => v.add(push)
 
-  let a: THREE.Vector3
-  let b: THREE.Vector3
-  let c: THREE.Vector3
-  let d: THREE.Vector3
+  let q0: THREE.Vector3
+  let q1: THREE.Vector3
+  let q2: THREE.Vector3
+  let q3: THREE.Vector3
 
   switch (face) {
     case '+x':
-      a = p(new THREE.Vector3(maxX, minY, minZ))
-      b = p(new THREE.Vector3(maxX, maxY, minZ))
-      c = p(new THREE.Vector3(maxX, maxY, maxZ))
-      d = p(new THREE.Vector3(maxX, minY, maxZ))
+      q0 = p(new THREE.Vector3(maxX, minY, minZ))
+      q1 = p(new THREE.Vector3(maxX, maxY, minZ))
+      q2 = p(new THREE.Vector3(maxX, maxY, maxZ))
+      q3 = p(new THREE.Vector3(maxX, minY, maxZ))
       break
     case '-x':
-      a = p(new THREE.Vector3(minX, minY, maxZ))
-      b = p(new THREE.Vector3(minX, maxY, maxZ))
-      c = p(new THREE.Vector3(minX, maxY, minZ))
-      d = p(new THREE.Vector3(minX, minY, minZ))
+      q0 = p(new THREE.Vector3(minX, minY, maxZ))
+      q1 = p(new THREE.Vector3(minX, maxY, maxZ))
+      q2 = p(new THREE.Vector3(minX, maxY, minZ))
+      q3 = p(new THREE.Vector3(minX, minY, minZ))
       break
     case '+y':
-      a = p(new THREE.Vector3(minX, maxY, minZ))
-      b = p(new THREE.Vector3(minX, maxY, maxZ))
-      c = p(new THREE.Vector3(maxX, maxY, maxZ))
-      d = p(new THREE.Vector3(maxX, maxY, minZ))
+      q0 = p(new THREE.Vector3(minX, maxY, minZ))
+      q1 = p(new THREE.Vector3(minX, maxY, maxZ))
+      q2 = p(new THREE.Vector3(maxX, maxY, maxZ))
+      q3 = p(new THREE.Vector3(maxX, maxY, minZ))
       break
     case '-y':
-      a = p(new THREE.Vector3(minX, minY, minZ))
-      b = p(new THREE.Vector3(maxX, minY, minZ))
-      c = p(new THREE.Vector3(maxX, minY, maxZ))
-      d = p(new THREE.Vector3(minX, minY, maxZ))
+      q0 = p(new THREE.Vector3(minX, minY, minZ))
+      q1 = p(new THREE.Vector3(maxX, minY, minZ))
+      q2 = p(new THREE.Vector3(maxX, minY, maxZ))
+      q3 = p(new THREE.Vector3(minX, minY, maxZ))
       break
     case '+z':
-      a = p(new THREE.Vector3(minX, minY, maxZ))
-      b = p(new THREE.Vector3(maxX, minY, maxZ))
-      c = p(new THREE.Vector3(maxX, maxY, maxZ))
-      d = p(new THREE.Vector3(minX, maxY, maxZ))
+      q0 = p(new THREE.Vector3(minX, minY, maxZ))
+      q1 = p(new THREE.Vector3(maxX, minY, maxZ))
+      q2 = p(new THREE.Vector3(maxX, maxY, maxZ))
+      q3 = p(new THREE.Vector3(minX, maxY, maxZ))
       break
     case '-z':
-      a = p(new THREE.Vector3(minX, maxY, minZ))
-      b = p(new THREE.Vector3(maxX, maxY, minZ))
-      c = p(new THREE.Vector3(maxX, minY, minZ))
-      d = p(new THREE.Vector3(minX, minY, minZ))
+      q0 = p(new THREE.Vector3(minX, maxY, minZ))
+      q1 = p(new THREE.Vector3(maxX, maxY, minZ))
+      q2 = p(new THREE.Vector3(maxX, minY, minZ))
+      q3 = p(new THREE.Vector3(minX, minY, minZ))
       break
     default:
       throw new Error(`unknown face ${face}`)
@@ -287,10 +288,10 @@ function quadGeometryForFace(
   const nz = normal.z
 
   const positions = new Float32Array([
-    a.x, a.y, a.z,
-    b.x, b.y, b.z,
-    c.x, c.y, c.z,
-    d.x, d.y, d.z,
+    q0.x, q0.y, q0.z,
+    q1.x, q1.y, q1.z,
+    q2.x, q2.y, q2.z,
+    q3.x, q3.y, q3.z,
   ])
   const normals = new Float32Array([
     nx, ny, nz,
