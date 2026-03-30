@@ -181,6 +181,7 @@ function quadGeometryForFace(
   let c: THREE.Vector3
   let d: THREE.Vector3
 
+  // 顶点顺序：从面外侧看为逆时针（CCW），与 Three.js FrontSide 背面剔除一致；法线指向立方体外部
   switch (face) {
     case '+x':
       a = p(new THREE.Vector3(maxX, minY, minZ))
@@ -196,26 +197,26 @@ function quadGeometryForFace(
       break
     case '+y':
       a = p(new THREE.Vector3(minX, maxY, minZ))
-      b = p(new THREE.Vector3(maxX, maxY, minZ))
+      b = p(new THREE.Vector3(minX, maxY, maxZ))
       c = p(new THREE.Vector3(maxX, maxY, maxZ))
-      d = p(new THREE.Vector3(minX, maxY, maxZ))
+      d = p(new THREE.Vector3(maxX, maxY, minZ))
       break
     case '-y':
-      a = p(new THREE.Vector3(minX, minY, maxZ))
-      b = p(new THREE.Vector3(maxX, minY, maxZ))
-      c = p(new THREE.Vector3(maxX, minY, minZ))
-      d = p(new THREE.Vector3(minX, minY, minZ))
+      a = p(new THREE.Vector3(minX, minY, minZ))
+      b = p(new THREE.Vector3(maxX, minY, minZ))
+      c = p(new THREE.Vector3(maxX, minY, maxZ))
+      d = p(new THREE.Vector3(minX, minY, maxZ))
       break
     case '+z':
       a = p(new THREE.Vector3(minX, minY, maxZ))
-      b = p(new THREE.Vector3(minX, maxY, maxZ))
+      b = p(new THREE.Vector3(maxX, minY, maxZ))
       c = p(new THREE.Vector3(maxX, maxY, maxZ))
-      d = p(new THREE.Vector3(maxX, minY, maxZ))
+      d = p(new THREE.Vector3(minX, maxY, maxZ))
       break
     case '-z':
-      a = p(new THREE.Vector3(maxX, minY, minZ))
+      a = p(new THREE.Vector3(minX, maxY, minZ))
       b = p(new THREE.Vector3(maxX, maxY, minZ))
-      c = p(new THREE.Vector3(minX, maxY, minZ))
+      c = p(new THREE.Vector3(maxX, minY, minZ))
       d = p(new THREE.Vector3(minX, minY, minZ))
       break
     default:

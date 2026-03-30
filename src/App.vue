@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import electroDef from '@renderData/industrial_electrolyzer.simple.json'
 import { loadSimpleDefinition } from '@/render/pipeline'
@@ -26,14 +27,22 @@ onMounted(async () => {
     0.1,
     500,
   )
+  const target = new THREE.Vector3(0, 2, 0)
   camera.position.set(8, 6, 10)
-  camera.lookAt(0, 1, 0)
+  camera.lookAt(target)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(el.clientWidth, el.clientHeight)
   renderer.outputColorSpace = THREE.SRGBColorSpace
   el.appendChild(renderer.domElement)
+
+  const controls = new OrbitControls(camera, renderer.domElement)
+  controls.target.copy(target)
+  controls.enableDamping = true
+  controls.dampingFactor = 0.08
+  controls.rotateSpeed = 0.9
+  controls.enablePan = false
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.55)
   const dir = new THREE.DirectionalLight(0xffffff, 0.9)
@@ -49,17 +58,21 @@ onMounted(async () => {
     renderer.setSize(w, h)
   }
   window.addEventListener('resize', onResize)
+  const resizeObserver = new ResizeObserver(() => onResize())
+  resizeObserver.observe(el)
 
   const tick = () => {
     animationId = requestAnimationFrame(tick)
-    group.rotation.y += 0.0025
+    controls.update()
     renderer.render(scene, camera)
   }
   tick()
 
   disposeScene = () => {
     cancelAnimationFrame(animationId)
+    resizeObserver.disconnect()
     window.removeEventListener('resize', onResize)
+    controls.dispose()
     disposeMesh()
     renderer.dispose()
     if (renderer.domElement.parentNode === el) {
