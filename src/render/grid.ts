@@ -1,6 +1,7 @@
 /**
  * 体素层（无 Three）：SimpleDefinition → VoxelGrid。
- * 与 StructureLib `addShape` 一致：`def.layers[c][b]`，行内下标 a；`get(a,b,c)` + symbolMap → 方块 id。
+ * `def.layers[c][b][a]` 与 StructureLib 一致；b 为 slice 内行下标（0=GT 源码首行=结构顶）。
+ * 世界 Y 放置见 `structureRowToWorldY`（simpleMesh / initialCamera）。
  */
 
 import type { SimpleDefinition, VoxelGrid } from './types'

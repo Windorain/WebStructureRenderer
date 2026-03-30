@@ -7,6 +7,7 @@
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
  *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
  *     → mergeGeometries 合并同批几何体
+ *     → 每面 UV：`blockFaceUv.uv8ForFace`（Minecraft 方块面约定，见该文件 Wiki 注释）
  *     → SimpleMaterialLibrary.getMaterialForBatch（纹理 / mcmeta / 动画由库负责）
  *   几何 dispose 在本模块；材质与纹理由库的 dispose() 释放。
  */
@@ -18,6 +19,8 @@ import type { FaceName, LayerRole, SimpleDefinition } from './types'
 import { buildVoxelGrid } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
+import { structureRowToWorldY } from './structureCoords'
+import { uv8ForFace } from './blockFaceUv'
 
 const AIR = 'air'
 
@@ -33,12 +36,15 @@ const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
   '-z': new THREE.Vector3(0, 0, -1),
 }
 
-/** 结构索引 (a,b,c) 与 NORTH_DEFAULT 下世界 X/Y/Z 一致；邻格为面法线方向一步 */
+/**
+ * 邻格在 (a, structureRowB, c) 空间中的增量；structureRowB 与 layers[c][b] 的 b 一致（0=顶行）。
+ * 世界 +Y 对应更小 structureRowB（StructureLib 的 b 轴为 DOWN）。
+ */
 const NEIGHBOR_D: Record<FaceName, [number, number, number]> = {
   '+x': [1, 0, 0],
   '-x': [-1, 0, 0],
-  '+y': [0, 1, 0],
-  '-y': [0, -1, 0],
+  '+y': [0, -1, 0],
+  '-y': [0, 1, 0],
   '+z': [0, 0, 1],
   '-z': [0, 0, -1],
 }
@@ -93,9 +99,9 @@ export async function buildSimpleMesh(
   const faces = listFaceNames()
 
   for (let c = 0; c < sizeC; c++) {
-    for (let b = 0; b < sizeB; b++) {
+    for (let rowB = 0; rowB < sizeB; rowB++) {
       for (let a = 0; a < sizeA; a++) {
-        const id = grid.get(a, b, c)
+        const id = grid.get(a, rowB, c)
         if (id === AIR) continue
 
         const block = def.blocks[id]
@@ -103,13 +109,14 @@ export async function buildSimpleMesh(
 
         for (const face of faces) {
           const [da, db, dc] = NEIGHBOR_D[face]
-          const neighbor = grid.get(a + da, b + db, c + dc)
+          const neighbor = grid.get(a + da, rowB + db, c + dc)
           if (neighbor !== AIR) continue
 
           const layerDefs = layersForFace(block, face)
           if (!layerDefs.length) continue
 
           const n = FACE_NORMAL[face]
+          const voxelY = structureRowToWorldY(rowB, sizeB)
           layerDefs.forEach((layer, layerIdx) => {
             const materialId = layer.materialId
             const tint = parseTint(layer.tint)
@@ -118,7 +125,7 @@ export async function buildSimpleMesh(
             const geom = quadGeometryForFace(
               face,
               a,
-              b,
+              voxelY,
               c,
               sizeA,
               sizeB,
@@ -161,11 +168,11 @@ export async function buildSimpleMesh(
   return { group, dispose }
 }
 
-/** 单格单面四边形：格点 (a,b,c) 与 layers 一致；略沿法线偏移以避免多层 z-fighting */
+/** 单格单面四边形：a、c 为体素列/片；voxelY 为世界体素 Y（0=包围盒底）；略沿法线偏移避免 z-fighting */
 function quadGeometryForFace(
   face: FaceName,
   a: number,
-  b: number,
+  voxelY: number,
   c: number,
   sa: number,
   sb: number,
@@ -178,8 +185,8 @@ function quadGeometryForFace(
 
   const minX = a - sa / 2
   const maxX = a + 1 - sa / 2
-  const minY = b - sb / 2
-  const maxY = b + 1 - sb / 2
+  const minY = voxelY - sb / 2
+  const maxY = voxelY + 1 - sb / 2
   const minZ = c - sc / 2
   const maxZ = c + 1 - sc / 2
 
@@ -247,7 +254,7 @@ function quadGeometryForFace(
     nx, ny, nz,
     nx, ny, nz,
   ])
-  const uvs = new Float32Array([0, 1, 0, 0, 1, 0, 1, 1])
+  const uvs = uv8ForFace(face)
   const index = new Uint16Array([0, 1, 2, 0, 2, 3])
 
   const geo = new THREE.BufferGeometry()

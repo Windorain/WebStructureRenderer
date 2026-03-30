@@ -107,8 +107,8 @@ export interface SimpleDefinition {
 }
 
 /**
- * 体素查询：整数格点 (a,b,c) 与 layers 下标一致；世界顶点见 simpleMesh（a≈X、b≈Y、c≈Z）。
- * get(a,b,c) 返回方块逻辑 id；空气为内部常量 'air'。
+ * 体素查询：(a, b, c) 与 `layers[c][b][a]` 一致；b 为 StructureLib 行下标（0=GT 首行=顶）。
+ * 世界 Y 与 b 的映射见 `structureRowToWorldY`。get(a,b,c) 返回方块逻辑 id；空气为 'air'。
  */
 export interface VoxelGrid {
   sizeA: number

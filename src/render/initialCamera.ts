@@ -1,11 +1,10 @@
 /**
  * 检测控制器体素并设置初始相机：轨道中心对准控制器中心，相机位于「正面」外侧，
- * camera.up 与体素世界 +Y（顶面法线）一致；正面法线由 initialCamera.controllerFacing 指定。
+ * camera.up 为世界 +Y（Minecraft 竖直向上）；正面法线由 initialCamera.controllerFacing 指定。
  *
- * GT5U / StructureLib 约定（见 StructureLib `ExtendedFacing`）：
- * - `ExtendedFacing.DEFAULT` = `NORTH_NORMAL_NONE`，即控制器默认朝北（ForgeDirection.NORTH）。
- * - 对 NORTH，`getRelativeForwardInWorld()` 为世界 -Z（玩家站在控制器北侧朝向南看 GUI）。
- * - 故「正面朝外法线」与 Minecraft 北面对应 **-z**（Three 世界 +Y 上、+X 东、+Z 南时与 MC 一致）。
+ * GT5U / StructureLib（`ExtendedFacing` NORTH）：
+ * - `getRelativeForwardInWorld()` = 世界 **-Z**（北），GUI 常从南侧看。
+ * - 结构行 b 与世界 Y：`structureRowToWorldY`（首行 = 顶 = 高 Y），勿把数组行下标直接当世界 Y。
  */
 
 import * as THREE from 'three'
@@ -13,6 +12,7 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 
 import type { FaceName, SimpleDefinition } from './types'
 import { buildVoxelGrid } from './grid'
+import { structureRowToWorldY } from './structureCoords'
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
 
@@ -29,18 +29,22 @@ const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
 const DEFAULT_FACING: FaceName = '-z'
 const DEFAULT_DISTANCE = 10
 
-/** 与 simpleMesh 中体素中心一致：格点 (a,b,c) 对应世界中心 (a+0.5-sa/2, …) */
+/**
+ * 与 simpleMesh 体素中心一致：a、c 为体素列/片下标；b 为 **StructureLib 行下标**（0=顶行），
+ * 世界 Y 由 `structureRowToWorldY(b, sizeB)` 得到。
+ */
 export function voxelCenterWorld(
   a: number,
-  b: number,
+  structureRowB: number,
   c: number,
   sizeA: number,
   sizeB: number,
   sizeC: number,
   out?: THREE.Vector3,
 ): THREE.Vector3 {
+  const y = structureRowToWorldY(structureRowB, sizeB)
   const v = out ?? new THREE.Vector3()
-  v.set(a + 0.5 - sizeA / 2, b + 0.5 - sizeB / 2, c + 0.5 - sizeC / 2)
+  v.set(a + 0.5 - sizeA / 2, y + 0.5 - sizeB / 2, c + 0.5 - sizeC / 2)
   return v
 }
 

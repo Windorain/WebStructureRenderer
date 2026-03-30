@@ -130,6 +130,8 @@ export class SimpleMaterialLibrary {
         url,
         (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace
+          // 与 `blockFaceUv.ts` 中 UV 约定一致：Minecraft PNG 顶行 ↔ Three 中 v=1（默认 flipY）
+          tex.flipY = true
           tex.magFilter = THREE.NearestFilter
           tex.minFilter = THREE.NearestFilter
           tex.wrapS = THREE.ClampToEdgeWrapping
