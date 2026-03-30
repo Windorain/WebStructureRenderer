@@ -12,6 +12,7 @@ import {
   resolveAnimationTimeline,
   type ParsedMcmeta,
 } from '../mcmeta'
+import { batchMaterialCacheKey, type BatchDescriptor } from '../batchDescriptor'
 import type { LayerRole, MaterialRegistryData } from '../types'
 
 function createFaceMaterial(
@@ -176,23 +177,20 @@ export class SimpleMaterialLibrary {
   }
 
   /**
-   * 按批次键取材质（同键复用）；tint 为已解析颜色。
+   * 按批次描述符取材质（同 `batchMaterialCacheKey` 复用）。
    */
-  async getMaterialForBatch(
-    batchKey: string,
-    materialId: string,
-    tint: THREE.Color,
-    layerRole: LayerRole,
-  ): Promise<THREE.MeshStandardMaterial> {
-    const hit = this.materialByBatchKey.get(batchKey)
+  async getMaterialForBatch(descriptor: BatchDescriptor): Promise<THREE.MeshStandardMaterial> {
+    const key = batchMaterialCacheKey(descriptor)
+    const hit = this.materialByBatchKey.get(key)
     if (hit) return hit
 
+    const { materialId, tint, role } = descriptor
     await this.loadTexture(materialId)
     const tex = this.textureByMaterialId.get(materialId)
     if (!tex) throw new Error(`纹理加载失败: ${materialId}`)
 
-    const mat = createFaceMaterial(tex, tint, layerRole)
-    this.materialByBatchKey.set(batchKey, mat)
+    const mat = createFaceMaterial(tex, tint, role)
+    this.materialByBatchKey.set(key, mat)
     return mat
   }
 

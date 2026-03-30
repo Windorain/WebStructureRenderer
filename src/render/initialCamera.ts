@@ -5,25 +5,18 @@
  * GT5U / StructureLib（`ExtendedFacing` NORTH）：
  * - `getRelativeForwardInWorld()` = 世界 **-Z**（北），GUI 常从南侧看。
  * - 结构行 b 与世界 Y：`structureRowToWorldY`（首行 = 顶 = 高 Y），勿把数组行下标直接当世界 Y。
+ * - `applyInitialCamera` 内只调用一次 `buildVoxelGrid`，再用 `findFirstVoxelWithBlockId` 查 controller，避免重复构建。
  */
 
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import type { FaceName, SimpleDefinition } from './types'
-import { buildVoxelGrid } from './grid'
+import { FACE_NORMAL } from './faceConstants'
+import { buildVoxelGrid, findFirstVoxelWithBlockId } from './grid'
 import { structureRowToWorldY } from './structureCoords'
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
-
-const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
-  '+x': new THREE.Vector3(1, 0, 0),
-  '-x': new THREE.Vector3(-1, 0, 0),
-  '+y': new THREE.Vector3(0, 1, 0),
-  '-y': new THREE.Vector3(0, -1, 0),
-  '+z': new THREE.Vector3(0, 0, 1),
-  '-z': new THREE.Vector3(0, 0, -1),
-}
 
 /** 与 StructureLib `ExtendedFacing.DEFAULT`（朝北）一致，勿与「南 +Z」混淆 */
 const DEFAULT_FACING: FaceName = '-z'
@@ -49,16 +42,8 @@ export function voxelCenterWorld(
 }
 
 /** 在网格中查找第一个方块 id 为 controller 的体素（symbolMap 中 ~ → controller 等） */
-export function findFirstControllerVoxel(def: SimpleDefinition): { a: number; b: number; c: number } | null {
-  const grid = buildVoxelGrid(def)
-  for (let c = 0; c < grid.sizeC; c++) {
-    for (let b = 0; b < grid.sizeB; b++) {
-      for (let a = 0; a < grid.sizeA; a++) {
-        if (grid.get(a, b, c) === 'controller') return { a, b, c }
-      }
-    }
-  }
-  return null
+export function findFirstControllerVoxel(def: SimpleDefinition) {
+  return findFirstVoxelWithBlockId(buildVoxelGrid(def), 'controller')
 }
 
 /**
@@ -93,7 +78,8 @@ export function applyInitialCamera(
   fallbackPosition: THREE.Vector3,
   options?: ApplyInitialCameraOptions,
 ): void {
-  const cell = findFirstControllerVoxel(def)
+  const grid = buildVoxelGrid(def)
+  const cell = findFirstVoxelWithBlockId(grid, 'controller')
   if (!cell) {
     controls.target.copy(fallbackTarget)
     camera.position.copy(fallbackPosition)
@@ -102,7 +88,6 @@ export function applyInitialCamera(
     return
   }
 
-  const grid = buildVoxelGrid(def)
   const { sizeA, sizeB, sizeC } = grid
   const target = voxelCenterWorld(cell.a, cell.b, cell.c, sizeA, sizeB, sizeC)
 

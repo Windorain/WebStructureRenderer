@@ -6,9 +6,9 @@
  *     → buildVoxelGrid（符号 → 方块 id）
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
  *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
- *     → mergeGeometries 合并同批几何体
+ *     → mergeGeometries 合并同批几何体（批次元数据见 `batchDescriptor`）
  *     → 每面 UV：`blockFaceUv.uv8ForFace`（Minecraft 方块面约定，见该文件 Wiki 注释）
- *     → SimpleMaterialLibrary.getMaterialForBatch（纹理 / mcmeta / 动画由库负责）
+ *     → SimpleMaterialLibrary.getMaterialForBatch(descriptor)（纹理 / mcmeta / 动画由库负责）
  *   几何 dispose 在本模块；材质与纹理由库的 dispose() 释放。
  */
 
@@ -16,38 +16,15 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { FaceName, LayerRole, SimpleDefinition } from './types'
+import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelGrid } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
+import { FACE_NORMAL, NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from './structureCoords'
 import { uv8ForFace } from './blockFaceUv'
 
 const AIR = 'air'
-
-/** 批次 Map 的键：材质 id | 色调 hex | 层序 | role（材质 id 勿含分隔符 '|'） */
-const BATCH_SEP = '|' as const
-
-const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
-  '+x': new THREE.Vector3(1, 0, 0),
-  '-x': new THREE.Vector3(-1, 0, 0),
-  '+y': new THREE.Vector3(0, 1, 0),
-  '-y': new THREE.Vector3(0, -1, 0),
-  '+z': new THREE.Vector3(0, 0, 1),
-  '-z': new THREE.Vector3(0, 0, -1),
-}
-
-/**
- * 邻格在 (a, structureRowB, c) 空间中的增量；structureRowB 与 layers[c][b] 的 b 一致（0=顶行）。
- * 世界 +Y 对应更小 structureRowB（StructureLib 的 b 轴为 DOWN）。
- */
-const NEIGHBOR_D: Record<FaceName, [number, number, number]> = {
-  '+x': [1, 0, 0],
-  '-x': [-1, 0, 0],
-  '+y': [0, -1, 0],
-  '-y': [0, 1, 0],
-  '+z': [0, 0, 1],
-  '-z': [0, 0, -1],
-}
 
 function parseTint(hex?: string): THREE.Color {
   if (!hex) return new THREE.Color(0xffffff)
@@ -58,28 +35,6 @@ function effectiveLayerRole(layer: { layerRole?: LayerRole }, layerIdx: number):
   return layer.layerRole ?? (layerIdx === 0 ? 'base' : 'cutout')
 }
 
-function makeBatchKey(
-  materialId: string,
-  tint: THREE.Color,
-  layerIdx: number,
-  role: LayerRole,
-): string {
-  return [materialId, tint.getHexString(), String(layerIdx), role].join(BATCH_SEP)
-}
-
-function parseBatchKey(key: string): {
-  materialId: string
-  tintHex: string
-  layerIdx: number
-  role: LayerRole
-} {
-  const parts = key.split(BATCH_SEP)
-  const materialId = parts[0] ?? ''
-  const tintHex = parts[1] ?? 'ffffff'
-  const layerIdx = Number(parts[2] ?? 0)
-  const role = (parts[3] ?? 'base') as LayerRole
-  return { materialId, tintHex, layerIdx, role }
-}
 
 export interface SimpleMeshResult {
   group: THREE.Group
@@ -94,8 +49,7 @@ export async function buildSimpleMesh(
   const grid = buildVoxelGrid(def)
   const { sizeA, sizeB, sizeC } = grid
 
-  type BatchKey = string
-  const batches = new Map<BatchKey, THREE.BufferGeometry[]>()
+  const batches = new Map<string, { descriptor: BatchDescriptor; geometries: THREE.BufferGeometry[] }>()
   const faces = listFaceNames()
 
   for (let c = 0; c < sizeC; c++) {
@@ -108,7 +62,7 @@ export async function buildSimpleMesh(
         if (!block) continue
 
         for (const face of faces) {
-          const [da, db, dc] = NEIGHBOR_D[face]
+          const [da, db, dc] = NEIGHBOR_STRUCTURE_DELTA[face]
           const neighbor = grid.get(a + da, rowB + db, c + dc)
           if (neighbor !== AIR) continue
 
@@ -118,10 +72,13 @@ export async function buildSimpleMesh(
           const n = FACE_NORMAL[face]
           const voxelY = structureRowToWorldY(rowB, sizeB)
           layerDefs.forEach((layer, layerIdx) => {
-            const materialId = layer.materialId
-            const tint = parseTint(layer.tint)
-            const role = effectiveLayerRole(layer, layerIdx)
-            const key = makeBatchKey(materialId, tint, layerIdx, role)
+            const descriptor: BatchDescriptor = {
+              materialId: layer.materialId,
+              tint: parseTint(layer.tint),
+              layerIdx,
+              role: effectiveLayerRole(layer, layerIdx),
+            }
+            const key = batchMaterialCacheKey(descriptor)
             const geom = quadGeometryForFace(
               face,
               a,
@@ -133,9 +90,12 @@ export async function buildSimpleMesh(
               n,
               layerIdx,
             )
-            const arr = batches.get(key) ?? []
-            arr.push(geom)
-            batches.set(key, arr)
+            let bucket = batches.get(key)
+            if (!bucket) {
+              bucket = { descriptor, geometries: [] }
+              batches.set(key, bucket)
+            }
+            bucket.geometries.push(geom)
           })
         }
       }
@@ -145,16 +105,14 @@ export async function buildSimpleMesh(
   const group = new THREE.Group()
   const meshes: THREE.Mesh[] = []
 
-  for (const [key, geoms] of batches) {
-    if (!geoms.length) continue
-    const { materialId, tintHex, layerIdx, role } = parseBatchKey(key)
+  for (const { descriptor, geometries } of batches.values()) {
+    if (!geometries.length) continue
 
-    const merged = mergeGeometries(geoms, false)
+    const merged = mergeGeometries(geometries, false)
     if (!merged) continue
-    const tint = new THREE.Color(`#${tintHex}`)
-    const mat = await library.getMaterialForBatch(key, materialId, tint, role)
+    const mat = await library.getMaterialForBatch(descriptor)
     const mesh = new THREE.Mesh(merged, mat)
-    mesh.renderOrder = layerIdx
+    mesh.renderOrder = descriptor.layerIdx
     group.add(mesh)
     meshes.push(mesh)
   }
