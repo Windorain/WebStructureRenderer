@@ -61,7 +61,7 @@ export function findFirstControllerVoxel(def: SimpleDefinition): { a: number; b:
  * 正面朝外法线与 world up 几乎平行时，lookAt 与 up 退化，改用 +Z 作为 camera.up。
  */
 function setCameraUpParallelToControllerTop(
-  camera: THREE.PerspectiveCamera,
+  camera: THREE.Camera,
   frontOutward: THREE.Vector3,
 ): void {
   const f = frontOutward
@@ -82,7 +82,7 @@ export interface ApplyInitialCameraOptions {
  * 若无控制器：使用 fallbackTarget / fallbackPosition（均为世界坐标）。
  */
 export function applyInitialCamera(
-  camera: THREE.PerspectiveCamera,
+  camera: THREE.Camera,
   controls: OrbitControls,
   def: SimpleDefinition,
   fallbackTarget: THREE.Vector3,

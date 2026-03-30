@@ -1,11 +1,10 @@
 <script setup lang="ts">
 /**
- * 预览页：loadSimpleModel → SimpleMaterialLibrary + buildSimpleMesh → Scene / Renderer / Controls。
- * RAF：Clock → materialLibrary.tick（mcmeta 动画）→ controls → render。
+ * 预览页：loadSimpleModel → SimpleMaterialLibrary + buildSimpleMesh → Scene。
+ * RenderViewport：Renderer + 透视/正交 + OrbitControls；RAF：材质 tick → controls → render。
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import electroDef from '@renderData/models/industrial_electrolyzer.simple.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
@@ -14,14 +13,30 @@ import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { loadSimpleModel } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
 import type { MaterialRegistryData } from '@/render/types'
+import {
+  RenderViewport,
+  type ProjectionMode,
+} from '@/render/viewport/renderViewport'
 
 type ViewStatus = 'loading' | 'ok' | 'error'
 
 const container = ref<HTMLDivElement | null>(null)
 const status = ref<ViewStatus>('loading')
 const statusMessage = ref('正在初始化 WebGL 与网格…')
+const projectionMode = ref<ProjectionMode>('perspective')
+
+const projectionLabel = computed(() =>
+  projectionMode.value === 'perspective' ? '透视投影' : '正交投影',
+)
 
 let disposeScene: (() => void) | undefined
+let viewportRef: RenderViewport | null = null
+
+function toggleProjection(): void {
+  if (!viewportRef) return
+  viewportRef.toggleMode()
+  projectionMode.value = viewportRef.mode
+}
 
 const statusBarClass = computed(() => {
   if (status.value === 'ok') return 'wm-status-bar wm-status-bar--ok'
@@ -56,27 +71,25 @@ onMounted(async () => {
     scene.background = new THREE.Color(0x111827)
     scene.add(group)
 
-    const camera = new THREE.PerspectiveCamera(
-      50,
-      Math.max(el.clientWidth, 1) / Math.max(el.clientHeight, 1),
-      0.1,
-      500,
-    )
+    const viewport = new RenderViewport({
+      container: el,
+      width: el.clientWidth,
+      height: el.clientHeight,
+    })
+    viewportRef = viewport
+    projectionMode.value = viewport.mode
+
     const fallbackTarget = new THREE.Vector3(0, 2, 0)
     const fallbackPosition = new THREE.Vector3(8, 6, 10)
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setSize(el.clientWidth, el.clientHeight)
-    renderer.outputColorSpace = THREE.SRGBColorSpace
-    el.appendChild(renderer.domElement)
-
-    const controls = new OrbitControls(camera, renderer.domElement)
-    applyInitialCamera(camera, controls, def, fallbackTarget, fallbackPosition)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.08
-    controls.rotateSpeed = 0.9
-    controls.enablePan = false
+    applyInitialCamera(
+      viewport.perspectiveCamera,
+      viewport.controls,
+      def,
+      fallbackTarget,
+      fallbackPosition,
+    )
+    viewport.syncOrthographicFromPerspective()
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.55)
     const dir = new THREE.DirectionalLight(0xffffff, 0.9)
@@ -87,9 +100,7 @@ onMounted(async () => {
     const onResize = () => {
       const w = el.clientWidth
       const h = el.clientHeight
-      camera.aspect = w / h
-      camera.updateProjectionMatrix()
-      renderer.setSize(w, h)
+      viewport.resize(w, h)
     }
     window.addEventListener('resize', onResize)
     const resizeObserver = new ResizeObserver(() => onResize())
@@ -99,8 +110,8 @@ onMounted(async () => {
     const tick = () => {
       animationId = requestAnimationFrame(tick)
       materialLibrary.tick(clock.getDelta() * 1000)
-      controls.update()
-      renderer.render(scene, camera)
+      viewport.controls.update()
+      viewport.render(scene)
     }
     tick()
 
@@ -108,16 +119,13 @@ onMounted(async () => {
     statusMessage.value = `渲染正常 · 模型 ${def.id} · 左键拖拽旋转 · 滚轮缩放`
 
     disposeScene = () => {
+      viewportRef = null
       cancelAnimationFrame(animationId)
       resizeObserver.disconnect()
       window.removeEventListener('resize', onResize)
-      controls.dispose()
+      viewport.dispose()
       disposeMesh()
       materialLibrary.dispose()
-      renderer.dispose()
-      if (renderer.domElement.parentNode === el) {
-        el.removeChild(renderer.domElement)
-      }
     }
   } catch (e) {
     status.value = 'error'
@@ -134,7 +142,17 @@ onBeforeUnmount(() => {
 <template>
   <div class="wm-root">
     <p class="wm-title">Industrial Electrolyzer — Simple 结构预览（GT5U 数据）</p>
-    <div ref="container" class="wm-viewport" />
+    <div ref="container" class="wm-viewport">
+      <button
+        v-if="status === 'ok'"
+        type="button"
+        class="wm-projection-toggle"
+        :title="`当前：${projectionLabel}，点击切换`"
+        @click="toggleProjection"
+      >
+        {{ projectionLabel }}
+      </button>
+    </div>
     <div :class="statusBarClass" role="status" aria-live="polite">
       <span class="wm-status-dot" aria-hidden="true" />
       <span class="wm-status-text">{{ statusMessage }}</span>
@@ -160,6 +178,29 @@ onBeforeUnmount(() => {
   background: #0f172a;
   overflow: hidden;
   position: relative;
+}
+.wm-projection-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.wm-projection-toggle:hover {
+  border-color: rgba(148, 163, 184, 0.6);
+  background: rgba(30, 41, 59, 0.95);
+}
+.wm-projection-toggle:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
 }
 .wm-status-bar {
   display: flex;

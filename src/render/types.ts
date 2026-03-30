@@ -7,6 +7,7 @@
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial，tick 驱动动画
  *   simpleMesh：体素 → 几何批次；从库取材质
+ *   viewport/RenderViewport：WebGLRenderer + 透视/正交相机与 OrbitControls（与场景内容无关）
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
