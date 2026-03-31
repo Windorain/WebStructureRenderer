@@ -154,7 +154,8 @@ export async function buildSimpleMesh(
  * **UV**：`blockFaceUv.uv8ForFace` 使用同一约定（满 tile 时 minU/maxU/minV/maxV → 0/1）。
  * 三角索引 `(0,1,2)(0,2,3)`。
  */
-function quadGeometryForFace(
+/** 导出供物品栏 RTT 单方块烘焙复用（与体素网格同一套顶点/UV 约定） */
+export function quadGeometryForFace(
   face: FaceName,
   a: number,
   voxelY: number,

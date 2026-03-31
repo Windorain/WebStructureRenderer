@@ -3,11 +3,15 @@
  * 预览页：loadStructureData → SimpleMaterialLibrary + buildSimpleMesh → Scene。
  * RenderViewport：Renderer + 透视/正交 + OrbitControls；RAF：材质 tick → controls → render。
  */
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import * as THREE from 'three'
 
 import electroDef from '@renderData/structures/industrial_electrolyzer.simple.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
+import BlockStatsSidebar from '@/components/BlockStatsSidebar.vue'
+import { BlockIconCache } from '@/render/blockIconCache'
+import { buildBlockStatsEntries } from '@/render/blockStats'
+import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
 import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/initialCamera'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { loadStructureData } from '@/render/pipeline'
@@ -46,6 +50,25 @@ let materialLibraryRef: SimpleMaterialLibrary | null = null
 let contentGroup: THREE.Group | null = null
 let disposeContent: (() => void) | null = null
 let meshBuildSeq = 0
+
+const blockIconCache = shallowRef<BlockIconCache | null>(null)
+
+const blockStatsEntries = computed(() => {
+  const def = defRef.value
+  if (!def) return []
+  return buildBlockStatsEntries(def)
+})
+
+watch(
+  [blockStatsEntries, blockIconCache],
+  () => {
+    const cache = blockIconCache.value
+    if (!cache) return
+    const ids = blockStatsEntries.value.map((r) => r.blockId)
+    cache.ensure(ids)
+  },
+  { deep: true },
+)
 
 async function rebuildMeshFromLayerSlider(): Promise<void> {
   const def = defRef.value
@@ -109,6 +132,14 @@ onMounted(async () => {
       materialRegistryJson as MaterialRegistryData,
     )
     materialLibraryRef = materialLibrary
+
+    const iconCache = new BlockIconCache(materialLibrary, def.blocks, {
+      sizePx: 48,
+      clearColor: 0x111827,
+      clearAlpha: 1,
+    })
+    iconCache.setRevisionKey(`${def.id}:${summarizeBlocksForCache(def.blocks)}`)
+    blockIconCache.value = iconCache
     const { group, dispose: disposeMesh } = await buildSimpleMesh(def, materialLibrary)
 
     const scene = new THREE.Scene()
@@ -183,6 +214,8 @@ onMounted(async () => {
       contentGroup = null
       disposeContent = null
       sceneRef = null
+      blockIconCache.value?.dispose()
+      blockIconCache.value = null
       materialLibraryRef = null
       defRef.value = null
       meshBuildSeq++
@@ -203,7 +236,13 @@ onBeforeUnmount(() => {
 <template>
   <div class="wm-root">
     <p class="wm-title">Industrial Electrolyzer — Simple 结构预览（GT5U 数据）</p>
-    <div class="wm-viewport-stack">
+    <div class="wm-main-stage">
+      <BlockStatsSidebar
+        v-if="status === 'ok' && blockIconCache"
+        :entries="blockStatsEntries"
+        :cache="blockIconCache"
+      />
+      <div class="wm-viewport-column">
       <div ref="container" class="wm-viewport">
         <button
           v-if="status === 'ok'"
@@ -234,6 +273,7 @@ onBeforeUnmount(() => {
         />
         <span class="wm-layer-value" aria-live="polite">{{ layerPreviewLabel }}</span>
       </div>
+      </div>
     </div>
     <div :class="statusBarClass" role="status" aria-live="polite">
       <span class="wm-status-dot" aria-hidden="true" />
@@ -253,12 +293,21 @@ onBeforeUnmount(() => {
   font-size: 14px;
   opacity: 0.9;
 }
-.wm-viewport-stack {
+.wm-main-stage {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   width: 100%;
   border-radius: 8px 8px 0 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: none;
+}
+.wm-viewport-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .wm-viewport {
   width: 100%;
