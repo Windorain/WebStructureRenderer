@@ -19,9 +19,8 @@ export function makeMcItemSlotBlockMatrix(): THREE.Matrix4 {
   m.multiply(new THREE.Matrix4().makeScale(-1, 1, 1))
   m.multiply(new THREE.Matrix4().makeRotationZ(Math.PI))
   m.multiply(new THREE.Matrix4().makeScale(1, 1, -1))
-  m.multiply(new THREE.Matrix4().makeRotationZ(240 * DEG))
   m.multiply(new THREE.Matrix4().makeRotationX(150 * DEG))
-  m.multiply(new THREE.Matrix4().makeRotationY(45 * DEG))
+  m.multiply(new THREE.Matrix4().makeRotationY(-45 * DEG))
 
   return m
 }
