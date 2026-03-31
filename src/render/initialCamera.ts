@@ -66,6 +66,41 @@ export interface ApplyInitialCameraOptions {
   distance?: number
 }
 
+export interface ApplyDiagonalOrbitViewOptions {
+  /** 与 `controls.target` 的距离；缺省为当前相机到目标距离 */
+  distance?: number
+  /** 绕世界 Y 轴方位角（度），默认 45（左旋 45°） */
+  yawDeg?: number
+  /** 相对水平面的俯仰：视线自水平面向下为「俯视」，默认 45° */
+  elevationFromHorizontalDeg?: number
+}
+
+/**
+ * 在已有 `controls.target` 下，将球坐标系相机置于目标外侧：默认方位 45° + 俯视 45°（类轴测观感）。
+ */
+export function applyDiagonalOrbitView(
+  camera: THREE.Camera,
+  controls: OrbitControls,
+  options?: ApplyDiagonalOrbitViewOptions,
+): void {
+  const target = controls.target.clone()
+  const dist =
+    options?.distance ?? Math.max(0.1, camera.position.distanceTo(target))
+  const yawDeg = options?.yawDeg ?? 45
+  const elevDeg = options?.elevationFromHorizontalDeg ?? 45
+
+  const theta = THREE.MathUtils.degToRad(yawDeg)
+  const phi = Math.PI / 2 - THREE.MathUtils.degToRad(elevDeg)
+
+  const offset = new THREE.Vector3().setFromSpherical(
+    new THREE.Spherical(dist, phi, theta),
+  )
+  camera.position.copy(target).add(offset)
+  camera.up.copy(WORLD_UP)
+  camera.lookAt(target)
+  controls.update()
+}
+
 /**
  * 若存在控制器体素：target = 体素中心；相机在正面法线外侧；up 与顶面 (+Y) 对齐（非退化时）。
  * 若无控制器：使用 fallbackTarget / fallbackPosition（均为世界坐标）。

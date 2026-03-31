@@ -8,7 +8,7 @@ import * as THREE from 'three'
 
 import electroDef from '@renderData/structures/industrial_electrolyzer.simple.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
-import { applyInitialCamera } from '@/render/initialCamera'
+import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/initialCamera'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { loadStructureData } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
@@ -23,7 +23,7 @@ type ViewStatus = 'loading' | 'ok' | 'error'
 const container = ref<HTMLDivElement | null>(null)
 const status = ref<ViewStatus>('loading')
 const statusMessage = ref('正在初始化 WebGL 与网格…')
-const projectionMode = ref<ProjectionMode>('perspective')
+const projectionMode = ref<ProjectionMode>('orthographic')
 
 const projectionLabel = computed(() =>
   projectionMode.value === 'perspective' ? '透视投影' : '正交投影',
@@ -124,7 +124,6 @@ onMounted(async () => {
       height: el.clientHeight,
     })
     viewportRef = viewport
-    projectionMode.value = viewport.mode
 
     const fallbackTarget = new THREE.Vector3(0, 2, 0)
     const fallbackPosition = new THREE.Vector3(8, 6, 10)
@@ -136,7 +135,13 @@ onMounted(async () => {
       fallbackTarget,
       fallbackPosition,
     )
+    applyDiagonalOrbitView(viewport.perspectiveCamera, viewport.controls, {
+      yawDeg: 225,
+      elevationFromHorizontalDeg: 15,
+    })
     viewport.syncOrthographicFromPerspective()
+    viewport.setMode('orthographic')
+    projectionMode.value = viewport.mode
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.55)
     const dir = new THREE.DirectionalLight(0xffffff, 0.9)
