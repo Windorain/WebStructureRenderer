@@ -81,7 +81,6 @@ const empty = computed(() => props.entries.length === 0)
           :key="row.blockId"
           class="wm-block-stats-row"
         >
-          <code class="wm-block-stats-id" :title="row.blockId">{{ row.blockId }}</code>
           <BlockSlotPreview
             :block-id="row.blockId"
             :count="row.count"
@@ -167,20 +166,7 @@ const empty = computed(() => props.entries.length === 0)
 .wm-block-stats-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   min-width: 0;
-}
-.wm-block-stats-id {
-  flex: 1;
-  min-width: 0;
-  font-size: 10px;
-  line-height: 1.2;
-  color: #94a3b8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: rgba(15, 23, 42, 0.5);
-  padding: 2px 4px;
-  border-radius: 3px;
 }
 </style>

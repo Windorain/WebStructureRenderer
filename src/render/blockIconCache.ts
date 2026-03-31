@@ -163,14 +163,20 @@ export class BlockIconCache {
       const scene = new THREE.Scene()
       scene.add(group)
 
-      const ambient = new THREE.AmbientLight(0xffffff, 0.55)
-      const dir = new THREE.DirectionalLight(0xffffff, 0.95)
-      dir.position.set(6, 10, 8)
-      scene.add(ambient, dir)
+      // 从世界 **-Z**（北）侧观察：`-z` 面法线朝外为 -Z，与相机视线（+Z）相对，控制器贴图可见
+      const ambient = new THREE.AmbientLight(0xffffff, 0.72)
+      const dirKey = new THREE.DirectionalLight(0xffffff, 0.88)
+      dirKey.position.set(0, 0, -6)
+      const dirFill = new THREE.DirectionalLight(0xffffff, 0.32)
+      dirFill.position.set(5, 8, 4)
+      scene.add(ambient, dirKey, dirFill)
 
-      const cam = new THREE.PerspectiveCamera(35, 1, 0.05, 50)
-      cam.position.set(2.2, 1.85, 2.35)
+      // 正交投影
+      const half = 1.65
+      const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 80)
+      cam.position.set(0, 0, -4.2)
       cam.lookAt(0, 0, 0)
+      cam.updateProjectionMatrix()
 
       renderer.setClearColor(this.opts.clearColor, this.opts.clearAlpha)
       renderer.setSize(s, s, false)

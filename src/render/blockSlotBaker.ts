@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { layersForFace, listFaceNames } from './faceResolve'
 import { FACE_NORMAL } from './faceConstants'
-import { makeMcItemSlotBlockMatrix } from './mcItemViewMatrix'
+import { createMcItemSlotViewRoot } from './mcItemViewMatrix'
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from './structureCoords'
 import { quadGeometryForFace } from './simpleMesh'
@@ -84,12 +84,7 @@ export async function buildSingleBlockPreviewGroup(
     })
   }
 
-  const root = new THREE.Group()
-  const view = new THREE.Group()
-  view.matrixAutoUpdate = false
-  view.matrix.copy(makeMcItemSlotBlockMatrix())
-  view.matrixWorldNeedsUpdate = true
-  root.add(view)
+  const { root, meshParent } = createMcItemSlotViewRoot()
 
   const meshes: THREE.Mesh[] = []
 
@@ -100,7 +95,7 @@ export async function buildSingleBlockPreviewGroup(
     const mat = await library.getMaterialForBatch(descriptor)
     const mesh = new THREE.Mesh(merged, mat)
     mesh.renderOrder = descriptor.layerIdx
-    view.add(mesh)
+    meshParent.add(mesh)
     meshes.push(mesh)
   }
 

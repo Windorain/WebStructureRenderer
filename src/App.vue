@@ -12,6 +12,7 @@ import BlockStatsSidebar from '@/components/BlockStatsSidebar.vue'
 import { BlockIconCache } from '@/render/blockIconCache'
 import { buildBlockStatsEntries } from '@/render/blockStats'
 import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
+import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
 import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/initialCamera'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { loadStructureData } from '@/render/pipeline'
@@ -138,7 +139,9 @@ onMounted(async () => {
       clearColor: 0x111827,
       clearAlpha: 1,
     })
-    iconCache.setRevisionKey(`${def.id}:${summarizeBlocksForCache(def.blocks)}`)
+    iconCache.setRevisionKey(
+      `${def.id}:${summarizeBlocksForCache(def.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}`,
+    )
     blockIconCache.value = iconCache
     const { group, dispose: disposeMesh } = await buildSimpleMesh(def, materialLibrary)
 
