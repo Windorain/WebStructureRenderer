@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import electroDef from '@renderData/structures/industrial_electrolyzer.simple.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
 import BlockStatsSidebar from '@/components/BlockStatsSidebar.vue'
-import { BlockIconCache } from '@/render/blockIconCache'
+import { BlockIconCache, BLOCK_ICON_LAYOUT_REVISION } from '@/render/blockIconCache'
 import { buildBlockStatsEntries } from '@/render/blockStats'
 import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
 import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
@@ -135,12 +135,12 @@ onMounted(async () => {
     materialLibraryRef = materialLibrary
 
     const iconCache = new BlockIconCache(materialLibrary, def.blocks, {
-      sizePx: 48,
+      sizePx: 128,
       clearColor: 0x111827,
       clearAlpha: 1,
     })
     iconCache.setRevisionKey(
-      `${def.id}:${summarizeBlocksForCache(def.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}`,
+      `${def.id}:${summarizeBlocksForCache(def.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}`,
     )
     blockIconCache.value = iconCache
     const { group, dispose: disposeMesh } = await buildSimpleMesh(def, materialLibrary)

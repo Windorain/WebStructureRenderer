@@ -73,8 +73,8 @@ watch(
 <style scoped>
 .wm-slot {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 4px;

@@ -20,13 +20,21 @@ export interface BlockIconCachedEntry {
 export interface BlockIconCacheOptions {
   /** 纹理边长（正方形） */
   sizePx?: number
+  /** 正交半宽/半高；越小方块在图内越大 */
+  orthoHalf?: number
   /** 背景色（与侧栏协调）；alpha 0 可透 */
   clearColor?: number
   clearAlpha?: number
 }
 
-const defaultOpts: Required<BlockIconCacheOptions> = {
-  sizePx: 48,
+/** 变更 ortho/size 等布局时递增，供 `setRevisionKey` 拼接以重烘 */
+export const BLOCK_ICON_LAYOUT_REVISION = '1'
+
+type ResolvedIconOpts = Required<BlockIconCacheOptions>
+
+const defaultOpts: ResolvedIconOpts = {
+  sizePx: 64,
+  orthoHalf: 1.22,
   clearColor: 0x111827,
   clearAlpha: 1,
 }
@@ -62,7 +70,7 @@ export class BlockIconCache {
   ) {
     this.library = library
     this.blocks = blocks
-    this.opts = { ...defaultOpts, ...options }
+    this.opts = { ...defaultOpts, ...options } as ResolvedIconOpts
   }
 
   /** 当结构或方块表变更时调用，会 dispose 旧图并清空队列 */
@@ -171,8 +179,7 @@ export class BlockIconCache {
       dirFill.position.set(5, 8, 4)
       scene.add(ambient, dirKey, dirFill)
 
-      // 正交投影
-      const half = 1.65
+      const half = this.opts.orthoHalf
       const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 80)
       cam.position.set(0, 0, -4.2)
       cam.lookAt(0, 0, 0)
