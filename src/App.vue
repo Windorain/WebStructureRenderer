@@ -6,17 +6,20 @@ import { computed, onBeforeUnmount, onMounted, provide } from 'vue'
 import type { Scene } from 'three'
 
 import BlockStatsSidebar from '@/components/BlockStatsSidebar.vue'
+import DeveloperConfigPanel from '@/components/DeveloperConfigPanel.vue'
 import LayerPreviewBar from '@/components/LayerPreviewBar.vue'
 import StructureViewport from '@/components/StructureViewport.vue'
 import ToolTipBox from '@/components/ToolTipBox.vue'
 import { defaultAppPreviewConfig } from '@/preview/appPreviewConfig'
+import { buildActiveAppPreviewConfig } from '@/preview/devConfigOverrides'
 import { PreviewSceneContextKey } from '@/preview/context'
 import { createPreviewSceneStore } from '@/preview/previewSceneStore'
 import { usePreviewTooltip } from '@/preview/usePreviewTooltip'
 import { resolveBlockTooltip } from '@/render/blockTooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
-const store = createPreviewSceneStore(defaultAppPreviewConfig)
+const mergedConfig = buildActiveAppPreviewConfig(defaultAppPreviewConfig)
+const store = createPreviewSceneStore(mergedConfig)
 provide(PreviewSceneContextKey, store)
 
 const { hover, setHover, clearHover } = usePreviewTooltip()
@@ -52,7 +55,7 @@ async function onViewportReady(scene: Scene): Promise<void> {
   await store.rebuildContentMesh()
   const def = store.structureDefinition.value
   if (def) {
-    store.statusMessage.value = defaultAppPreviewConfig.okMessage(def.id)
+    store.statusMessage.value = mergedConfig.okMessage(def.id)
   }
 }
 
@@ -111,7 +114,7 @@ onBeforeUnmount(() => {
           :projection-mode="projectionMode"
           :content-group="contentGroupRef"
           :layer-preview-mode="layerPreviewMode"
-          :scene-background="defaultAppPreviewConfig.sceneBackground"
+          :scene-background="mergedConfig.sceneBackground"
           @ready="onViewportReady"
           @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"
@@ -130,6 +133,10 @@ onBeforeUnmount(() => {
       :client-y="hover.clientY"
     />
   </div>
+  <DeveloperConfigPanel
+    v-if="mergedConfig.showDeveloperPanel"
+    :merged-config="mergedConfig"
+  />
 </template>
 
 <style scoped>
