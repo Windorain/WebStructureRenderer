@@ -46,12 +46,17 @@ const maxY = computed(() => Math.max(0, sizeBRef.value - 1))
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  background: #0f172a;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 6px 10px;
+  background: var(--nei-inset-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
   font-size: 12px;
   font-family: ui-monospace, 'Cascadia Code', monospace;
-  color: #cbd5e1;
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
 }
 .wm-layer-label {
   flex-shrink: 0;
@@ -60,7 +65,7 @@ const maxY = computed(() => Math.max(0, sizeBRef.value - 1))
 .wm-layer-range {
   flex: 1;
   min-width: 0;
-  accent-color: #38bdf8;
+  accent-color: #8080c0;
 }
 .wm-layer-range:disabled {
   opacity: 0.55;
@@ -70,6 +75,6 @@ const maxY = computed(() => Math.max(0, sizeBRef.value - 1))
   flex-shrink: 0;
   min-width: 4.5em;
   text-align: right;
-  color: #e2e8f0;
+  color: var(--nei-text-muted);
 }
 </style>

@@ -133,24 +133,30 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .wm-root {
-  font-family: system-ui, sans-serif;
-  color: #e5e5e5;
+  font-family: system-ui, 'Segoe UI', sans-serif;
+  color: var(--nei-text-dark);
+  background: var(--nei-bg);
   padding: 8px;
+  box-sizing: border-box;
 }
 .wm-title {
   margin: 0 0 8px;
   font-size: 14px;
-  opacity: 0.9;
+  font-weight: 600;
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
 }
 .wm-main-stage {
   display: flex;
   flex-direction: row;
   align-items: stretch;
   width: 100%;
-  border-radius: 8px 8px 0 0;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
   border-bottom: none;
+  background: var(--nei-bg);
 }
 .wm-viewport-column {
   flex: 1;
@@ -167,33 +173,33 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1.45;
   font-family: ui-monospace, 'Cascadia Code', monospace;
-  border-radius: 0 0 8px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
   border-top: none;
-  background: #1e293b;
-  color: #cbd5e1;
+  background: var(--nei-inset-bg);
+  color: var(--nei-text-muted);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
 }
 .wm-status-bar--loading {
-  border-color: rgba(251, 191, 36, 0.35);
-  color: #fde68a;
+  color: #fcd34d;
 }
 .wm-status-bar--ok {
-  border-color: rgba(52, 211, 153, 0.35);
-  color: #a7f3d0;
+  color: #86efac;
 }
 .wm-status-bar--err {
-  border-color: rgba(248, 113, 113, 0.45);
   color: #fecaca;
-  background: #3f1518;
+  background: #3d1518;
 }
 .wm-status-dot {
   flex-shrink: 0;
   width: 8px;
   height: 8px;
   margin-top: 4px;
-  border-radius: 50%;
+  border-radius: 0;
   background: currentColor;
-  opacity: 0.85;
+  opacity: 0.9;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
 }
 .wm-status-text {
   flex: 1;

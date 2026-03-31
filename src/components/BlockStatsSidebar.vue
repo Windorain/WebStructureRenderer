@@ -135,17 +135,20 @@ function onRowPointerLeave(): void {
   width: 220px;
   max-width: min(220px, 40vw);
   flex-shrink: 0;
-  background: #0f172a;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 8px 0 0 8px;
-  border-right: none;
+  background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  border-top: none;
+  border-left: none;
+  border-radius: 0;
+  border-right: var(--nei-bevel-w) solid var(--nei-shadow);
   font-size: 12px;
-  color: #e2e8f0;
+  color: var(--nei-text-dark);
   min-height: 0;
 }
 .wm-block-stats-head {
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid var(--nei-shadow);
 }
 .wm-block-stats-toggle,
 .wm-block-stats-title {
@@ -154,27 +157,30 @@ function onRowPointerLeave(): void {
   gap: 6px;
   width: 100%;
   margin: 0;
-  padding: 8px 10px;
+  padding: 6px 8px;
   font-size: 12px;
   font-weight: 600;
   font-family: ui-monospace, 'Cascadia Code', monospace;
-  color: #cbd5e1;
-  background: transparent;
-  border: none;
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
+  background: var(--nei-inset-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
   cursor: default;
   text-align: left;
+  box-sizing: border-box;
 }
 .wm-block-stats-toggle {
   cursor: pointer;
 }
 .wm-block-stats-toggle:hover {
-  background: rgba(30, 41, 59, 0.85);
+  filter: brightness(1.08);
 }
 .wm-block-stats-chevron {
   display: inline-block;
   transition: transform 0.15s ease;
   width: 1em;
-  color: #94a3b8;
+  color: var(--nei-text-muted);
 }
 .wm-block-stats-chevron[data-collapsed='false'] {
   transform: rotate(90deg);
@@ -185,11 +191,13 @@ function onRowPointerLeave(): void {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px 10px 10px;
+  background: var(--nei-bg-deep);
 }
 .wm-block-stats-empty {
   margin: 0;
-  opacity: 0.75;
+  opacity: 0.85;
   font-size: 11px;
+  color: var(--nei-text-dark);
 }
 .wm-block-stats-list {
   list-style: none;
@@ -197,7 +205,7 @@ function onRowPointerLeave(): void {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .wm-block-stats-row {
   display: flex;

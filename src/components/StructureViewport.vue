@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
       :title="`当前：${projectionMode === 'perspective' ? '透视投影' : '正交投影'}，点击切换`"
       @click="toggleProjection"
     >
-      {{ projectionMode === 'perspective' ? '透视投影' : '正交投影' }}
+      {{ projectionMode === 'perspective' ? '透' : '正' }}
     </button>
   </div>
 </template>
@@ -213,31 +213,44 @@ onBeforeUnmount(() => {
   width: 100%;
   min-height: 320px;
   border-radius: 0;
-  background: #0f172a;
+  background: var(--nei-viewport-bg);
   overflow: hidden;
   position: relative;
 }
 .wm-projection-toggle {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  right: 8px;
+  bottom: 8px;
   z-index: 2;
-  padding: 6px 10px;
-  font-size: 12px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
   font-family: ui-monospace, 'Cascadia Code', monospace;
-  color: #e2e8f0;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 6px;
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
+  background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  border-radius: 0;
   cursor: pointer;
   user-select: none;
+  box-sizing: border-box;
 }
 .wm-projection-toggle:hover {
-  border-color: rgba(148, 163, 184, 0.6);
-  background: rgba(30, 41, 59, 0.95);
+  filter: brightness(1.06);
+}
+.wm-projection-toggle:active {
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  padding-top: 1px;
+  padding-left: 1px;
 }
 .wm-projection-toggle:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid var(--nei-focus-ring);
   outline-offset: 2px;
 }
 </style>

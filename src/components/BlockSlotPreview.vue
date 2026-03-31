@@ -71,14 +71,16 @@ watch(
 </template>
 
 <style scoped>
+/* 2× NEI 逻辑 18×18 槽位 */
 .wm-slot {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.9);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  border-radius: 0;
+  background: #8b8b8b;
   box-sizing: border-box;
 }
 .wm-slot-icon {
@@ -88,7 +90,7 @@ watch(
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: 0;
 }
 .wm-slot-icon :deep(.wm-slot-canvas) {
   width: 100%;
@@ -102,12 +104,12 @@ watch(
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: 3px;
+  border-radius: 0;
   background: linear-gradient(
     90deg,
-    rgba(51, 65, 85, 0.4) 0%,
-    rgba(71, 85, 105, 0.65) 50%,
-    rgba(51, 65, 85, 0.4) 100%
+    rgba(80, 80, 80, 0.5) 0%,
+    rgba(120, 120, 120, 0.7) 50%,
+    rgba(80, 80, 80, 0.5) 100%
   );
   background-size: 200% 100%;
   animation: wm-shimmer 1.1s ease-in-out infinite;
@@ -125,13 +127,13 @@ watch(
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: 3px;
+  border-radius: 0;
   background: repeating-linear-gradient(
     45deg,
-    #334155,
-    #334155 4px,
-    #1e293b 4px,
-    #1e293b 8px
+    #6b6b6b,
+    #6b6b6b 4px,
+    #4a4a4a 4px,
+    #4a4a4a 8px
   );
   pointer-events: none;
 }
@@ -139,16 +141,16 @@ watch(
   position: absolute;
   right: 1px;
   bottom: 0;
-  font-size: 11px;
+  font-size: 9px;
   line-height: 1;
   font-weight: 600;
-  font-family: 'Minecraftia', ui-monospace, 'Cascadia Code', monospace;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
   color: #fff;
   text-shadow:
-    1px 1px 0 #1e293b,
-    -1px -1px 0 #1e293b,
-    1px -1px 0 #1e293b,
-    -1px 1px 0 #1e293b;
+    1px 1px 0 #2f2f2f,
+    -1px -1px 0 #2f2f2f,
+    1px -1px 0 #2f2f2f,
+    -1px 1px 0 #2f2f2f;
   pointer-events: none;
   user-select: none;
 }

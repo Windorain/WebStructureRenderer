@@ -1,0 +1,74 @@
+/**
+ * NEI / MC 式 GUI token（Web 纯 CSS 近似）。
+ * 槽位逻辑尺寸对应 NEI 18×18，界面使用 2×（36px）以保证可读性。
+ */
+:root {
+  --nei-bg: #c6c6c6;
+  --nei-bg-deep: #b0b0b0;
+  --nei-viewport-bg: #5a5a5a;
+  --nei-highlight: #ffffff;
+  --nei-shadow: #555555;
+  --nei-inset-bg: #373737;
+  --nei-inset-bg-mid: #2a2a2a;
+  --nei-text: #ffffff;
+  --nei-text-muted: #e8e8e8;
+  --nei-text-dark: #303030;
+  --nei-label-shadow: 1px 1px 0 #3f3f3f;
+
+  --nei-status-ok: #2d6a4f;
+  --nei-status-warn: #b45309;
+  --nei-status-err: #9b2226;
+
+  --nei-tooltip-bg: rgba(16, 0, 16, 0.92);
+  --nei-tooltip-border: #500080;
+  --nei-tooltip-text: #ffffff;
+
+  --nei-focus-ring: #8080c0;
+
+  --nei-bevel-w: 2px;
+}
+
+.nei-bevel-outset {
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  background: var(--nei-bg);
+}
+
+.nei-bevel-inset {
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  background: var(--nei-inset-bg);
+}
+
+.nei-bevel-inset--panel {
+  background: var(--nei-inset-bg-mid);
+}
+
+.nei-label {
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
+  font-weight: 600;
+}
+
+/* Teleport 到 body 的 tooltip，需全局类名 */
+.wm-tooltip-box {
+  position: fixed;
+  z-index: 2147483646;
+  max-width: min(320px, 90vw);
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  color: var(--nei-tooltip-text);
+  background: var(--nei-tooltip-bg);
+  border: 1px solid var(--nei-tooltip-border);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.wm-tooltip-box .wm-tooltip-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

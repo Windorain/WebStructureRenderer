@@ -6,6 +6,7 @@
 
 import { createApp } from 'vue'
 import App from './App.vue'
+import '@/styles/nei-tokens.css'
 
 /** 灰机 Wiki 页面中与模板约定的挂载点 */
 export const MOUNT_SELECTOR = '#wiki-multi-structure-render'
