@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three'
+import { MOUSE } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import { WorldAxesGizmo } from './worldAxesGizmo'
@@ -65,7 +66,13 @@ export class RenderViewport {
     this.controls.enableDamping = true
     this.controls.dampingFactor = 0.08
     this.controls.rotateSpeed = 0.9
-    this.controls.enablePan = false
+    /** 中键拖动平移轨道目标（相机对准中心），默认中键为缩放 DOLLY，此处改为 PAN */
+    this.controls.enablePan = true
+    this.controls.mouseButtons = {
+      LEFT: MOUSE.ROTATE,
+      MIDDLE: MOUSE.PAN,
+      RIGHT: MOUSE.DOLLY,
+    }
 
     options.container.appendChild(this.renderer.domElement)
   }

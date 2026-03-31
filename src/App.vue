@@ -163,7 +163,7 @@ onMounted(async () => {
     tick()
 
     status.value = 'ok'
-    statusMessage.value = `渲染正常 · 模型 ${def.id} · 左键拖拽旋转 · 滚轮缩放 · 右上：世界轴（红+X 东 绿+Y 上 蓝+Z 南，对照 MC）`
+    statusMessage.value = `渲染正常 · 模型 ${def.id} · 左键旋转 · 中键平移目标 · 滚轮/右键拖拽缩放 · 右上：世界轴（红+X 东 绿+Y 上 蓝+Z 南，对照 MC）`
 
     disposeScene = () => {
       viewportRef = null
