@@ -22,6 +22,7 @@ provide(PreviewSceneContextKey, store)
 const { hover, setHover, clearHover } = usePreviewTooltip()
 
 const {
+  showBlockStatsSidebar,
   loadStatus,
   statusMessage,
   structureDefinition,
@@ -97,7 +98,7 @@ onBeforeUnmount(() => {
     <p class="wm-title">Industrial Electrolyzer — Simple 结构预览（GT5U 数据）</p>
     <div class="wm-main-stage">
       <BlockStatsSidebar
-        v-if="loadStatus === 'ok' && blockIconCache"
+        v-if="showBlockStatsSidebar && loadStatus === 'ok' && blockIconCache"
         :entries="blockStatsEntries"
         :cache="blockIconCache"
         @tooltip-hover="onSidebarTooltipHover"

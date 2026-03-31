@@ -18,6 +18,8 @@ export interface AppPreviewConfig {
   initialLayerWorldY: number
   initialProjectionMode: ProjectionMode
   sceneBackground: number
+  /** 是否在主界面展示方块统计侧栏（由嵌入方配置，无运行时开关） */
+  showBlockStatsSidebar: boolean
   loadingMessage: string
   okMessage: (modelId: string) => string
 }
@@ -33,6 +35,7 @@ export const defaultAppPreviewConfig: AppPreviewConfig = {
   initialLayerWorldY: -1,
   initialProjectionMode: 'orthographic',
   sceneBackground: 0x5a5a5a,
+  showBlockStatsSidebar: true,
   loadingMessage: '正在加载数据与构建网格…',
   okMessage: (modelId: string) =>
     `渲染正常 · 模型 ${modelId} · 左键旋转 · 中键平移目标 · 滚轮/右键拖拽缩放 · 右上：世界轴（红+X 东 绿+Y 上 蓝+Z 南，对照 MC）`,

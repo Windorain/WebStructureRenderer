@@ -1,33 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import type { BlockIconCache } from '@/render/blockIconCache'
 import type { BlockStatRow } from '@/render/blockStats'
 
 import BlockSlotPreview from './BlockSlotPreview.vue'
 
-const props = withDefaults(
-  defineProps<{
-    entries: BlockStatRow[]
-    cache: BlockIconCache
-    collapsible?: boolean
-    defaultCollapsed?: boolean
-  }>(),
-  {
-    collapsible: true,
-    defaultCollapsed: false,
-  },
-)
+/** 与 BlockSlotPreview 槽位一致（NEI 18×18 的 2×） */
+const SLOT_PX = 36
 
-const collapsed = ref(props.defaultCollapsed)
-
-const panelId = 'wm-block-stats-panel'
-const headerId = 'wm-block-stats-header'
-
-const toggle = (): void => {
-  if (!props.collapsible) return
-  collapsed.value = !collapsed.value
-}
+const props = defineProps<{
+  entries: BlockStatRow[]
+  cache: BlockIconCache
+}>()
 
 const empty = computed(() => props.entries.length === 0)
 
@@ -68,36 +53,10 @@ function onRowPointerLeave(): void {
 <template>
   <aside
     class="wm-block-stats"
+    :style="{ '--wm-slot-px': `${SLOT_PX}px` }"
     aria-label="方块统计"
   >
-    <div class="wm-block-stats-head">
-      <button
-        v-if="collapsible"
-        :id="headerId"
-        type="button"
-        class="wm-block-stats-toggle"
-        :aria-expanded="!collapsed"
-        :aria-controls="panelId"
-        @click="toggle"
-      >
-        <span class="wm-block-stats-chevron" :data-collapsed="collapsed" aria-hidden="true">▸</span>
-        <span>方块统计</span>
-      </button>
-      <div
-        v-else
-        :id="headerId"
-        class="wm-block-stats-title"
-      >
-        方块统计
-      </div>
-    </div>
-    <div
-      v-show="!collapsed"
-      :id="panelId"
-      role="region"
-      :aria-labelledby="headerId"
-      class="wm-block-stats-panel"
-    >
+    <div class="wm-block-stats-panel">
       <p
         v-if="empty"
         class="wm-block-stats-empty"
@@ -130,11 +89,17 @@ function onRowPointerLeave(): void {
 
 <style scoped>
 .wm-block-stats {
+  --wm-slot-gap: 3px;
+  /* 槽位网格允许的最高一列高度；超出则换列，避免侧栏被 flex 拉伸铺满视口 */
+  --wm-block-stats-max-col-h: min(72vh, 640px);
   display: flex;
   flex-direction: column;
-  width: 220px;
-  max-width: min(220px, 40vw);
+  align-self: flex-start;
+  width: max-content;
+  min-width: calc(var(--wm-slot-px) + 8px);
+  max-width: 100%;
   flex-shrink: 0;
+  height: auto;
   background: var(--nei-bg);
   border: var(--nei-bevel-w) solid;
   border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
@@ -144,54 +109,14 @@ function onRowPointerLeave(): void {
   border-right: var(--nei-bevel-w) solid var(--nei-shadow);
   font-size: 12px;
   color: var(--nei-text-dark);
-  min-height: 0;
-}
-.wm-block-stats-head {
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--nei-shadow);
-}
-.wm-block-stats-toggle,
-.wm-block-stats-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  margin: 0;
-  padding: 6px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  color: var(--nei-text);
-  text-shadow: var(--nei-label-shadow);
-  background: var(--nei-inset-bg);
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
-  cursor: default;
-  text-align: left;
-  box-sizing: border-box;
-}
-.wm-block-stats-toggle {
-  cursor: pointer;
-}
-.wm-block-stats-toggle:hover {
-  filter: brightness(1.08);
-}
-.wm-block-stats-chevron {
-  display: inline-block;
-  transition: transform 0.15s ease;
-  width: 1em;
-  color: var(--nei-text-muted);
-}
-.wm-block-stats-chevron[data-collapsed='false'] {
-  transform: rotate(90deg);
 }
 .wm-block-stats-panel {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 8px 10px 10px;
+  flex: 0 0 auto;
+  display: block;
+  padding: 4px;
   background: var(--nei-bg-deep);
+  overflow-x: auto;
+  overflow-y: visible;
 }
 .wm-block-stats-empty {
   margin: 0;
@@ -199,18 +124,28 @@ function onRowPointerLeave(): void {
   font-size: 11px;
   color: var(--nei-text-dark);
 }
+/* 高度随槽位内容收缩；仅受 max-height 限制时再换列，下方不留空 */
 .wm-block-stats-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: var(--wm-slot-gap);
+  width: max-content;
+  max-width: 100%;
+  max-height: var(--wm-block-stats-max-col-h);
 }
 .wm-block-stats-row {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
+  width: var(--wm-slot-px);
+  height: var(--wm-slot-px);
   min-width: 0;
 }
 </style>

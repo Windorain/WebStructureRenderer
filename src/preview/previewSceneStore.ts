@@ -29,6 +29,8 @@ import type { AppPreviewConfig } from './appPreviewConfig'
 export type LoadStatus = 'loading' | 'ok' | 'error'
 
 export interface PreviewSceneStore {
+  /** 来自 AppPreviewConfig，是否渲染方块统计侧栏 */
+  showBlockStatsSidebar: boolean
   loadStatus: Ref<LoadStatus>
   statusMessage: Ref<string>
   layerWorldY: Ref<number>
@@ -185,6 +187,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
   })
 
   return {
+    showBlockStatsSidebar: config.showBlockStatsSidebar,
     loadStatus,
     statusMessage,
     layerWorldY,
