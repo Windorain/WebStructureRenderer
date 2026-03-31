@@ -3,7 +3,7 @@
  * 预览页：loadSimpleModel → SimpleMaterialLibrary + buildSimpleMesh → Scene。
  * RenderViewport：Renderer + 透视/正交 + OrbitControls；RAF：材质 tick → controls → render。
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import * as THREE from 'three'
 
 import electroDef from '@renderData/models/industrial_electrolyzer.simple.json'
@@ -12,7 +12,7 @@ import { applyInitialCamera } from '@/render/initialCamera'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { loadSimpleModel } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
-import type { MaterialRegistryData } from '@/render/types'
+import type { MaterialRegistryData, SimpleDefinition } from '@/render/types'
 import {
   RenderViewport,
   type ProjectionMode,
@@ -29,8 +29,50 @@ const projectionLabel = computed(() =>
   projectionMode.value === 'perspective' ? '透视投影' : '正交投影',
 )
 
+/** -1 = 全部层；0..sizeB-1 = 世界体素 Y（底→顶） */
+const layerSlider = ref(-1)
+const meshBusy = ref(false)
+const defRef = shallowRef<SimpleDefinition | null>(null)
+const sizeB = computed(() => defRef.value?.layers[0]?.length ?? 0)
+const layerPreviewLabel = computed(() =>
+  layerSlider.value < 0 ? 'ALL' : `Y = ${layerSlider.value}`,
+)
+
 let disposeScene: (() => void) | undefined
 let viewportRef: RenderViewport | null = null
+
+let sceneRef: THREE.Scene | null = null
+let materialLibraryRef: SimpleMaterialLibrary | null = null
+let contentGroup: THREE.Group | null = null
+let disposeContent: (() => void) | null = null
+let meshBuildSeq = 0
+
+async function rebuildMeshFromLayerSlider(): Promise<void> {
+  const def = defRef.value
+  const scene = sceneRef
+  const library = materialLibraryRef
+  if (!def || !scene || !library) return
+
+  const seq = ++meshBuildSeq
+  meshBusy.value = true
+  try {
+    const layerPreview = layerSlider.value < 0 ? 'all' : { worldY: layerSlider.value }
+    const result = await buildSimpleMesh(def, library, { layerPreview })
+    if (seq !== meshBuildSeq) {
+      result.dispose()
+      return
+    }
+    if (contentGroup) {
+      scene.remove(contentGroup)
+      disposeContent?.()
+    }
+    contentGroup = result.group
+    disposeContent = result.dispose
+    scene.add(contentGroup)
+  } finally {
+    if (seq === meshBuildSeq) meshBusy.value = false
+  }
+}
 
 function toggleProjection(): void {
   if (!viewportRef) return
@@ -62,13 +104,18 @@ onMounted(async () => {
 
   try {
     const def = loadSimpleModel(electroDef)
+    defRef.value = def
     const materialLibrary = new SimpleMaterialLibrary(
       materialRegistryJson as MaterialRegistryData,
     )
+    materialLibraryRef = materialLibrary
     const { group, dispose: disposeMesh } = await buildSimpleMesh(def, materialLibrary)
 
     const scene = new THREE.Scene()
+    sceneRef = scene
     scene.background = new THREE.Color(0x111827)
+    contentGroup = group
+    disposeContent = disposeMesh
     scene.add(group)
 
     const viewport = new RenderViewport({
@@ -124,7 +171,16 @@ onMounted(async () => {
       resizeObserver.disconnect()
       window.removeEventListener('resize', onResize)
       viewport.dispose()
-      disposeMesh()
+      if (sceneRef && contentGroup) {
+        sceneRef.remove(contentGroup)
+      }
+      disposeContent?.()
+      contentGroup = null
+      disposeContent = null
+      sceneRef = null
+      materialLibraryRef = null
+      defRef.value = null
+      meshBuildSeq++
       materialLibrary.dispose()
     }
   } catch (e) {
@@ -142,16 +198,37 @@ onBeforeUnmount(() => {
 <template>
   <div class="wm-root">
     <p class="wm-title">Industrial Electrolyzer — Simple 结构预览（GT5U 数据）</p>
-    <div ref="container" class="wm-viewport">
-      <button
-        v-if="status === 'ok'"
-        type="button"
-        class="wm-projection-toggle"
-        :title="`当前：${projectionLabel}，点击切换`"
-        @click="toggleProjection"
+    <div class="wm-viewport-stack">
+      <div ref="container" class="wm-viewport">
+        <button
+          v-if="status === 'ok'"
+          type="button"
+          class="wm-projection-toggle"
+          :title="`当前：${projectionLabel}，点击切换`"
+          @click="toggleProjection"
+        >
+          {{ projectionLabel }}
+        </button>
+      </div>
+      <div
+        v-if="status === 'ok' && sizeB > 0"
+        class="wm-layer-bar"
       >
-        {{ projectionLabel }}
-      </button>
+        <label class="wm-layer-label" for="wm-layer-range">分层预览</label>
+        <input
+          id="wm-layer-range"
+          v-model.number="layerSlider"
+          class="wm-layer-range"
+          type="range"
+          :min="-1"
+          :max="sizeB - 1"
+          step="1"
+          :disabled="meshBusy"
+          aria-label="分层预览：ALL 或按世界 Y 单层显示"
+          @input="rebuildMeshFromLayerSlider"
+        />
+        <span class="wm-layer-value" aria-live="polite">{{ layerPreviewLabel }}</span>
+      </div>
     </div>
     <div :class="statusBarClass" role="status" aria-live="polite">
       <span class="wm-status-dot" aria-hidden="true" />
@@ -171,13 +248,50 @@ onBeforeUnmount(() => {
   font-size: 14px;
   opacity: 0.9;
 }
+.wm-viewport-stack {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+}
 .wm-viewport {
   width: 100%;
   min-height: 320px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 0;
   background: #0f172a;
   overflow: hidden;
   position: relative;
+}
+.wm-layer-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #0f172a;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 12px;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  color: #cbd5e1;
+}
+.wm-layer-label {
+  flex-shrink: 0;
+  user-select: none;
+}
+.wm-layer-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: #38bdf8;
+}
+.wm-layer-range:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.wm-layer-value {
+  flex-shrink: 0;
+  min-width: 4.5em;
+  text-align: right;
+  color: #e2e8f0;
 }
 .wm-projection-toggle {
   position: absolute;

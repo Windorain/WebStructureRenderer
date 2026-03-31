@@ -4,6 +4,7 @@
  * 数据流：
  *   SimpleDefinition
  *     → buildVoxelGrid（符号 → 方块 id）
+ *     → 可选 layerPreview：切片外视为空气（effectiveBlockId）
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
  *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
  *     → mergeGeometries 合并同批几何体（批次元数据见 `batchDescriptor`）
@@ -23,8 +24,14 @@ import { FACE_NORMAL, NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from './structureCoords'
 import { uv8ForFace } from './blockFaceUv'
+import { effectiveBlockId, type LayerPreviewMode } from './layerPreview'
 
 const AIR = 'air'
+
+export interface BuildSimpleMeshOptions {
+  /** 默认 `all`：显示全部；指定 `worldY` 时仅该世界体素 Y 层（0=底） */
+  layerPreview?: LayerPreviewMode
+}
 
 function parseTint(hex?: string): THREE.Color {
   if (!hex) return new THREE.Color(0xffffff)
@@ -45,7 +52,9 @@ export interface SimpleMeshResult {
 export async function buildSimpleMesh(
   def: SimpleDefinition,
   library: SimpleMaterialLibrary,
+  options?: BuildSimpleMeshOptions,
 ): Promise<SimpleMeshResult> {
+  const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'
   const grid = buildVoxelGrid(def)
   const { sizeA, sizeB, sizeC } = grid
 
@@ -55,7 +64,7 @@ export async function buildSimpleMesh(
   for (let c = 0; c < sizeC; c++) {
     for (let rowB = 0; rowB < sizeB; rowB++) {
       for (let a = 0; a < sizeA; a++) {
-        const id = grid.get(a, rowB, c)
+        const id = effectiveBlockId(grid, a, rowB, c, sizeB, layerPreview)
         if (id === AIR) continue
 
         const block = def.blocks[id]
@@ -63,7 +72,14 @@ export async function buildSimpleMesh(
 
         for (const face of faces) {
           const [da, db, dc] = NEIGHBOR_STRUCTURE_DELTA[face]
-          const neighbor = grid.get(a + da, rowB + db, c + dc)
+          const neighbor = effectiveBlockId(
+            grid,
+            a + da,
+            rowB + db,
+            c + dc,
+            sizeB,
+            layerPreview,
+          )
           if (neighbor !== AIR) continue
 
           const layerDefs = layersForFace(block, face)
