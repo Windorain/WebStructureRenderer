@@ -74,7 +74,21 @@ export class RenderViewport {
       RIGHT: MOUSE.DOLLY,
     }
 
-    options.container.appendChild(this.renderer.domElement)
+    const el = this.renderer.domElement
+    /**
+     * Windows 等环境下中键会启动浏览器「滚动模式」并伴随额外 wheel/合成事件；
+     * 释放后 `OrbitControls` 在 `state === NONE` 时处理 wheel 会误判为缩放，相机沿视线突进。
+     * 阻止中键默认行为，保留中键平移（与 OrbitControls 的 pointer 监听不冲突）。
+     */
+    el.addEventListener(
+      'pointerdown',
+      (e: PointerEvent) => {
+        if (e.button === 1) e.preventDefault()
+      },
+      { capture: true },
+    )
+
+    options.container.appendChild(el)
   }
 
   get mode(): ProjectionMode {
