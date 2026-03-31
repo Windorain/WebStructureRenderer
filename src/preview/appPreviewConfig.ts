@@ -29,8 +29,8 @@ export const defaultAppPreviewConfig: AppPreviewConfig = {
   materialRegistry: materialRegistryJson as MaterialRegistryData,
   blockIconCacheOptions: {
     sizePx: 128,
-    clearColor: 0x111827,
-    clearAlpha: 1,
+    clearColor: 0x000000,
+    clearAlpha: 0,
   },
   initialLayerWorldY: -1,
   initialProjectionMode: 'orthographic',

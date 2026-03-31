@@ -35,8 +35,9 @@ type ResolvedIconOpts = Required<BlockIconCacheOptions>
 const defaultOpts: ResolvedIconOpts = {
   sizePx: 64,
   orthoHalf: 1.22,
-  clearColor: 0x111827,
-  clearAlpha: 1,
+  /** 与 clearAlpha=0 搭配；清屏后仅几何/贴图覆盖处不透明，其余为透明「虚空」 */
+  clearColor: 0x000000,
+  clearAlpha: 0,
 }
 
 /**
