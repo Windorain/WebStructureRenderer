@@ -29,7 +29,7 @@ export interface SingleBlockBakeResult {
 }
 
 /**
- * 使用与结构网格相同的 1×1×1 体素坐标（size=1, a=0,b=0,c=0），六面均生成面片。
+ * 使用与结构网格相同的 1×1×1 体素坐标（column=0, row=0, zSlice=0），六面均生成面片。
  */
 export async function buildSingleBlockPreviewGroup(
   block: BlockEntry,
@@ -40,13 +40,13 @@ export async function buildSingleBlockPreviewGroup(
     throw new Error(`物品预览未实现渲染器: ${rendererKind}`)
   }
 
-  const sizeA = 1
-  const sizeB = 1
-  const sizeC = 1
-  const a = 0
-  const rowB = 0
-  const c = 0
-  const voxelY = structureRowToWorldY(rowB, sizeB)
+  const sizeColumn = 1
+  const sizeRow = 1
+  const sizeZSlice = 1
+  const column = 0
+  const row = 0
+  const zSlice = 0
+  const voxelY = structureRowToWorldY(row, sizeRow)
   const faces = listFaceNames()
 
   const batches = new Map<string, { descriptor: BatchDescriptor; geometries: THREE.BufferGeometry[] }>()
@@ -66,12 +66,12 @@ export async function buildSingleBlockPreviewGroup(
       const key = batchMaterialCacheKey(descriptor)
       const geom = quadGeometryForFace(
         face,
-        a,
+        column,
         voxelY,
-        c,
-        sizeA,
-        sizeB,
-        sizeC,
+        zSlice,
+        sizeColumn,
+        sizeRow,
+        sizeZSlice,
         n,
         layerIdx,
       )

@@ -56,15 +56,15 @@ export async function buildSimpleMesh(
 ): Promise<SimpleMeshResult> {
   const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'
   const grid = buildVoxelGrid(def)
-  const { sizeA, sizeB, sizeC } = grid
+  const { sizeColumn, sizeRow, sizeZSlice } = grid
 
   const batches = new Map<string, { descriptor: BatchDescriptor; geometries: THREE.BufferGeometry[] }>()
   const faces = listFaceNames()
 
-  for (let c = 0; c < sizeC; c++) {
-    for (let rowB = 0; rowB < sizeB; rowB++) {
-      for (let a = 0; a < sizeA; a++) {
-        const id = effectiveBlockId(grid, a, rowB, c, sizeB, layerPreview)
+  for (let zSlice = 0; zSlice < sizeZSlice; zSlice++) {
+    for (let row = 0; row < sizeRow; row++) {
+      for (let col = 0; col < sizeColumn; col++) {
+        const id = effectiveBlockId(grid, col, row, zSlice, sizeRow, layerPreview)
         if (id === AIR) continue
 
         const block = def.blocks[id]
@@ -76,13 +76,13 @@ export async function buildSimpleMesh(
         }
 
         for (const face of faces) {
-          const [da, db, dc] = NEIGHBOR_STRUCTURE_DELTA[face]
+          const [dCol, dRow, dZ] = NEIGHBOR_STRUCTURE_DELTA[face]
           const neighbor = effectiveBlockId(
             grid,
-            a + da,
-            rowB + db,
-            c + dc,
-            sizeB,
+            col + dCol,
+            row + dRow,
+            zSlice + dZ,
+            sizeRow,
             layerPreview,
           )
           if (neighbor !== AIR) continue
@@ -91,7 +91,7 @@ export async function buildSimpleMesh(
           if (!layerDefs.length) continue
 
           const n = FACE_NORMAL[face]
-          const voxelY = structureRowToWorldY(rowB, sizeB)
+          const voxelY = structureRowToWorldY(row, sizeRow)
           layerDefs.forEach((layer, layerIdx) => {
             const descriptor: BatchDescriptor = {
               materialId: layer.materialId,
@@ -102,12 +102,12 @@ export async function buildSimpleMesh(
             const key = batchMaterialCacheKey(descriptor)
             const geom = quadGeometryForFace(
               face,
-              a,
+              col,
               voxelY,
-              c,
-              sizeA,
-              sizeB,
-              sizeC,
+              zSlice,
+              sizeColumn,
+              sizeRow,
+              sizeZSlice,
               n,
               layerIdx,
             )
@@ -148,7 +148,7 @@ export async function buildSimpleMesh(
 }
 
 /**
- * 单格单面四边形：a、c 为体素列/片；voxelY 为包围盒内体素层 Y 索引（经 structureRowToWorldY）；略沿法线偏移避免 z-fighting。
+ * 单格单面四边形：column、zSlice 为体素索引；voxelY 为包围盒内体素层 Y 索引（经 structureRowToWorldY）；略沿法线偏移避免 z-fighting。
  *
  * **顶点**：与 MyCTMLib `QuadRender.drawFace` 中 `addVertexWithUV` 四条顶点顺序一致（Forge 面名见 `faceConstants`）。
  * **UV**：`blockFaceUv.uv8ForFace` 使用同一约定（满 tile 时 minU/maxU/minV/maxV → 0/1）。
@@ -157,24 +157,24 @@ export async function buildSimpleMesh(
 /** 导出供物品栏 RTT 单方块烘焙复用（与体素网格同一套顶点/UV 约定） */
 export function quadGeometryForFace(
   face: FaceName,
-  a: number,
+  column: number,
   voxelY: number,
-  c: number,
-  sa: number,
-  sb: number,
-  sc: number,
+  zSlice: number,
+  sizeColumn: number,
+  sizeRow: number,
+  sizeZSlice: number,
   normal: THREE.Vector3,
   layerIdx: number,
 ): THREE.BufferGeometry {
   const ox = 0.002 * layerIdx
   const push = normal.clone().multiplyScalar(ox)
 
-  const minX = a - sa / 2
-  const maxX = a + 1 - sa / 2
-  const minY = voxelY - sb / 2
-  const maxY = voxelY + 1 - sb / 2
-  const minZ = c - sc / 2
-  const maxZ = c + 1 - sc / 2
+  const minX = column - sizeColumn / 2
+  const maxX = column + 1 - sizeColumn / 2
+  const minY = voxelY - sizeRow / 2
+  const maxY = voxelY + 1 - sizeRow / 2
+  const minZ = zSlice - sizeZSlice / 2
+  const maxZ = zSlice + 1 - sizeZSlice / 2
 
   const p = (v: THREE.Vector3) => v.add(push)
 

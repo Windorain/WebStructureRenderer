@@ -26,14 +26,14 @@ export interface PickBlockIdParams {
  */
 export function worldPointToVoxelIndices(
   p: THREE.Vector3,
-  sizeA: number,
-  sizeB: number,
-  sizeC: number,
-): { a: number; voxelY: number; c: number } {
-  const a = Math.min(sizeA - 1, Math.max(0, Math.floor(p.x + sizeA / 2)))
-  const voxelY = Math.min(sizeB - 1, Math.max(0, Math.floor(p.y + sizeB / 2)))
-  const c = Math.min(sizeC - 1, Math.max(0, Math.floor(p.z + sizeC / 2)))
-  return { a, voxelY, c }
+  sizeColumn: number,
+  sizeRow: number,
+  sizeZSlice: number,
+): { column: number; voxelY: number; zSlice: number } {
+  const column = Math.min(sizeColumn - 1, Math.max(0, Math.floor(p.x + sizeColumn / 2)))
+  const voxelY = Math.min(sizeRow - 1, Math.max(0, Math.floor(p.y + sizeRow / 2)))
+  const zSlice = Math.min(sizeZSlice - 1, Math.max(0, Math.floor(p.z + sizeZSlice / 2)))
+  return { column, voxelY, zSlice }
 }
 
 export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null {
@@ -50,27 +50,26 @@ export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null
   if (!hits.length) return null
 
   const hit = hits[0]
-  const mesh = hit.object as THREE.Mesh
   if (!hit.face) return null
 
   const normalWorld = hit.face.normal
     .clone()
-    .transformDirection(mesh.matrixWorld)
+    .transformDirection((hit.object as THREE.Mesh).matrixWorld)
     .normalize()
 
   const inside = hit.point.clone().addScaledVector(normalWorld, -NUDGE)
 
   const grid = buildVoxelGrid(def)
-  const { sizeA, sizeB, sizeC } = grid
+  const { sizeColumn, sizeRow, sizeZSlice } = grid
 
-  let { a, voxelY, c } = worldPointToVoxelIndices(inside, sizeA, sizeB, sizeC)
-  const rowB = sizeB - 1 - voxelY
+  let { column, voxelY, zSlice } = worldPointToVoxelIndices(inside, sizeColumn, sizeRow, sizeZSlice)
+  const row = sizeRow - 1 - voxelY
 
-  let id = effectiveBlockId(grid, a, rowB, c, sizeB, layerPreview)
+  let id = effectiveBlockId(grid, column, row, zSlice, sizeRow, layerPreview)
   if (id === AIR) {
     const p2 = hit.point.clone().addScaledVector(normalWorld, -NUDGE * 4)
-    ;({ a, voxelY, c } = worldPointToVoxelIndices(p2, sizeA, sizeB, sizeC))
-    id = effectiveBlockId(grid, a, sizeB - 1 - voxelY, c, sizeB, layerPreview)
+    ;({ column, voxelY, zSlice } = worldPointToVoxelIndices(p2, sizeColumn, sizeRow, sizeZSlice))
+    id = effectiveBlockId(grid, column, sizeRow - 1 - voxelY, zSlice, sizeRow, layerPreview)
   }
 
   if (id === AIR) return null

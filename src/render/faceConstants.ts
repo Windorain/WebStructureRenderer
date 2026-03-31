@@ -1,6 +1,6 @@
 /**
- * 与 StructureLib / Minecraft 轴约定一致的面法线与结构索引空间邻接增量。
- * 供 simpleMesh（外露判定 + 四边形）、initialCamera（正面朝向）共用，避免重复定义。
+ * 面法线与体素索引空间邻接增量（ForgeDirection ↔ FaceName ↔ 世界外法线）。
+ * 供 simpleMesh（外露判定 + 四边形）、initialCamera 共用。
  *
  * **ForgeDirection（MC 1.7 / Forge）↔ FaceName（轴符号）↔ 世界外法线**
  *
@@ -31,8 +31,9 @@ export const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
 }
 
 /**
- * 邻格在 (a, structureRowB, c) 中的增量；structureRowB 与 layers[c][b] 的 b 一致（0=顶行）。
- * 世界 +Y 对应更小 structureRowB（StructureLib 的 b 轴为 DOWN）。
+ * 邻格在 (column, row, zSlice) 索引空间中的增量；
+ * 顺序为 [dColumn, dRow, dZSlice]；row 与 `zSlices[zSlice][row]` 一致（0=顶行）。
+ * 世界 +Y 对应更小 row（行轴向下标增大 → 世界 Y 减小）。
  */
 export const NEIGHBOR_STRUCTURE_DELTA: Record<FaceName, [number, number, number]> = {
   '+x': [1, 0, 0],

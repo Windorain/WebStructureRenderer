@@ -20,13 +20,13 @@ export function countBlocksById(
   layerPreview: LayerPreviewMode = 'all',
 ): Map<string, number> {
   const grid = buildVoxelGrid(def)
-  const { sizeA, sizeB, sizeC } = grid
+  const { sizeColumn, sizeRow, sizeZSlice } = grid
   const counts = new Map<string, number>()
 
-  for (let c = 0; c < sizeC; c++) {
-    for (let b = 0; b < sizeB; b++) {
-      for (let a = 0; a < sizeA; a++) {
-        const id = effectiveBlockId(grid, a, b, c, sizeB, layerPreview)
+  for (let zSlice = 0; zSlice < sizeZSlice; zSlice++) {
+    for (let row = 0; row < sizeRow; row++) {
+      for (let col = 0; col < sizeColumn; col++) {
+        const id = effectiveBlockId(grid, col, row, zSlice, sizeRow, layerPreview)
         if (id === AIR) continue
         counts.set(id, (counts.get(id) ?? 0) + 1)
       }

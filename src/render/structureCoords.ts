@@ -1,13 +1,11 @@
 /**
- * StructureLib 与体素世界坐标的对齐（NORTH_DEFAULT / 与 GT addShape 字面量一致）。
+ * Wiki 体素行下标与世界 Y 的映射（与 Forge / 渲染包围盒一致）。
  *
- * - `layers[c][b]` 中 **b** 为 slice 内「下一行」下标（与 StructureLib line b 一致）；
- *   GT5U 源码中**第一行字符串** = 结构顶部（最高世界 Y）。
- * - ExtendedFacing NORTH：`b` 轴为世界 FORGE.DOWN（+b_structure → 世界 −Y）。
- *   故：**世界体素 Y（底为 0 向上增）= sizeB - 1 - b**。
+ * - `zSlices[zSlice][row]` 中 **row** 为截面内自上而下第几行；**row 0 = 结构顶部**（最高世界 Y）。
+ * - 包围盒内体素 Y 索引（0=底）**= sizeRow - 1 - row**。
  */
 
-/** 结构行下标 b（0=首行=顶）→ 包围盒内体素 Y 索引（0=底） */
-export function structureRowToWorldY(row: number, sizeB: number): number {
-  return sizeB - 1 - row
+/** 结构行下标 row（0=顶行）→ 包围盒内体素 Y 索引（0=底） */
+export function structureRowToWorldY(row: number, sizeRow: number): number {
+  return sizeRow - 1 - row
 }

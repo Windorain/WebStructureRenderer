@@ -8,7 +8,7 @@ if (!store) {
   throw new Error('LayerPreviewBar: PreviewSceneContext missing')
 }
 
-const { layerPreviewLabel, sizeB: sizeBRef, meshBusy } = store
+const { layerPreviewLabel, sizeRow: sizeRowRef, meshBusy } = store
 
 const layerWorldY = computed({
   get: () => store.layerWorldY.value,
@@ -17,12 +17,12 @@ const layerWorldY = computed({
   },
 })
 
-const maxY = computed(() => Math.max(0, sizeBRef.value - 1))
+const maxY = computed(() => Math.max(0, sizeRowRef.value - 1))
 </script>
 
 <template>
   <div
-    v-if="sizeBRef > 0"
+    v-if="sizeRowRef > 0"
     class="wm-layer-bar"
   >
     <label class="wm-layer-label" for="wm-layer-range">分层预览</label>

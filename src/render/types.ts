@@ -1,11 +1,11 @@
 /**
  * Simple 模式（mode=simple）下的类型定义。
  *
- * **结构 JSON schemaVersion**：`4` 起 `initialCamera` 使用 `focusBlockId` + `frontFace`（见 `InitialCameraDef`）。
+ * **结构 JSON schemaVersion**：`5` 起形状字段为 `zSlices`（Wiki 体素轴，见 `StructureData`）；`4` 已废弃。
  *
  * 数据流概览：
  *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry → StructureDefinition
- *   StructureDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
+ *   StructureDefinition → VoxelGrid（get(column,row,zSlice)，符号 → 方块 id）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial，tick 驱动动画
  *   simpleMesh：体素 → BatchDescriptor 合并批次；面几何/UV 与 Forge 约定对齐（见 faceConstants、blockFaceUv）
@@ -73,7 +73,7 @@ export interface BlockRegistryData {
 /**
  * 初始相机（可选块）：若存在则必须写全；用于轨道中心与「机器正面」朝外法线。
  * - `focusBlockId`：与 `symbolMap` 的值一致，网格中第一个匹配体素为焦点。
- * - `frontFace`：机器正面朝外的世界法线（GT5U 默认朝北为 **-z**，ExtendedFacing.DEFAULT = NORTH）。
+ * - `frontFace`：机器正面朝外的世界法线（默认朝北为 **-z**）。
  */
 export interface InitialCameraDef {
   focusBlockId: string
@@ -83,29 +83,36 @@ export interface InitialCameraDef {
 }
 
 /**
- * 与 StructureLib `StructureDefinition.Builder.addShape(name, structurePiece)` 一致：
- * `structurePiece[c][b]` 为第 c 片 slice、第 b 行，行内字符为 a（next char / next line / next slice）。
- * 体素索引 (a,b,c) 与 NORTH_DEFAULT 下世界轴对齐：a→X、b→Y、c→Z（见 ExtendedFacing）。
+ * Wiki 结构数据（磁盘 JSON，不含方块外观表）。
  *
- * 磁盘上的结构描述（不含方块外观表；外观由 `data/registries/block_registry.json` 合并）。
+ * **`zSlices`**：`zSlices[i]` 为沿 **世界 Z** 的第 i 个水平截面；每个截面为从上到下的 **行** 数组；
+ * **行 0 = 结构几何顶部**（最高世界 Y）；行内字符从左到右为 **世界 X**（列）。
+ * 索引 i 增大方向与渲染中体素中心 `zSlice + 0.5 - sizeZSlice/2` 一致（见 `voxelCenterWorld`）。
+ *
+ * 上游 GT / StructureLib 与本书写约定不同时，由仓库外 `scripts/` 适配层转换后再写入本格式。
  */
 export interface StructureData {
-  /** 当前简单结构格式为 `4`（含 `initialCamera` 新形状） */
+  /** 当前简单结构格式为 `5`（`zSlices` + `initialCamera` 形状） */
   schemaVersion: number
   mode: 'simple'
   id: string
   source?: { javaClass?: string; structurePiece?: string; note?: string }
   /** 可选：仅作文档/工具提示，不参与解析 */
   axis?: {
-    sliceC?: string
-    lineB?: string
-    charA?: string
+    /** 沿世界 Z 堆叠的切片下标 */
+    zSlice?: string
+    /** 截面内行下标；0 = 顶行 */
+    row?: string
+    /** 行内列 / 世界 X */
+    column?: string
     spaceChar?: string
   }
-  /** StructureLib 形状：`layers[c][b]`，每行字符串长度为 sizeA */
-  layers: string[][]
+  /**
+   * 沿 Z 的切片序列；`zSlices[i][row][col]` 为字符，经 `symbolMap` 映射为方块 id。
+   * 类型上等价于 `string[][]`：外层 = Z 切片，中层 = 行，内层字符串 = 一行列字符。
+   */
+  zSlices: string[][]
   symbolMap: Record<string, string>
-  /** 可选：有控制器时用于对准正面与轨道中心 */
   initialCamera?: InitialCameraDef
 }
 
@@ -116,20 +123,22 @@ export interface StructureDefinition {
   schemaVersion: number
   mode: 'simple'
   id: string
-  /** 与 StructureLib `addShape` 一致：`layers[c][b]` */
-  layers: string[][]
+  zSlices: string[][]
   symbolMap: Record<string, string>
   blocks: Record<string, BlockEntry>
   initialCamera?: InitialCameraDef
 }
 
 /**
- * 体素查询：(a, b, c) 与 `layers[c][b][a]` 一致；b 为 StructureLib 行下标（0=GT 首行=顶）。
- * 世界 Y 与 b 的映射见 `structureRowToWorldY`。get(a,b,c) 返回方块逻辑 id；空气为 'air'。
+ * 体素查询：索引 (column, row, zSlice) 与 `zSlices[zSlice][row][column]` 一致；
+ * **row 0 = 顶行**（最高 Y）。`get` 返回方块逻辑 id；空气为 `air`。
  */
 export interface VoxelGrid {
-  sizeA: number
-  sizeB: number
-  sizeC: number
-  get(a: number, b: number, c: number): string
+  /** 单行字符长度（列数 / 世界 X 方向格数） */
+  sizeColumn: number
+  /** 每个 Z 切片内的行数（世界 Y 方向格数） */
+  sizeRow: number
+  /** Z 切片个数（世界 Z 方向格数） */
+  sizeZSlice: number
+  get(column: number, row: number, zSlice: number): string
 }

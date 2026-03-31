@@ -13,7 +13,7 @@ export function mergeStructureData(model: StructureData): StructureDefinition {
     schemaVersion: model.schemaVersion,
     mode: 'simple',
     id: model.id,
-    layers: model.layers,
+    zSlices: model.zSlices,
     symbolMap: model.symbolMap,
     blocks: { ...blockRegistry.blocks },
     initialCamera: model.initialCamera,

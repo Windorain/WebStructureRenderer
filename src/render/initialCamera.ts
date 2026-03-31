@@ -4,9 +4,7 @@
  *
  * 若 `StructureDefinition.initialCamera` 省略，则使用 fallback，不构建焦点逻辑。
  *
- * GT5U / StructureLib（`ExtendedFacing` NORTH）：
- * - `getRelativeForwardInWorld()` = 世界 **-Z**（北），GUI 常从南侧看。
- * - 结构行 b 与世界 Y：`structureRowToWorldY`（首行 = 顶 = 高 Y），勿把数组行下标直接当世界 Y。
+ * 默认朝北为 **-z**（GUI 常从南侧看）。结构行 row 与世界 Y：`structureRowToWorldY`（首行 = 顶 = 高 Y）。
  */
 
 import * as THREE from 'three'
@@ -23,21 +21,21 @@ const WORLD_UP = new THREE.Vector3(0, 1, 0)
 const DEFAULT_DISTANCE = 10
 
 /**
- * 与 simpleMesh 体素中心一致：a、c 为体素列/片下标；b 为 **StructureLib 行下标**（0=顶行），
- * 世界 Y 由 `structureRowToWorldY(b, sizeB)` 得到。
+ * 与 simpleMesh 体素中心一致：column、zSlice 为体素下标；row 为 **行下标**（0=顶行），
+ * 世界 Y 由 `structureRowToWorldY(row, sizeRow)` 得到。
  */
 export function voxelCenterWorld(
-  a: number,
-  structureRowB: number,
-  c: number,
-  sizeA: number,
-  sizeB: number,
-  sizeC: number,
+  column: number,
+  structureRow: number,
+  zSlice: number,
+  sizeColumn: number,
+  sizeRow: number,
+  sizeZSlice: number,
   out?: THREE.Vector3,
 ): THREE.Vector3 {
-  const y = structureRowToWorldY(structureRowB, sizeB)
+  const y = structureRowToWorldY(structureRow, sizeRow)
   const v = out ?? new THREE.Vector3()
-  v.set(a + 0.5 - sizeA / 2, y + 0.5 - sizeB / 2, c + 0.5 - sizeC / 2)
+  v.set(column + 0.5 - sizeColumn / 2, y + 0.5 - sizeRow / 2, zSlice + 0.5 - sizeZSlice / 2)
   return v
 }
 
@@ -134,8 +132,15 @@ export function applyInitialCamera(
     return
   }
 
-  const { sizeA, sizeB, sizeC } = grid
-  const target = voxelCenterWorld(cell.a, cell.b, cell.c, sizeA, sizeB, sizeC)
+  const { sizeColumn, sizeRow, sizeZSlice } = grid
+  const target = voxelCenterWorld(
+    cell.column,
+    cell.row,
+    cell.zSlice,
+    sizeColumn,
+    sizeRow,
+    sizeZSlice,
+  )
 
   const frontOut = FACE_NORMAL[ic.frontFace].clone()
   const dist = options?.distance ?? ic.distance ?? DEFAULT_DISTANCE
