@@ -1,6 +1,8 @@
 /**
  * Simple 模式（mode=simple）下的类型定义。
  *
+ * **结构 JSON schemaVersion**：`4` 起 `initialCamera` 使用 `focusBlockId` + `frontFace`（见 `InitialCameraDef`）。
+ *
  * 数据流概览：
  *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry → StructureDefinition
  *   StructureDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
@@ -69,12 +71,14 @@ export interface BlockRegistryData {
 }
 
 /**
- * 初始相机：controllerFacing 为控制器正面朝外的世界法线（FaceName）。
- * GT5U 默认朝北对应 **-z**（ExtendedFacing.DEFAULT = NORTH）。
+ * 初始相机（可选块）：若存在则必须写全；用于轨道中心与「机器正面」朝外法线。
+ * - `focusBlockId`：与 `symbolMap` 的值一致，网格中第一个匹配体素为焦点。
+ * - `frontFace`：机器正面朝外的世界法线（GT5U 默认朝北为 **-z**，ExtendedFacing.DEFAULT = NORTH）。
  */
 export interface InitialCameraDef {
-  controllerFacing?: FaceName
-  /** 相机沿正面法线到控制器中心的距离（世界单位） */
+  focusBlockId: string
+  frontFace: FaceName
+  /** 相机沿正面法线到焦点体素中心的距离；省略时由运行时默认 */
   distance?: number
 }
 
@@ -86,6 +90,7 @@ export interface InitialCameraDef {
  * 磁盘上的结构描述（不含方块外观表；外观由 `data/registries/block_registry.json` 合并）。
  */
 export interface StructureData {
+  /** 当前简单结构格式为 `4`（含 `initialCamera` 新形状） */
   schemaVersion: number
   mode: 'simple'
   id: string

@@ -1,25 +1,25 @@
 /**
- * 检测控制器体素并设置初始相机：轨道中心对准控制器中心，相机位于「正面」外侧，
- * camera.up 为世界 +Y（Minecraft 竖直向上）；正面法线由 initialCamera.controllerFacing 指定。
+ * 检测焦点体素并设置初始相机：轨道中心对准焦点体素中心，相机位于「正面」外侧，
+ * camera.up 为世界 +Y（Minecraft 竖直向上）；正面法线由 `initialCamera.frontFace` 指定。
+ *
+ * 若 `StructureDefinition.initialCamera` 省略，则使用 fallback，不构建焦点逻辑。
  *
  * GT5U / StructureLib（`ExtendedFacing` NORTH）：
  * - `getRelativeForwardInWorld()` = 世界 **-Z**（北），GUI 常从南侧看。
  * - 结构行 b 与世界 Y：`structureRowToWorldY`（首行 = 顶 = 高 Y），勿把数组行下标直接当世界 Y。
- * - `applyInitialCamera` 内只调用一次 `buildVoxelGrid`，再用 `findFirstVoxelWithBlockId` 查 controller，避免重复构建。
  */
 
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-import type { FaceName, StructureDefinition } from './types'
+import type { StructureDefinition } from './types'
 import { FACE_NORMAL } from './faceConstants'
 import { buildVoxelGrid, findFirstVoxelWithBlockId } from './grid'
+import type { VoxelCell } from './grid'
 import { structureRowToWorldY } from './structureCoords'
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
 
-/** 与 StructureLib `ExtendedFacing.DEFAULT`（朝北）一致，勿与「南 +Z」混淆 */
-const DEFAULT_FACING: FaceName = '-z'
 const DEFAULT_DISTANCE = 10
 
 /**
@@ -41,9 +41,11 @@ export function voxelCenterWorld(
   return v
 }
 
-/** 在网格中查找第一个方块 id 为 controller 的体素（symbolMap 中 ~ → controller 等） */
-export function findFirstControllerVoxel(def: StructureDefinition) {
-  return findFirstVoxelWithBlockId(buildVoxelGrid(def), 'controller')
+/** 在网格中查找 `initialCamera.focusBlockId` 的第一个体素；无 `initialCamera` 时返回 null */
+export function findFirstFocusVoxel(def: StructureDefinition): VoxelCell | null {
+  const ic = def.initialCamera
+  if (!ic) return null
+  return findFirstVoxelWithBlockId(buildVoxelGrid(def), ic.focusBlockId)
 }
 
 /**
@@ -102,8 +104,8 @@ export function applyDiagonalOrbitView(
 }
 
 /**
- * 若存在控制器体素：target = 体素中心；相机在正面法线外侧；up 与顶面 (+Y) 对齐（非退化时）。
- * 若无控制器：使用 fallbackTarget / fallbackPosition（均为世界坐标）。
+ * 若存在 `initialCamera` 且网格中能找到焦点体素：target = 体素中心；相机在正面法线外侧。
+ * 若无 `initialCamera`、或找不到焦点体素：使用 fallbackTarget / fallbackPosition（均为世界坐标）。
  */
 export function applyInitialCamera(
   camera: THREE.Camera,
@@ -113,8 +115,17 @@ export function applyInitialCamera(
   fallbackPosition: THREE.Vector3,
   options?: ApplyInitialCameraOptions,
 ): void {
+  const ic = def.initialCamera
+  if (!ic) {
+    controls.target.copy(fallbackTarget)
+    camera.position.copy(fallbackPosition)
+    camera.up.copy(WORLD_UP)
+    camera.lookAt(fallbackTarget)
+    return
+  }
+
   const grid = buildVoxelGrid(def)
-  const cell = findFirstVoxelWithBlockId(grid, 'controller')
+  const cell = findFirstVoxelWithBlockId(grid, ic.focusBlockId)
   if (!cell) {
     controls.target.copy(fallbackTarget)
     camera.position.copy(fallbackPosition)
@@ -126,9 +137,8 @@ export function applyInitialCamera(
   const { sizeA, sizeB, sizeC } = grid
   const target = voxelCenterWorld(cell.a, cell.b, cell.c, sizeA, sizeB, sizeC)
 
-  const facing = (def.initialCamera?.controllerFacing ?? DEFAULT_FACING) as FaceName
-  const frontOut = FACE_NORMAL[facing]?.clone() ?? FACE_NORMAL[DEFAULT_FACING].clone()
-  const dist = options?.distance ?? def.initialCamera?.distance ?? DEFAULT_DISTANCE
+  const frontOut = FACE_NORMAL[ic.frontFace].clone()
+  const dist = options?.distance ?? ic.distance ?? DEFAULT_DISTANCE
 
   setCameraUpParallelToControllerTop(camera, frontOut)
   camera.position.copy(target).add(frontOut.multiplyScalar(dist))
