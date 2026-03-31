@@ -116,7 +116,7 @@ onMounted(async () => {
     tick()
 
     status.value = 'ok'
-    statusMessage.value = `渲染正常 · 模型 ${def.id} · 左键拖拽旋转 · 滚轮缩放`
+    statusMessage.value = `渲染正常 · 模型 ${def.id} · 左键拖拽旋转 · 滚轮缩放 · 右上：世界轴（红+X 东 绿+Y 上 蓝+Z 南，对照 MC）`
 
     disposeScene = () => {
       viewportRef = null
@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
 .wm-projection-toggle {
   position: absolute;
   top: 8px;
-  right: 8px;
+  left: 8px;
   z-index: 2;
   padding: 6px 10px;
   font-size: 12px;

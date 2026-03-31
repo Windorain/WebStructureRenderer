@@ -6,6 +6,8 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
+import { WorldAxesGizmo } from './worldAxesGizmo'
+
 export type ProjectionMode = 'perspective' | 'orthographic'
 
 const DEFAULT_FRUSTUM_SIZE = 10
@@ -29,6 +31,11 @@ export class RenderViewport {
   private _mode: ProjectionMode
 
   private readonly container: HTMLElement
+
+  private readonly worldAxesGizmo = new WorldAxesGizmo()
+
+  /** `setViewport` / `setScissor` 使用 CSS 像素；勿用 `getDrawingBufferSize`（会乘 pixelRatio，导致小窗画到画布外） */
+  private readonly rendererCssSize = new THREE.Vector2()
 
   constructor(options: RenderViewportOptions) {
     this.container = options.container
@@ -129,9 +136,17 @@ export class RenderViewport {
 
   render(scene: THREE.Scene): void {
     this.renderer.render(scene, this.activeCamera)
+    this.renderer.getSize(this.rendererCssSize)
+    this.worldAxesGizmo.renderOverlay(
+      this.renderer,
+      this.activeCamera,
+      this.rendererCssSize.x,
+      this.rendererCssSize.y,
+    )
   }
 
   dispose(): void {
+    this.worldAxesGizmo.dispose()
     this.controls.dispose()
     this.renderer.dispose()
     const el = this.renderer.domElement
