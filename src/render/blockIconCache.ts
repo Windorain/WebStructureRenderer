@@ -40,6 +40,12 @@ const defaultOpts: ResolvedIconOpts = {
   clearAlpha: 0,
 }
 
+/** 供 `setRevisionKey` 拼接：烘焙参数变化时需重烘 */
+export function blockIconBakeLayoutKey(options?: BlockIconCacheOptions): string {
+  const o = { ...defaultOpts, ...options } as ResolvedIconOpts
+  return `${o.sizePx}:${o.orthoHalf}:${o.clearColor}:${o.clearAlpha}`
+}
+
 /**
  * 失效键由调用方提供：结构 id + blocks 摘要变化时整表清空。
  */
@@ -180,8 +186,10 @@ export class BlockIconCache {
       dirFill.position.set(5, 8, 4)
       scene.add(ambient, dirKey, dirFill)
 
+      // 正交半宽/半高 orthoHalf：越小方块在图内越大（见 BlockIconCacheOptions）
       const half = this.opts.orthoHalf
       const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 80)
+      // 正交相机沿 +Z 看向原点；「拉近」只调 orthoHalf，不依赖 z
       cam.position.set(0, 0, -4.2)
       cam.lookAt(0, 0, 0)
       cam.updateProjectionMatrix()

@@ -13,7 +13,11 @@ import {
 } from 'vue'
 import * as THREE from 'three'
 
-import { BlockIconCache, BLOCK_ICON_LAYOUT_REVISION } from '@/render/blockIconCache'
+import {
+  BlockIconCache,
+  BLOCK_ICON_LAYOUT_REVISION,
+  blockIconBakeLayoutKey,
+} from '@/render/blockIconCache'
 import { buildBlockStatsEntries, type BlockStatRow } from '@/render/blockStats'
 import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
 import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
@@ -122,7 +126,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
       materialLibrary.value = lib
       const iconCache = new BlockIconCache(lib, def.blocks, config.blockIconCacheOptions)
       iconCache.setRevisionKey(
-        `${def.id}:${summarizeBlocksForCache(def.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}`,
+        `${def.id}:${summarizeBlocksForCache(def.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'

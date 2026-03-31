@@ -29,6 +29,8 @@ export const defaultAppPreviewConfig: AppPreviewConfig = {
   materialRegistry: materialRegistryJson as MaterialRegistryData,
   blockIconCacheOptions: {
     sizePx: 128,
+    /** 正交相机半宽/半高，略小于库默认 1.22，使方块在精灵图中更大；再减小则更「拉近」 */
+    orthoHalf: 0.85,
     clearColor: 0x000000,
     clearAlpha: 0,
   },
