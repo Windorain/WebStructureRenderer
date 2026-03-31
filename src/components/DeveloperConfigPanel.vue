@@ -7,7 +7,11 @@ import { onMounted, ref } from 'vue'
 
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
 import { clearDevOverrides, saveDevOverrides } from '@/preview/devConfigOverrides'
+import { listStructureModuleIds } from '@/preview/structureModuleCatalog'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
+
+/** 构建时扫描 data/structures/*.json */
+const structureModuleIds = listStructureModuleIds()
 
 const props = defineProps<{
   mergedConfig: AppPreviewConfig
@@ -21,6 +25,8 @@ const iconSizePx = ref(128)
 const orthoHalf = ref(0.85)
 const clearColorHex = ref('#000000')
 const clearAlpha = ref(0)
+/** 选中的结构模块 id（空串 = 使用 appPreviewConfig 默认 structureData） */
+const structureModuleId = ref('')
 
 function numToHex6(n: number): string {
   const u = n >>> 0
@@ -44,6 +50,7 @@ function syncFromMerged(): void {
   orthoHalf.value = c.blockIconCacheOptions.orthoHalf ?? 1.22
   clearColorHex.value = numToHex6(c.blockIconCacheOptions.clearColor ?? 0)
   clearAlpha.value = c.blockIconCacheOptions.clearAlpha ?? 0
+  structureModuleId.value = c.structureModuleId ?? ''
 }
 
 onMounted(() => {
@@ -72,6 +79,7 @@ function applyAndReload(): void {
   }
 
   saveDevOverrides({
+    structureModuleId: structureModuleId.value,
     showBlockStatsSidebar: showBlockStatsSidebar.value,
     initialLayerWorldY: initialLayerWorldY.value,
     initialProjectionMode: initialProjectionMode.value,
@@ -105,6 +113,21 @@ function clearAndReload(): void {
       保存后将写入 localStorage 并刷新页面；<code>showDeveloperPanel</code> 仅在 appPreviewConfig 中配置，不在此修改。
     </p>
     <div class="wm-dev-panel-grid">
+      <label class="wm-dev-field wm-dev-field--full">
+        <span>结构文件（data/structures/*.json，构建时扫描）</span>
+        <select v-model="structureModuleId">
+          <option value="">
+            默认（appPreviewConfig 中的 structureData）
+          </option>
+          <option
+            v-for="id in structureModuleIds"
+            :key="id"
+            :value="id"
+          >
+            {{ id }}.json
+          </option>
+        </select>
+      </label>
       <label class="wm-dev-field wm-dev-field--row">
         <input v-model="showBlockStatsSidebar" type="checkbox" />
         <span>方块统计侧栏</span>
@@ -218,6 +241,9 @@ function clearAndReload(): void {
 }
 .wm-dev-field--row span {
   font-weight: 600;
+}
+.wm-dev-field--full {
+  grid-column: 1 / -1;
 }
 .wm-dev-field span {
   font-weight: 600;

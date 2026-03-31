@@ -12,6 +12,11 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 export interface AppPreviewConfig {
   /** 原始 JSON（经 pipeline 解析） */
   structureData: unknown
+  /**
+   * 可选：data/structures 下文件名（不含 .json），与 dev 扫描一致。
+   * 若 localStorage 覆盖指定，则 structureData 由该 id 解析；否则以 structureData 为准。
+   */
+  structureModuleId?: string
   materialRegistry: MaterialRegistryData
   blockIconCacheOptions: BlockIconCacheOptions
   /** -1 = 全部层 */
