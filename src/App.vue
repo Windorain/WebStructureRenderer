@@ -8,13 +8,18 @@ import type { Scene } from 'three'
 import BlockStatsSidebar from '@/components/BlockStatsSidebar.vue'
 import LayerPreviewBar from '@/components/LayerPreviewBar.vue'
 import StructureViewport from '@/components/StructureViewport.vue'
+import ToolTipBox from '@/components/ToolTipBox.vue'
 import { defaultAppPreviewConfig } from '@/preview/appPreviewConfig'
 import { PreviewSceneContextKey } from '@/preview/context'
 import { createPreviewSceneStore } from '@/preview/previewSceneStore'
+import { usePreviewTooltip } from '@/preview/usePreviewTooltip'
+import { resolveBlockTooltip } from '@/render/blockTooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const store = createPreviewSceneStore(defaultAppPreviewConfig)
 provide(PreviewSceneContextKey, store)
+
+const { hover, setHover, clearHover } = usePreviewTooltip()
 
 const {
   loadStatus,
@@ -24,7 +29,16 @@ const {
   blockIconCache,
   blockStatsEntries,
   projectionMode,
+  layerPreviewMode,
+  contentGroupRef,
 } = store
+
+const tooltipDisplayText = computed(() => {
+  const def = structureDefinition.value
+  const h = hover.value
+  if (!def || !h?.blockId) return ''
+  return resolveBlockTooltip(h.blockId, def)
+})
 
 const statusBarClass = computed(() => {
   if (loadStatus.value === 'ok') return 'wm-status-bar wm-status-bar--ok'
@@ -45,6 +59,30 @@ function onProjectionUpdate(mode: ProjectionMode): void {
   store.projectionMode.value = mode
 }
 
+function onViewportHover(
+  payload: {
+    blockId: string
+    clientX: number
+    clientY: number
+    source: 'viewport'
+  } | null,
+): void {
+  if (payload) setHover(payload)
+  else clearHover('viewport')
+}
+
+function onSidebarTooltipHover(
+  payload: {
+    blockId: string
+    clientX: number
+    clientY: number
+    source: 'sidebar'
+  } | null,
+): void {
+  if (payload) setHover(payload)
+  else clearHover('sidebar')
+}
+
 onMounted(async () => {
   await store.loadStructureAndResources()
 })
@@ -62,6 +100,7 @@ onBeforeUnmount(() => {
         v-if="loadStatus === 'ok' && blockIconCache"
         :entries="blockStatsEntries"
         :cache="blockIconCache"
+        @tooltip-hover="onSidebarTooltipHover"
       />
       <div class="wm-viewport-column">
         <StructureViewport
@@ -69,9 +108,12 @@ onBeforeUnmount(() => {
           :definition="structureDefinition"
           :material-library="materialLibrary"
           :projection-mode="projectionMode"
+          :content-group="contentGroupRef"
+          :layer-preview-mode="layerPreviewMode"
           :scene-background="defaultAppPreviewConfig.sceneBackground"
           @ready="onViewportReady"
           @update:projection-mode="onProjectionUpdate"
+          @hover-block="onViewportHover"
         />
         <LayerPreviewBar v-if="loadStatus === 'ok'" />
       </div>
@@ -80,6 +122,12 @@ onBeforeUnmount(() => {
       <span class="wm-status-dot" aria-hidden="true" />
       <span class="wm-status-text">{{ statusMessage }}</span>
     </div>
+    <ToolTipBox
+      v-if="hover && tooltipDisplayText"
+      :text="tooltipDisplayText"
+      :client-x="hover.clientX"
+      :client-y="hover.clientY"
+    />
   </div>
 </template>
 

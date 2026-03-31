@@ -30,6 +30,39 @@ const toggle = (): void => {
 }
 
 const empty = computed(() => props.entries.length === 0)
+
+const emit = defineEmits<{
+  'tooltip-hover': [
+    payload: {
+      blockId: string
+      clientX: number
+      clientY: number
+      source: 'sidebar'
+    } | null,
+  ]
+}>()
+
+function onRowPointerEnter(e: PointerEvent, blockId: string): void {
+  emit('tooltip-hover', {
+    blockId,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    source: 'sidebar',
+  })
+}
+
+function onRowPointerMove(e: PointerEvent, blockId: string): void {
+  emit('tooltip-hover', {
+    blockId,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    source: 'sidebar',
+  })
+}
+
+function onRowPointerLeave(): void {
+  emit('tooltip-hover', null)
+}
 </script>
 
 <template>
@@ -80,6 +113,9 @@ const empty = computed(() => props.entries.length === 0)
           v-for="row in entries"
           :key="row.blockId"
           class="wm-block-stats-row"
+          @pointerenter="onRowPointerEnter($event, row.blockId)"
+          @pointermove="onRowPointerMove($event, row.blockId)"
+          @pointerleave="onRowPointerLeave"
         >
           <BlockSlotPreview
             :block-id="row.blockId"

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 /**
- * 仅负责：Scene + RenderViewport + 灯光 + RAF；与结构体素/装配逻辑解耦。
+ * Scene + RenderViewport + 灯光 + RAF；悬停拾取 emit 到父级（不持有 tooltip 状态）。
  */
 import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 
 import { PreviewSceneContextKey } from '@/preview/context'
 import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/initialCamera'
+import type { LayerPreviewMode } from '@/render/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
+import { pickBlockIdFromPointer } from '@/render/voxelPick'
 import type { StructureDefinition } from '@/render/types'
 import {
   RenderViewport,
@@ -19,6 +21,8 @@ const props = withDefaults(
     definition: StructureDefinition
     materialLibrary: SimpleMaterialLibrary
     projectionMode: ProjectionMode
+    contentGroup: THREE.Group | null
+    layerPreviewMode: LayerPreviewMode
     sceneBackground?: number
   }>(),
   {
@@ -29,6 +33,14 @@ const props = withDefaults(
 const emit = defineEmits<{
   ready: [scene: THREE.Scene]
   'update:projectionMode': [ProjectionMode]
+  'hover-block': [
+    payload: {
+      blockId: string
+      clientX: number
+      clientY: number
+      source: 'viewport'
+    } | null,
+  ]
 }>()
 
 const store = inject(PreviewSceneContextKey)
@@ -40,16 +52,70 @@ let animationId = 0
 let resizeObserver: ResizeObserver | null = null
 let onResize: (() => void) | null = null
 
+let canvasEl: HTMLElement | null = null
+let rafHoverPending = false
+let lastPointer: { clientX: number; clientY: number } | null = null
+
 function toggleProjection(): void {
   if (!viewport) return
   viewport.toggleMode()
   emit('update:projectionMode', viewport.mode)
 }
 
+function runPick(): void {
+  const vp = viewport
+  const g = props.contentGroup
+  const dom = canvasEl
+  if (!vp || !g || !dom || !lastPointer) return
+
+  const id = pickBlockIdFromPointer({
+    clientX: lastPointer.clientX,
+    clientY: lastPointer.clientY,
+    domElement: dom,
+    camera: vp.activeCamera,
+    contentGroup: g,
+    def: props.definition,
+    layerPreview: props.layerPreviewMode,
+  })
+
+  if (id) {
+    emit('hover-block', {
+      blockId: id,
+      clientX: lastPointer.clientX,
+      clientY: lastPointer.clientY,
+      source: 'viewport',
+    })
+  } else {
+    emit('hover-block', null)
+  }
+}
+
+function onPointerMove(e: PointerEvent): void {
+  lastPointer = { clientX: e.clientX, clientY: e.clientY }
+  if (rafHoverPending) return
+  rafHoverPending = true
+  requestAnimationFrame(() => {
+    rafHoverPending = false
+    runPick()
+  })
+}
+
+function onPointerLeave(): void {
+  lastPointer = null
+  emit('hover-block', null)
+}
+
 watch(
   () => props.projectionMode,
   (m) => {
     viewport?.setMode(m)
+  },
+)
+
+watch(
+  [() => props.contentGroup, () => props.layerPreviewMode],
+  () => {
+    if (lastPointer) runPick()
   },
 )
 
@@ -71,6 +137,9 @@ onMounted(() => {
     height: el.clientHeight,
   })
   viewport = vp
+  canvasEl = vp.renderer.domElement
+  canvasEl.addEventListener('pointermove', onPointerMove)
+  canvasEl.addEventListener('pointerleave', onPointerLeave)
 
   const def = props.definition
   const fallbackTarget = new THREE.Vector3(0, 2, 0)
@@ -106,6 +175,11 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (canvasEl) {
+    canvasEl.removeEventListener('pointermove', onPointerMove)
+    canvasEl.removeEventListener('pointerleave', onPointerLeave)
+    canvasEl = null
+  }
   cancelAnimationFrame(animationId)
   if (resizeObserver) {
     resizeObserver.disconnect()

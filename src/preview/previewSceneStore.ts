@@ -49,6 +49,8 @@ export interface PreviewSceneStore {
   detachAndDisposeMesh(): void
   /** 根组件 beforeUnmount：释放图标缓存、材质库与结构引用 */
   disposeCachesAndLibrary(): void
+  /** 当前结构 mesh 组，供视口射线拾取等 */
+  contentGroupRef: ShallowRef<THREE.Group | null>
 }
 
 function formatError(err: unknown): string {
@@ -67,8 +69,8 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
   const materialLibrary = shallowRef<SimpleMaterialLibrary | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
   const sceneRef = shallowRef<THREE.Scene | null>(null)
+  const contentGroupRef = shallowRef<THREE.Group | null>(null)
 
-  let contentGroup: THREE.Group | null = null
   let disposeContent: (() => void) | null = null
   let meshBuildSeq = 0
 
@@ -138,10 +140,11 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     const seq = ++meshBuildSeq
     meshBusy.value = true
     try {
-      if (contentGroup) {
-        scene.remove(contentGroup)
+      const prev = contentGroupRef.value
+      if (prev) {
+        scene.remove(prev)
         disposeContent?.()
-        contentGroup = null
+        contentGroupRef.value = null
         disposeContent = null
       }
       const result = await buildSimpleMesh(def, lib, { layerPreview: layerPreviewMode.value })
@@ -149,9 +152,9 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
         result.dispose()
         return
       }
-      contentGroup = result.group
+      contentGroupRef.value = result.group
       disposeContent = result.dispose
-      scene.add(contentGroup)
+      scene.add(result.group)
     } finally {
       if (seq === meshBuildSeq) meshBusy.value = false
     }
@@ -160,9 +163,10 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
   function detachAndDisposeMesh(): void {
     meshBuildSeq++
     const scene = sceneRef.value
-    if (contentGroup && scene) scene.remove(contentGroup)
+    const g = contentGroupRef.value
+    if (g && scene) scene.remove(g)
     disposeContent?.()
-    contentGroup = null
+    contentGroupRef.value = null
     disposeContent = null
   }
 
@@ -199,5 +203,6 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     rebuildContentMesh,
     detachAndDisposeMesh,
     disposeCachesAndLibrary,
+    contentGroupRef,
   }
 }

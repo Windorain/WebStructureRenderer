@@ -53,6 +53,8 @@ export type BlockRendererKind = 'SimpleCube'
 /** 方块在六个方向上的贴图层；可只写 all 表示六面相同。面专属层与 `all` 合并，见 `layersForFace`。 */
 export interface BlockEntry {
   label?: string
+  /** 长说明；与 `label` 可同时存在，tooltip 中分行展示 */
+  description?: string
   /** 缺省为 `SimpleCube` */
   renderer?: BlockRendererKind
   faces: {
