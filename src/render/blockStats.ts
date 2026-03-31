@@ -1,8 +1,10 @@
 /**
  * 结构体素 → 按 blockId 计数（不含 air），供侧栏等只读展示。
+ * 与 `simpleMesh` 一致：`LayerPreviewMode` 下切片外体素视为空气。
  */
 
 import { buildVoxelGrid } from './grid'
+import { effectiveBlockId, type LayerPreviewMode } from './layerPreview'
 import type { StructureDefinition } from './types'
 
 const AIR = 'air'
@@ -12,8 +14,11 @@ export interface BlockStatRow {
   count: number
 }
 
-/** 遍历体素网格，统计每种非空气方块出现次数 */
-export function countBlocksById(def: StructureDefinition): Map<string, number> {
+/** 遍历体素网格，统计每种非空气方块出现次数（与 `effectiveBlockId` 语义一致） */
+export function countBlocksById(
+  def: StructureDefinition,
+  layerPreview: LayerPreviewMode = 'all',
+): Map<string, number> {
   const grid = buildVoxelGrid(def)
   const { sizeA, sizeB, sizeC } = grid
   const counts = new Map<string, number>()
@@ -21,7 +26,7 @@ export function countBlocksById(def: StructureDefinition): Map<string, number> {
   for (let c = 0; c < sizeC; c++) {
     for (let b = 0; b < sizeB; b++) {
       for (let a = 0; a < sizeA; a++) {
-        const id = grid.get(a, b, c)
+        const id = effectiveBlockId(grid, a, b, c, sizeB, layerPreview)
         if (id === AIR) continue
         counts.set(id, (counts.get(id) ?? 0) + 1)
       }
@@ -33,8 +38,11 @@ export function countBlocksById(def: StructureDefinition): Map<string, number> {
 /**
  * 生成侧栏行：按 blockId 字典序排序，仅含 count > 0。
  */
-export function buildBlockStatsEntries(def: StructureDefinition): BlockStatRow[] {
-  const counts = countBlocksById(def)
+export function buildBlockStatsEntries(
+  def: StructureDefinition,
+  layerPreview: LayerPreviewMode = 'all',
+): BlockStatRow[] {
+  const counts = countBlocksById(def, layerPreview)
   const rows: BlockStatRow[] = []
   for (const [blockId, count] of counts) {
     if (count > 0) rows.push({ blockId, count })
