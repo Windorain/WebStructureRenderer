@@ -7,7 +7,7 @@
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
  *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
  *     → mergeGeometries 合并同批几何体（批次元数据见 `batchDescriptor`）
- *     → 每面 UV：`blockFaceUv.uv8ForFace`（Minecraft 方块面约定，见该文件 Wiki 注释）
+ *     → 每面 UV / 顶点：`blockFaceUv.uv8ForFace` + `quadGeometryForFace`（与 MyCTMLib `QuadRender` + `UVDomain` 满格约定一致）
  *     → SimpleMaterialLibrary.getMaterialForBatch(descriptor)（纹理 / mcmeta / 动画由库负责）
  *   几何 dispose 在本模块；材质与纹理由库的 dispose() 释放。
  */
@@ -126,7 +126,13 @@ export async function buildSimpleMesh(
   return { group, dispose }
 }
 
-/** 单格单面四边形：a、c 为体素列/片；voxelY 为世界体素 Y（0=包围盒底）；略沿法线偏移避免 z-fighting */
+/**
+ * 单格单面四边形：a、c 为体素列/片；voxelY 为包围盒内体素层 Y 索引（经 structureRowToWorldY）；略沿法线偏移避免 z-fighting。
+ *
+ * **顶点**：与 MyCTMLib `QuadRender.drawFace` 中 `addVertexWithUV` 四条顶点顺序一致（Forge 面名见 `faceConstants`）。
+ * **UV**：`blockFaceUv.uv8ForFace` 使用同一约定（满 tile 时 minU/maxU/minV/maxV → 0/1）。
+ * 三角索引 `(0,1,2)(0,2,3)`。
+ */
 function quadGeometryForFace(
   face: FaceName,
   a: number,
@@ -156,37 +162,37 @@ function quadGeometryForFace(
   let q3: THREE.Vector3
 
   switch (face) {
-    case '+x':
-      q0 = p(new THREE.Vector3(maxX, minY, minZ))
-      q1 = p(new THREE.Vector3(maxX, maxY, minZ))
-      q2 = p(new THREE.Vector3(maxX, maxY, maxZ))
-      q3 = p(new THREE.Vector3(maxX, minY, maxZ))
-      break
-    case '-x':
-      q0 = p(new THREE.Vector3(minX, minY, maxZ))
-      q1 = p(new THREE.Vector3(minX, maxY, maxZ))
-      q2 = p(new THREE.Vector3(minX, maxY, minZ))
-      q3 = p(new THREE.Vector3(minX, minY, minZ))
-      break
-    case '+y':
-      q0 = p(new THREE.Vector3(minX, maxY, minZ))
-      q1 = p(new THREE.Vector3(minX, maxY, maxZ))
-      q2 = p(new THREE.Vector3(maxX, maxY, maxZ))
-      q3 = p(new THREE.Vector3(maxX, maxY, minZ))
-      break
-    case '-y':
-      q0 = p(new THREE.Vector3(minX, minY, minZ))
+    case '+x': // EAST — QuadRender case EAST
+      q0 = p(new THREE.Vector3(maxX, minY, maxZ))
       q1 = p(new THREE.Vector3(maxX, minY, minZ))
-      q2 = p(new THREE.Vector3(maxX, minY, maxZ))
+      q2 = p(new THREE.Vector3(maxX, maxY, minZ))
+      q3 = p(new THREE.Vector3(maxX, maxY, maxZ))
+      break
+    case '-x': // WEST
+      q0 = p(new THREE.Vector3(minX, maxY, maxZ))
+      q1 = p(new THREE.Vector3(minX, maxY, minZ))
+      q2 = p(new THREE.Vector3(minX, minY, minZ))
       q3 = p(new THREE.Vector3(minX, minY, maxZ))
       break
-    case '+z':
-      q0 = p(new THREE.Vector3(minX, minY, maxZ))
-      q1 = p(new THREE.Vector3(maxX, minY, maxZ))
-      q2 = p(new THREE.Vector3(maxX, maxY, maxZ))
+    case '+y': // UP
+      q0 = p(new THREE.Vector3(maxX, maxY, maxZ))
+      q1 = p(new THREE.Vector3(maxX, maxY, minZ))
+      q2 = p(new THREE.Vector3(minX, maxY, minZ))
       q3 = p(new THREE.Vector3(minX, maxY, maxZ))
       break
-    case '-z':
+    case '-y': // DOWN
+      q0 = p(new THREE.Vector3(minX, minY, maxZ))
+      q1 = p(new THREE.Vector3(minX, minY, minZ))
+      q2 = p(new THREE.Vector3(maxX, minY, minZ))
+      q3 = p(new THREE.Vector3(maxX, minY, maxZ))
+      break
+    case '+z': // SOUTH
+      q0 = p(new THREE.Vector3(minX, maxY, maxZ))
+      q1 = p(new THREE.Vector3(minX, minY, maxZ))
+      q2 = p(new THREE.Vector3(maxX, minY, maxZ))
+      q3 = p(new THREE.Vector3(maxX, maxY, maxZ))
+      break
+    case '-z': // NORTH
       q0 = p(new THREE.Vector3(minX, maxY, minZ))
       q1 = p(new THREE.Vector3(maxX, maxY, minZ))
       q2 = p(new THREE.Vector3(maxX, minY, minZ))

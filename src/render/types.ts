@@ -6,7 +6,7 @@
  *   SimpleDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial，tick 驱动动画
- *   simpleMesh：体素 → BatchDescriptor 合并批次；SimpleMaterialLibrary 按 batchMaterialCacheKey 取材质
+ *   simpleMesh：体素 → BatchDescriptor 合并批次；面几何/UV 与 Forge 约定对齐（见 faceConstants、blockFaceUv）
  *   viewport/RenderViewport：WebGLRenderer + 透视/正交相机与 OrbitControls（与场景内容无关）
  */
 

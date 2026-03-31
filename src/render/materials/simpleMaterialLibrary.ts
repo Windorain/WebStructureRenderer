@@ -62,7 +62,8 @@ function applyAnimatedStrip(
   const applyFrameAtIndex = (i: number) => {
     const f = frames[i % frames.length].index
     const clamped = Math.max(0, Math.min(frameCount - 1, f))
-    tex.offset.y = (frameCount - 1 - clamped) / frameCount
+    // 与 `loadTexture` 中 `flipY=false` 一致：第 0 帧在 PNG 最上一格（见 mcmeta 注释），offset 自上而下递增
+    tex.offset.y = clamped / frameCount
   }
 
   applyFrameAtIndex(0)
@@ -131,8 +132,13 @@ export class SimpleMaterialLibrary {
         url,
         (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace
-          // 与 `blockFaceUv.ts` 中 UV 约定一致：Minecraft PNG 顶行 ↔ Three 中 v=1（默认 flipY）
-          tex.flipY = true
+          /**
+           * Three.js 默认 `flipY=true` 会在上传 GPU 时沿 Y 翻转 PNG，使采样与「浏览器图像坐标」对齐；
+           * `blockFaceUv.ts` 的 U/V 与 MyCTMLib `QuadRender` 一致，假定 **PNG 顶行 = 纹理 v 增大方向的一端**
+           *（与 Java 侧 sprite 一致）。若保持默认 flipY，整张贴图会与该 UV 约定相反，表现为 **上下颠倒**。
+           * 在材质层统一 `flipY=false`，与 PNG 行顺序一致，不在 UV 里按面改 v。
+           */
+          tex.flipY = false
           tex.magFilter = THREE.NearestFilter
           tex.minFilter = THREE.NearestFilter
           tex.wrapS = THREE.ClampToEdgeWrapping
