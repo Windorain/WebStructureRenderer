@@ -1,14 +1,14 @@
 /**
- * 合并层：SimpleModel + block_registry → SimpleDefinition（外观表来自全局注册表，非 Three）。
+ * 合并层：StructureData + block_registry → StructureDefinition（外观表来自全局注册表，非 Three）。
  */
 
-import type { BlockRegistryData, SimpleDefinition, SimpleModel } from './types'
+import type { BlockRegistryData, StructureData, StructureDefinition } from './types'
 
 import blockRegistryJson from '@renderData/registries/block_registry.json'
 
 const blockRegistry = blockRegistryJson as BlockRegistryData
 
-export function mergeSimpleModel(model: SimpleModel): SimpleDefinition {
+export function mergeStructureData(model: StructureData): StructureDefinition {
   return {
     schemaVersion: model.schemaVersion,
     mode: 'simple',

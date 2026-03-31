@@ -2,7 +2,7 @@
  * Simple 模式：体素 → 外露面四边形 → 按材质批次合并 → THREE.Group。
  *
  * 数据流：
- *   SimpleDefinition
+ *   StructureDefinition
  *     → buildVoxelGrid（符号 → 方块 id）
  *     → 可选 layerPreview：切片外视为空气（effectiveBlockId）
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
@@ -16,7 +16,7 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import type { FaceName, LayerRole, SimpleDefinition } from './types'
+import type { FaceName, LayerRole, StructureDefinition } from './types'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelGrid } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
@@ -50,7 +50,7 @@ export interface SimpleMeshResult {
 }
 
 export async function buildSimpleMesh(
-  def: SimpleDefinition,
+  def: StructureDefinition,
   library: SimpleMaterialLibrary,
   options?: BuildSimpleMeshOptions,
 ): Promise<SimpleMeshResult> {
@@ -69,6 +69,11 @@ export async function buildSimpleMesh(
 
         const block = def.blocks[id]
         if (!block) continue
+
+        const rendererKind = block.renderer ?? 'SimpleCube'
+        if (rendererKind !== 'SimpleCube') {
+          throw new Error(`未实现的渲染器: ${rendererKind}`)
+        }
 
         for (const face of faces) {
           const [da, db, dc] = NEIGHBOR_STRUCTURE_DELTA[face]

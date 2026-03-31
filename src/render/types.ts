@@ -1,9 +1,9 @@
 /**
- * Simple 模式下的类型定义。
+ * Simple 模式（mode=simple）下的类型定义。
  *
  * 数据流概览：
- *   JSON（layers[c][b] 与 StructureLib 一致 + 注册表）→ SimpleDefinition
- *   SimpleDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
+ *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry → StructureDefinition
+ *   StructureDefinition → VoxelGrid（get(a,b,c)，符号 → 方块 id）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial，tick 驱动动画
  *   simpleMesh：体素 → BatchDescriptor 合并批次；面几何/UV 与 Forge 约定对齐（见 faceConstants、blockFaceUv）
@@ -44,9 +44,17 @@ export interface FaceLayersDef {
   layers: FaceLayerDef[]
 }
 
-/** 方块在六个方向上的贴图层；可只写 all 表示六面相同 */
+/**
+ * 方块几何生成策略；缺省为 SimpleCube（六面体素 + 面贴图）。
+ * 后续可扩展用于管道、自定义 mesh 等。
+ */
+export type BlockRendererKind = 'SimpleCube'
+
+/** 方块在六个方向上的贴图层；可只写 all 表示六面相同。面专属层与 `all` 合并，见 `layersForFace`。 */
 export interface BlockEntry {
   label?: string
+  /** 缺省为 `SimpleCube` */
+  renderer?: BlockRendererKind
   faces: {
     all?: FaceLayersDef
   } & Partial<Record<FaceName, FaceLayersDef>>
@@ -72,8 +80,10 @@ export interface InitialCameraDef {
  * 与 StructureLib `StructureDefinition.Builder.addShape(name, structurePiece)` 一致：
  * `structurePiece[c][b]` 为第 c 片 slice、第 b 行，行内字符为 a（next char / next line / next slice）。
  * 体素索引 (a,b,c) 与 NORTH_DEFAULT 下世界轴对齐：a→X、b→Y、c→Z（见 ExtendedFacing）。
+ *
+ * 磁盘上的结构描述（不含方块外观表；外观由 `data/registries/block_registry.json` 合并）。
  */
-export interface SimpleModel {
+export interface StructureData {
   schemaVersion: number
   mode: 'simple'
   id: string
@@ -93,9 +103,9 @@ export interface SimpleModel {
 }
 
 /**
- * Simple 渲染器使用的运行时定义：多层结构 + 符号表 + 已合并的方块外观表。
+ * 合并 block_registry 后的运行时定义：形状 + 符号表 + 方块外观表。
  */
-export interface SimpleDefinition {
+export interface StructureDefinition {
   schemaVersion: number
   mode: 'simple'
   id: string

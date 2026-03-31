@@ -3,12 +3,12 @@
  * 不负责读文件；调用方决定写入位置。
  */
 
-import type { SimpleDefinition, SimpleModel } from './types'
+import type { StructureData, StructureDefinition } from './types'
 
-export function exportSimpleDefinitionJson(def: SimpleDefinition): string {
+export function exportStructureDefinitionJson(def: StructureDefinition): string {
   return JSON.stringify(def, null, 2)
 }
 
-export function exportSimpleModelJson(model: SimpleModel): string {
+export function exportStructureDataJson(model: StructureData): string {
   return JSON.stringify(model, null, 2)
 }

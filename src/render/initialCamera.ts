@@ -11,7 +11,7 @@
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-import type { FaceName, SimpleDefinition } from './types'
+import type { FaceName, StructureDefinition } from './types'
 import { FACE_NORMAL } from './faceConstants'
 import { buildVoxelGrid, findFirstVoxelWithBlockId } from './grid'
 import { structureRowToWorldY } from './structureCoords'
@@ -42,7 +42,7 @@ export function voxelCenterWorld(
 }
 
 /** 在网格中查找第一个方块 id 为 controller 的体素（symbolMap 中 ~ → controller 等） */
-export function findFirstControllerVoxel(def: SimpleDefinition) {
+export function findFirstControllerVoxel(def: StructureDefinition) {
   return findFirstVoxelWithBlockId(buildVoxelGrid(def), 'controller')
 }
 
@@ -73,7 +73,7 @@ export interface ApplyInitialCameraOptions {
 export function applyInitialCamera(
   camera: THREE.Camera,
   controls: OrbitControls,
-  def: SimpleDefinition,
+  def: StructureDefinition,
   fallbackTarget: THREE.Vector3,
   fallbackPosition: THREE.Vector3,
   options?: ApplyInitialCameraOptions,

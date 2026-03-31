@@ -1,11 +1,11 @@
 /**
- * 体素层（无 Three）：SimpleDefinition → VoxelGrid。
+ * 体素层（无 Three）：StructureDefinition → VoxelGrid。
  * `def.layers[c][b][a]` 与 StructureLib 一致；b 为 slice 内行下标（0=GT 源码首行=结构顶）。
  * 世界 Y 放置见 `structureRowToWorldY`（simpleMesh / initialCamera）。
  * `findFirstVoxelWithBlockId`：在已有网格上扫描，供 initialCamera 等与 `buildVoxelGrid` 组合为单次构建。
  */
 
-import type { SimpleDefinition, VoxelGrid } from './types'
+import type { StructureDefinition, VoxelGrid } from './types'
 
 const AIR = 'air'
 
@@ -28,7 +28,7 @@ export function findFirstVoxelWithBlockId(grid: VoxelGrid, blockId: string): Vox
   return null
 }
 
-export function buildVoxelGrid(def: SimpleDefinition): VoxelGrid {
+export function buildVoxelGrid(def: StructureDefinition): VoxelGrid {
   const layers = def.layers
   const sizeC = layers.length
   const sizeB = layers[0]?.length ?? 0

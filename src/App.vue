@@ -1,18 +1,18 @@
 <script setup lang="ts">
 /**
- * 预览页：loadSimpleModel → SimpleMaterialLibrary + buildSimpleMesh → Scene。
+ * 预览页：loadStructureData → SimpleMaterialLibrary + buildSimpleMesh → Scene。
  * RenderViewport：Renderer + 透视/正交 + OrbitControls；RAF：材质 tick → controls → render。
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import * as THREE from 'three'
 
-import electroDef from '@renderData/models/industrial_electrolyzer.simple.json'
+import electroDef from '@renderData/structures/industrial_electrolyzer.simple.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
 import { applyInitialCamera } from '@/render/initialCamera'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
-import { loadSimpleModel } from '@/render/pipeline'
+import { loadStructureData } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
-import type { MaterialRegistryData, SimpleDefinition } from '@/render/types'
+import type { MaterialRegistryData, StructureDefinition } from '@/render/types'
 import {
   RenderViewport,
   type ProjectionMode,
@@ -32,7 +32,7 @@ const projectionLabel = computed(() =>
 /** -1 = 全部层；0..sizeB-1 = 世界体素 Y（底→顶） */
 const layerSlider = ref(-1)
 const meshBusy = ref(false)
-const defRef = shallowRef<SimpleDefinition | null>(null)
+const defRef = shallowRef<StructureDefinition | null>(null)
 const sizeB = computed(() => defRef.value?.layers[0]?.length ?? 0)
 const layerPreviewLabel = computed(() =>
   layerSlider.value < 0 ? 'ALL' : `Y = ${layerSlider.value}`,
@@ -103,7 +103,7 @@ onMounted(async () => {
   statusMessage.value = '正在加载数据与构建网格…'
 
   try {
-    const def = loadSimpleModel(electroDef)
+    const def = loadStructureData(electroDef)
     defRef.value = def
     const materialLibrary = new SimpleMaterialLibrary(
       materialRegistryJson as MaterialRegistryData,
