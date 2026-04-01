@@ -3,7 +3,7 @@
  * 支持顶层为 **World**（多帧）时取某一内嵌帧的 StructureData。
  */
 
-import type { FaceName, StructureData, StructureDefinition, World } from './types'
+import type { BlockRegistryOverlayData, FaceName, StructureData, StructureDefinition, World } from './types'
 import { mergeStructureData } from './mergeScene'
 import {
   WORLD_DOCUMENT_SCHEMA_VERSION,
@@ -13,6 +13,9 @@ import {
 } from './worldPlayback'
 
 export const STRUCTURE_SCHEMA_VERSION = 6 as const
+
+/** 与磁盘 `blockRegistryOverlay.schemaVersion` 一致 */
+export const BLOCK_REGISTRY_OVERLAY_SCHEMA_VERSION = 1 as const
 
 const INITIAL_CAMERA_KEYS = new Set(['focusBlockId', 'frontFace', 'distance'])
 
@@ -89,6 +92,25 @@ function validatePalette(data: StructureData): void {
   }
 }
 
+function validateBlockRegistryOverlay(overlay: BlockRegistryOverlayData): void {
+  if (overlay.schemaVersion !== BLOCK_REGISTRY_OVERLAY_SCHEMA_VERSION) {
+    throw new Error(
+      `blockRegistryOverlay.schemaVersion 必须为 ${BLOCK_REGISTRY_OVERLAY_SCHEMA_VERSION}，当前为 ${overlay.schemaVersion}`,
+    )
+  }
+  if (!overlay.blocks || typeof overlay.blocks !== 'object') {
+    throw new Error('blockRegistryOverlay.blocks 须为对象')
+  }
+  for (const [k, v] of Object.entries(overlay.blocks)) {
+    if (typeof k !== 'string' || k.length === 0) {
+      throw new Error('blockRegistryOverlay.blocks 键须为非空字符串')
+    }
+    if (!v || typeof v !== 'object') {
+      throw new Error(`blockRegistryOverlay.blocks["${k}"] 须为对象`)
+    }
+  }
+}
+
 /** 磁盘 StructureData 形状与语义校验（schemaVersion 6） */
 export function validateStructureData(m: StructureData): void {
   if (m.schemaVersion !== STRUCTURE_SCHEMA_VERSION) {
@@ -100,6 +122,10 @@ export function validateStructureData(m: StructureData): void {
 
   validatePalette(m)
   validateCellGridUniform(m)
+
+  if (m.blockRegistryOverlay !== undefined) {
+    validateBlockRegistryOverlay(m.blockRegistryOverlay)
+  }
 
   const ic = m.initialCamera
   if (ic === undefined) return
@@ -136,7 +162,7 @@ export function loadStructureData(raw: unknown): StructureDefinition {
   if (!m.cellGrid?.length) throw new Error('缺少 cellGrid')
   if (!m.palette?.length) throw new Error('缺少 palette')
   if ((m as { blocks?: unknown }).blocks !== undefined) {
-    throw new Error('StructureData 不应包含 blocks，外观由 data/registries/block_registry.json 提供')
+    throw new Error('StructureData 不应包含顶层 blocks；机器生成片段请使用 blockRegistryOverlay')
   }
   validateStructureData(m as StructureData)
   return mergeStructureData(m as StructureData)

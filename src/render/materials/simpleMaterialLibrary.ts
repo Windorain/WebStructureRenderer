@@ -20,7 +20,7 @@ function createFaceMaterial(
   tint: THREE.Color,
   layerRole: LayerRole,
 ): THREE.MeshStandardMaterial {
-  if (layerRole === 'cutout') {
+  if (layerRole === 'cutout' || layerRole === 'glass') {
     return new THREE.MeshStandardMaterial({
       map: tex,
       color: tint,

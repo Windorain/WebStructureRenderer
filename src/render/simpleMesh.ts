@@ -5,7 +5,7 @@
  *   StructureDefinition
  *     → buildVoxelVolume
  *     → 可选 layerPreview：effectiveVoxelState
- *     → 遍历格点：非空气且邻格为空气则该朝向外露
+ *     → 遍历格点：邻格暴露则该朝向外露（见 neighborCulling）
  *     → layersForFace；meshKind（非 WebGLRenderer）为 SimpleCube 等
  */
 
@@ -14,6 +14,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import type { FaceName, LayerRole, StructureDefinition } from './types'
 import { isAirState } from './types'
+import { getBlockEntry } from './blockRegistryResolve'
+import { shouldExposeFaceTowardNeighbor } from './neighborCulling'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelVolume } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
@@ -61,7 +63,7 @@ export async function buildSimpleMesh(
         const state = effectiveVoxelState(volume, col, row, zSlice, sizeRow, layerPreview)
         if (isAirState(state)) continue
 
-        const block = def.blocks[state.registryId]
+        const block = getBlockEntry(def.blocks, state.registryId, state.meta)
         if (!block) continue
 
         const meshKind = block.meshKind ?? 'SimpleCube'
@@ -79,7 +81,7 @@ export async function buildSimpleMesh(
             sizeRow,
             layerPreview,
           )
-          if (!isAirState(neighborState)) continue
+          if (!shouldExposeFaceTowardNeighbor(neighborState, def.blocks)) continue
 
           const layerDefs = layersForFace(block, face)
           if (!layerDefs.length) continue

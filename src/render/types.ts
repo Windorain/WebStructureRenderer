@@ -4,7 +4,7 @@
  * **结构 JSON schemaVersion**：`6` 起形状为 `palette` + `cellGrid`（Wiki 体素轴不变）。
  *
  * 数据流概览：
- *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry → StructureDefinition
+ *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry（+ 可选 blockRegistryOverlay）→ StructureDefinition
  *   StructureDefinition → VoxelVolume（get(column,row,zSlice) → VoxelState）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial
@@ -32,8 +32,8 @@ export interface MaterialRegistryData {
 
 export type FaceName = '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
 
-/** 多层贴花时：底层不透明，上层可透明镂空 */
-export type LayerRole = 'base' | 'cutout'
+/** 多层贴花时：底层不透明，上层可透明镂空；`glass` 与 `cutout` 在材质上同义（alpha 镂空） */
+export type LayerRole = 'base' | 'cutout' | 'glass'
 
 export interface FaceLayerDef {
   materialId: string
@@ -57,6 +57,11 @@ export interface BlockEntry {
   description?: string
   /** 缺省为 `SimpleCube` */
   meshKind?: BlockMeshKind
+  /**
+   * 当本格作为**邻格**时是否遮挡另一侧体素朝向本格的外露面；缺省 `true`。
+   * 玻璃等须为 `false`。
+   */
+  occludesAdjacentFaces?: boolean
   faces: {
     all?: FaceLayersDef
   } & Partial<Record<FaceName, FaceLayersDef>>
@@ -66,6 +71,12 @@ export interface BlockEntry {
 export interface BlockRegistryData {
   schemaVersion: number
   blocks: Record<string, BlockEntry>
+}
+
+/** 结构内嵌的机器生成注册表片段（与全局 block_registry 深合并） */
+export interface BlockRegistryOverlayData {
+  schemaVersion: number
+  blocks: Record<string, Partial<BlockEntry>>
 }
 
 /**
@@ -122,6 +133,8 @@ export interface StructureData {
    * 值为 `palette` 下标。
    */
   cellGrid: number[][][]
+  /** 可选；与 `data/registries/block_registry.json` 深合并，键规则见 `blockRegistryResolve.ts` */
+  blockRegistryOverlay?: BlockRegistryOverlayData
   initialCamera?: InitialCameraDef
 }
 
