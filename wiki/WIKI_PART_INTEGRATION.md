@@ -1,26 +1,25 @@
-# 灰机零件集成：最小完备集
+# 灰机零件集成：Wiki 渲染包
 
-服务端一次响应提供 `MinimalCompletePayload` 形状（见 `src/render/types.ts`）：
+服务端一次响应提供 `WikiRenderBundle` 形状（见 `src/render/types.ts`）：
 
-- `structure`：`StructureData`（与导出 `export.json` 同形）
-- `blockRegistry`：本次渲染所需的 `block_registry` 切片
+- `document`：顶层 JSON，为 **StructureData**（与导出 `export.json` 同形）或 **World**（多帧；当前需至少一帧含内嵌 `structure`）
+- `blockRegistry`：本次渲染所需的 `block_registry` 切片（调用方已定稿，库内不再叠「全局底稿 / overlay」）
 - `materialRegistry`：本次渲染所需的 `material_registry` 切片
 - 可选：`bundleId`、`assetsBaseUrl`、`payloadSchemaVersion`
 
-零件侧流程：**请求接口 → 将 JSON 交给渲染库**：
+零件侧流程：**请求接口（例如按场景名）→ 将 JSON 交给渲染库**：
 
 ```ts
-import {
-  resolveFromMinimalCompletePayload,
-  validateMinimalCompletePayload,
-} from '@/render/pipeline'
+import { resolveWikiRenderBundle, validateWikiRenderBundle } from '@/render/pipeline'
 
-const payload = await fetch('/api/...').then((r) => r.json())
-validateMinimalCompletePayload(payload)
-const { definition, materialRegistry } = resolveFromMinimalCompletePayload(payload)
+const bundle = await fetch('/api/...').then((r) => r.json())
+validateWikiRenderBundle(bundle)
+const { definition, materialRegistry } = resolveWikiRenderBundle(bundle)
 // definition → 网格；materialRegistry → SimpleMaterialLibrary
 ```
 
-若构建为 IIFE 全局，可使用 `WikiMultiStructureRender.resolveFromMinimalCompletePayload`（见 `src/main.ts` 导出）。
+`document` 为 World 且需指定帧时，可传第二参 `frameIndex`：`resolveWikiRenderBundle(bundle, frameIndex)`。
 
-**不要**在客户端再维护一份「完整全局注册表」再与结构合并；合并与切片由服务端完成。本地预览可在 `AppPreviewConfig` 中显式组装 `minimalComplete`，或仅用 `devGlobalBlockRegistry` 调试底稿。
+若构建为 IIFE 全局，可使用 `WikiMultiStructureRender.resolveWikiRenderBundle`（见 `src/main.ts` 导出）。
+
+**不要**在客户端再维护多份注册表再与结构合并；切片与拼表由服务端完成。本地开发将场景三件套放在 `data/server/scenes/<id>/`，由 `src/preview/previewDevServer` 与开发者面板加载，仅用于预览，不替代线上契约。

@@ -4,9 +4,9 @@
  * **结构 JSON schemaVersion**：`6` 起形状为 `palette` + `cellGrid`（Wiki 体素轴不变）。
  *
  * 数据流概览：
- *   磁盘 JSON（StructureData）→ mergeStructureData（空或显式全局底稿 + 服务端/导出 block 片段 + 可选结构内 blockRegistryOverlay）→ StructureDefinition
- *   Wiki 主路径：`MinimalCompletePayload` 一次装配；本地 dev 可在预览配置中显式注入 `devGlobalBlockRegistry` 兜底。
- *   材质：空底稿 + payload.materialRegistry（mergeMaterialRegistries）→ SimpleMaterialLibrary
+ *   磁盘 JSON（StructureData）或 World → 与本请求 `blockRegistry` 组装为 StructureDefinition（`blocks` 为注册表拷贝）
+ *   Wiki：`WikiRenderBundle`（document + blockRegistry + materialRegistry）一次装配；本地 dev 用 `previewDevServer` + `data/server/scenes`。
+ *   材质：直接使用 bundle.materialRegistry → SimpleMaterialLibrary
  *   StructureDefinition → VoxelVolume（get(column,row,zSlice) → VoxelState）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial
@@ -33,13 +33,13 @@ export interface MaterialRegistryData {
 }
 
 /**
- * 服务端一次下发的「最小完备集」：结构 + 本次渲染所需的 block/material 注册表切片（键与 palette / 面引用一致即可）。
- * 客户端主路径不再依赖库内内置全局 block_registry；合并链见 `mergeStructureData`（空全局 + 本字段 + 结构内 overlay）。
+ * Wiki 一次下发的渲染包：`document` 为 **StructureData** 或 **World**（JSON 顶层）；注册表由服务端/Mock 预先定稿。
  */
-export interface MinimalCompletePayload {
-  /** 可选；契约版本，便于灰机与库同步演进 */
+export interface WikiRenderBundle {
+  /** 可选；契约版本 */
   payloadSchemaVersion?: number
-  structure: StructureData
+  /** 单结构 JSON 或 World 多帧文档（内嵌帧须含 `structure`） */
+  document: unknown
   blockRegistry: BlockRegistryData
   materialRegistry: MaterialRegistryData
   bundleId?: string
@@ -90,12 +90,6 @@ export interface BlockEntry {
 export interface BlockRegistryData {
   schemaVersion: number
   blocks: Record<string, BlockEntry>
-}
-
-/** 结构内嵌的机器生成注册表片段（与全局 block_registry 深合并） */
-export interface BlockRegistryOverlayData {
-  schemaVersion: number
-  blocks: Record<string, Partial<BlockEntry>>
 }
 
 /**
@@ -152,8 +146,6 @@ export interface StructureData {
    * 值为 `palette` 下标。
    */
   cellGrid: number[][][]
-  /** 可选；与合并后的 block 表深合并，键规则见 `blockRegistryResolve.ts` */
-  blockRegistryOverlay?: BlockRegistryOverlayData
   initialCamera?: InitialCameraDef
 }
 
@@ -189,7 +181,7 @@ export interface Frame {
   index?: number
   /** 内嵌单帧结构；与 structureRef 二选一 */
   structure?: StructureData
-  /** 相对 data/structures 的路径或 id，由加载器解析 */
+  /** 相对场景根的路径或 id，由加载器解析（如 data/server/scenes） */
   structureRef?: string
   durationMs?: number
   label?: string

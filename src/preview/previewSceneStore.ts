@@ -23,7 +23,7 @@ import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
 import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
 import type { LayerPreviewMode } from '@/render/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
-import { resolveFromMinimalCompletePayload, type MergeStructureDataOptions } from '@/render/pipeline'
+import { resolveWikiRenderBundle } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
 import type { StructureDefinition } from '@/render/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
@@ -120,11 +120,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     loadStatus.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
-      const extraMerge: MergeStructureDataOptions | undefined =
-        config.devGlobalBlockRegistry !== undefined
-          ? { globalBlockRegistry: config.devGlobalBlockRegistry }
-          : undefined
-      const resolved = resolveFromMinimalCompletePayload(config.minimalComplete, extraMerge)
+      const resolved = resolveWikiRenderBundle(config.wikiRenderBundle)
       structureDefinition.value = resolved.definition
       const lib = new SimpleMaterialLibrary(resolved.materialRegistry)
       materialLibrary.value = lib

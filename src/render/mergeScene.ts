@@ -1,7 +1,6 @@
 /**
- * 合并层：StructureData + block_registry → StructureDefinition（外观表来自全局注册表，非 Three）。
- * 合并顺序：可选 `globalBlockRegistry`（缺省空）→ `exportBlockRegistry`（服务端/导出片段）→ 可选结构内 `blockRegistryOverlay`；键可为 `registryId@meta`，见 blockRegistryResolve。
- * `faces` 按面键深合并：overlay 某面若含非空 `layers` 则覆盖该面，否则保留基底。
+ * 合并层：StructureData + 本请求 block 注册表 → StructureDefinition（非 Three）。
+ * 注册表由调用方或服务端预先定稿；库内仅将 `blockRegistry.blocks` 拷贝进 `StructureDefinition.blocks`。
  */
 
 import type {
@@ -46,8 +45,8 @@ function mergeBlockEntry(base: BlockEntry, partial: Partial<BlockEntry>): BlockE
 }
 
 /**
- * 无全局底稿时由导出/覆盖片段补全为可渲染条目。
- * `meshKind` 与 `simpleMesh` 对齐：JSON 常省略 meshKind，运行时按 `?? 'SimpleCube'`；仅当既无 meshKind 又无面数据时视为 Unknown（跳过网格）。
+ * 无基底时由片段补全为可渲染条目。
+ * `meshKind` 与 `simpleMesh` 对齐：JSON 常省略 meshKind；仅当既无 meshKind 又无面数据时视为 Unknown。
  */
 function completeBlockEntry(partial: Partial<BlockEntry>): BlockEntry {
   const faces = partial.faces ?? {}
@@ -60,8 +59,7 @@ function completeBlockEntry(partial: Partial<BlockEntry>): BlockEntry {
 }
 
 /**
- * 将 overlay 合并进全局 blocks：同键覆盖字段；`registryId@meta` 无独立条目时以 `registryId` 为底。
- * 键在全局与 meta 回退均不存在时，仍写入（供独立 `*.block_registry.json` 与 palette 专有键）。
+ * 将 overlay 合并进基底 blocks（供 `registrySlice` 等纯函数复用；渲染主路径不经过多层合并）。
  */
 export function mergeBlockRegistries(
   global: Record<string, BlockEntry>,
@@ -82,7 +80,7 @@ export function mergeBlockRegistries(
   return out
 }
 
-/** 导出材质覆盖内置：同 materialId 以 overlay 为准 */
+/** 同 materialId 以 overlay 为准 */
 export function mergeMaterialRegistries(
   base: MaterialRegistryData,
   overlay?: MaterialRegistryData,
@@ -96,20 +94,13 @@ export function mergeMaterialRegistries(
   }
 }
 
-export interface MergeStructureDataOptions {
-  /**
-   * 合并链第一层；缺省为空对象。线上由服务端切片填满 `exportBlockRegistry`，此处通常省略。
-   * 仅本地调试可注入完整 `block_registry.json` 等底稿。
-   */
-  globalBlockRegistry?: BlockRegistryData
-  /** 与 `export.json` 同 stem 的 `*.block_registry.json` 或服务端切片；在 global 之后、结构内 overlay 之前合并 */
-  exportBlockRegistry?: BlockRegistryData
+export interface MergeStructureDataInput {
+  /** 本请求已确定的 block 表（服务端或 Mock 给全） */
+  blockRegistry: BlockRegistryData
 }
 
-export function mergeStructureData(model: StructureData, options?: MergeStructureDataOptions): StructureDefinition {
-  const globalBlocks = options?.globalBlockRegistry?.blocks ?? {}
-  let blocks = mergeBlockRegistries(globalBlocks, options?.exportBlockRegistry?.blocks)
-  blocks = mergeBlockRegistries(blocks, model.blockRegistryOverlay?.blocks)
+export function mergeStructureData(model: StructureData, input: MergeStructureDataInput): StructureDefinition {
+  const blocks = { ...input.blockRegistry.blocks }
   return {
     schemaVersion: model.schemaVersion,
     mode: 'voxelPalette',

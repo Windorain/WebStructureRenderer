@@ -4,20 +4,15 @@
  */
 
 import type {
-  BlockRegistryOverlayData,
   BlockRegistryData,
   FaceName,
   MaterialRegistryData,
-  MinimalCompletePayload,
   StructureData,
   StructureDefinition,
+  WikiRenderBundle,
   World,
 } from './types'
-import {
-  mergeMaterialRegistries,
-  mergeStructureData,
-  type MergeStructureDataOptions,
-} from './mergeScene'
+import { mergeStructureData, type MergeStructureDataInput } from './mergeScene'
 import {
   WORLD_DOCUMENT_SCHEMA_VERSION,
   embeddedStructure,
@@ -26,9 +21,6 @@ import {
 } from './worldPlayback'
 
 export const STRUCTURE_SCHEMA_VERSION = 6 as const
-
-/** 与磁盘 `blockRegistryOverlay.schemaVersion` 一致 */
-export const BLOCK_REGISTRY_OVERLAY_SCHEMA_VERSION = 1 as const
 
 const INITIAL_CAMERA_KEYS = new Set(['focusBlockId', 'frontFace', 'distance'])
 
@@ -105,25 +97,6 @@ function validatePalette(data: StructureData): void {
   }
 }
 
-function validateBlockRegistryOverlay(overlay: BlockRegistryOverlayData): void {
-  if (overlay.schemaVersion !== BLOCK_REGISTRY_OVERLAY_SCHEMA_VERSION) {
-    throw new Error(
-      `blockRegistryOverlay.schemaVersion 必须为 ${BLOCK_REGISTRY_OVERLAY_SCHEMA_VERSION}，当前为 ${overlay.schemaVersion}`,
-    )
-  }
-  if (!overlay.blocks || typeof overlay.blocks !== 'object') {
-    throw new Error('blockRegistryOverlay.blocks 须为对象')
-  }
-  for (const [k, v] of Object.entries(overlay.blocks)) {
-    if (typeof k !== 'string' || k.length === 0) {
-      throw new Error('blockRegistryOverlay.blocks 键须为非空字符串')
-    }
-    if (!v || typeof v !== 'object') {
-      throw new Error(`blockRegistryOverlay.blocks["${k}"] 须为对象`)
-    }
-  }
-}
-
 /** 磁盘 StructureData 形状与语义校验（schemaVersion 6） */
 export function validateStructureData(m: StructureData): void {
   if (m.schemaVersion !== STRUCTURE_SCHEMA_VERSION) {
@@ -135,10 +108,6 @@ export function validateStructureData(m: StructureData): void {
 
   validatePalette(m)
   validateCellGridUniform(m)
-
-  if (m.blockRegistryOverlay !== undefined) {
-    validateBlockRegistryOverlay(m.blockRegistryOverlay)
-  }
 
   const ic = m.initialCamera
   if (ic === undefined) return
@@ -168,20 +137,17 @@ export function validateStructureData(m: StructureData): void {
   }
 }
 
-export function loadStructureData(
-  raw: unknown,
-  options?: MergeStructureDataOptions,
-): StructureDefinition {
+export function loadStructureData(raw: unknown, input: MergeStructureDataInput): StructureDefinition {
   if (!raw || typeof raw !== 'object') throw new Error('StructureData 无效')
   const m = raw as Partial<StructureData>
   if (m.mode !== 'voxelPalette') throw new Error('仅支持 mode=voxelPalette')
   if (!m.cellGrid?.length) throw new Error('缺少 cellGrid')
   if (!m.palette?.length) throw new Error('缺少 palette')
   if ((m as { blocks?: unknown }).blocks !== undefined) {
-    throw new Error('StructureData 不应包含顶层 blocks；导出表请使用独立 *.block_registry.json 或 blockRegistryOverlay')
+    throw new Error('StructureData 不应包含顶层 blocks；方块外观请使用独立 block_registry 并在 WikiRenderBundle 中传入')
   }
   validateStructureData(m as StructureData)
-  return mergeStructureData(m as StructureData, options)
+  return mergeStructureData(m as StructureData, input)
 }
 
 /** 顶层 JSON 是否为 World（多帧）文档 */
@@ -220,8 +186,8 @@ export function validateWorldDocument(w: World): void {
  */
 export function loadWorldEmbeddedFrame(
   raw: unknown,
-  frameIndex?: number,
-  options?: MergeStructureDataOptions,
+  frameIndex: number | undefined,
+  input: MergeStructureDataInput,
 ): StructureDefinition {
   if (!isWorldDocument(raw)) throw new Error('不是 World 文档')
   const w = raw
@@ -235,22 +201,20 @@ export function loadWorldEmbeddedFrame(
       `World.frames[${idx}] 无内嵌 structure（仅 structureRef 的帧尚无法加载）`,
     )
   }
-  return loadStructureData(data, options)
+  return loadStructureData(data, input)
 }
 
 /** 自动识别顶层为 StructureData 或 World，返回当前可渲染的 StructureDefinition */
 export function loadStructureOrWorld(
   raw: unknown,
-  frameIndex?: number,
-  options?: MergeStructureDataOptions,
+  frameIndex: number | undefined,
+  input: MergeStructureDataInput,
 ): StructureDefinition {
   if (isWorldDocument(raw)) {
-    return loadWorldEmbeddedFrame(raw, frameIndex, options)
+    return loadWorldEmbeddedFrame(raw, frameIndex, input)
   }
-  return loadStructureData(raw, options)
+  return loadStructureData(raw, input)
 }
-
-const EMPTY_MATERIAL_REGISTRY: MaterialRegistryData = { schemaVersion: 0, materials: {} }
 
 function validateBlockRegistryData(r: BlockRegistryData, label: string): void {
   if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
@@ -270,40 +234,34 @@ function validateMaterialRegistryData(r: MaterialRegistryData, label: string): v
   }
 }
 
-/** 校验服务端下发的最小完备集形状（不含 StructureData 全量语义，语义由 loadStructureData 负责） */
-export function validateMinimalCompletePayload(p: MinimalCompletePayload): void {
-  if (!p || typeof p !== 'object') throw new Error('MinimalCompletePayload 无效')
-  if (!p.structure || typeof p.structure !== 'object') {
-    throw new Error('MinimalCompletePayload.structure 必填')
+/** 校验 Wiki 渲染包形状（document 的语义校验在 loadStructureData / validateWorldDocument 中） */
+export function validateWikiRenderBundle(b: WikiRenderBundle): void {
+  if (!b || typeof b !== 'object') throw new Error('WikiRenderBundle 无效')
+  if (b.document === undefined || b.document === null) {
+    throw new Error('WikiRenderBundle.document 必填')
   }
-  validateBlockRegistryData(p.blockRegistry, 'MinimalCompletePayload.blockRegistry')
-  validateMaterialRegistryData(p.materialRegistry, 'MinimalCompletePayload.materialRegistry')
+  validateBlockRegistryData(b.blockRegistry, 'WikiRenderBundle.blockRegistry')
+  validateMaterialRegistryData(b.materialRegistry, 'WikiRenderBundle.materialRegistry')
 }
 
-export interface ResolveFromMinimalCompleteResult {
+export interface WikiRenderResolveResult {
   definition: StructureDefinition
-  /** 已与空材质底稿合并，可直接交给 SimpleMaterialLibrary */
   materialRegistry: MaterialRegistryData
 }
 
 /**
- * 单次装配：校验 payload → StructureDefinition + 材质表（无隐式内置 block_registry）。
- * `extraMergeOptions` 仅用于本地调试（如 `devGlobalBlockRegistry`）。
+ * 单次装配：校验 bundle → StructureDefinition + 材质表（document 为 StructureData 或 World）。
  */
-export function resolveFromMinimalCompletePayload(
-  payload: MinimalCompletePayload,
-  extraMergeOptions?: MergeStructureDataOptions,
-): ResolveFromMinimalCompleteResult {
-  validateMinimalCompletePayload(payload)
-  const mergeOpts: MergeStructureDataOptions = {
-    ...extraMergeOptions,
-    exportBlockRegistry: payload.blockRegistry,
-  }
-  const definition = loadStructureData(payload.structure, mergeOpts)
-  const materialRegistry = mergeMaterialRegistries(EMPTY_MATERIAL_REGISTRY, payload.materialRegistry)
-  return { definition, materialRegistry }
+export function resolveWikiRenderBundle(
+  bundle: WikiRenderBundle,
+  frameIndex?: number,
+): WikiRenderResolveResult {
+  validateWikiRenderBundle(bundle)
+  const input: MergeStructureDataInput = { blockRegistry: bundle.blockRegistry }
+  const definition = loadStructureOrWorld(bundle.document, frameIndex, input)
+  return { definition, materialRegistry: bundle.materialRegistry }
 }
 
-export type { MergeStructureDataOptions } from './mergeScene'
-export { mergeMaterialRegistries } from './mergeScene'
-export type { BlockRegistryData, MaterialRegistryData, MinimalCompletePayload } from './types'
+export type { MergeStructureDataInput } from './mergeScene'
+export { mergeMaterialRegistries, mergeStructureData } from './mergeScene'
+export type { BlockRegistryData, MaterialRegistryData, WikiRenderBundle } from './types'

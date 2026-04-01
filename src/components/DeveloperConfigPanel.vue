@@ -1,22 +1,32 @@
 <script setup lang="ts">
 /**
- * 开发者专用：仅编辑可序列化覆盖项并写入 localStorage，保存后整页刷新。
- * 不 inject store、不调用 pipeline。
+ * 本地模拟服务端：选场景、上传/下载三件套、dev 覆盖项、开发者信息。
  */
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import { clearDevOverrides, saveDevOverrides } from '@/preview/devConfigOverrides'
-import { listStructureModuleIds } from '@/preview/structureModuleCatalog'
+import {
+  clearPersistedDevPreview,
+  persistDevPreviewPatch,
+} from '@/preview/previewConfig'
+import {
+  DEFAULT_PREVIEW_SCENE_ID,
+  isUploadedScene,
+  listSelectableSceneIds,
+  removeUploadedScene,
+  saveUploadedWikiRenderBundle,
+} from '@/preview/previewDevServer'
+import { validateWikiRenderBundle } from '@/render/pipeline'
+import type { WikiRenderBundle } from '@/render/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
-/** 构建时扫描 data/structures/*.json */
-const structureModuleIds = listStructureModuleIds()
+import pkg from '../../package.json'
 
 const props = defineProps<{
   mergedConfig: AppPreviewConfig
 }>()
 
+const selectableSceneIds = ref<string[]>([])
 const showBlockStatsSidebar = ref(false)
 const initialLayerWorldY = ref(-1)
 const initialProjectionMode = ref<ProjectionMode>('orthographic')
@@ -25,8 +35,22 @@ const iconSizePx = ref(128)
 const orthoHalf = ref(0.85)
 const clearColorHex = ref('#000000')
 const clearAlpha = ref(0)
-/** 选中的结构模块 id（空串 = 使用 appPreviewConfig 默认 minimalComplete） */
-const structureModuleId = ref('')
+const sceneId = ref('')
+const uploadSceneIdInput = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const devInfoLines = computed(() => {
+  const sid = props.mergedConfig.sceneId ?? ''
+  const resolved = sid === '' ? DEFAULT_PREVIEW_SCENE_ID : sid
+  const src = isUploadedScene(resolved) ? '浏览器上传（localStorage）' : '仓库 data/server/scenes'
+  return [
+    `场景 id（解析用）: ${resolved}`,
+    `持久化 sceneId: ${sid || '（空=默认）'}`,
+    `bundle 来源: ${src}`,
+    `import.meta.env.MODE: ${import.meta.env.MODE}`,
+    `应用版本: ${'version' in pkg && typeof pkg.version === 'string' ? pkg.version : '—'}`,
+  ]
+})
 
 function numToHex6(n: number): string {
   const u = n >>> 0
@@ -50,10 +74,11 @@ function syncFromMerged(): void {
   orthoHalf.value = c.blockIconCacheOptions.orthoHalf ?? 1.22
   clearColorHex.value = numToHex6(c.blockIconCacheOptions.clearColor ?? 0)
   clearAlpha.value = c.blockIconCacheOptions.clearAlpha ?? 0
-  structureModuleId.value = c.structureModuleId ?? ''
+  sceneId.value = c.sceneId ?? ''
 }
 
 onMounted(() => {
+  selectableSceneIds.value = listSelectableSceneIds()
   syncFromMerged()
 })
 
@@ -78,8 +103,8 @@ function applyAndReload(): void {
     return
   }
 
-  saveDevOverrides({
-    structureModuleId: structureModuleId.value,
+  persistDevPreviewPatch({
+    sceneId: sceneId.value,
     showBlockStatsSidebar: showBlockStatsSidebar.value,
     initialLayerWorldY: initialLayerWorldY.value,
     initialProjectionMode: initialProjectionMode.value,
@@ -95,7 +120,124 @@ function applyAndReload(): void {
 }
 
 function clearAndReload(): void {
-  clearDevOverrides()
+  clearPersistedDevPreview()
+  window.location.reload()
+}
+
+function triggerFilePick(): void {
+  fileInputRef.value?.click()
+}
+
+function pickName(
+  map: Map<string, string>,
+  ...names: string[]
+): string | undefined {
+  for (const n of names) {
+    const t = map.get(n.toLowerCase())
+    if (t !== undefined) return t
+  }
+  return undefined
+}
+
+async function onUploadFiles(ev: Event): Promise<void> {
+  const input = ev.target as HTMLInputElement
+  const files = input.files
+  input.value = ''
+  if (!files?.length) return
+
+  const map = new Map<string, string>()
+  for (const f of files) {
+    map.set(f.name.toLowerCase(), await f.text())
+  }
+
+  const docRaw = pickName(map, 'document.json', 'export.json')
+  const blockRaw = pickName(map, 'block_registry.json', 'export.block_registry.json')
+  const matRaw = pickName(map, 'material_registry.json', 'export.material_registry.json')
+
+  if (!docRaw || !blockRaw || !matRaw) {
+    window.alert('需要三个文件：document.json 或 export.json；block_registry 或 export.block_registry；material_registry 或 export.material_registry')
+    return
+  }
+
+  let document: unknown
+  try {
+    document = JSON.parse(docRaw) as unknown
+  } catch {
+    window.alert('document JSON 解析失败')
+    return
+  }
+
+  let blockRegistry: WikiRenderBundle['blockRegistry']
+  let materialRegistry: WikiRenderBundle['materialRegistry']
+  try {
+    blockRegistry = JSON.parse(blockRaw) as WikiRenderBundle['blockRegistry']
+    materialRegistry = JSON.parse(matRaw) as WikiRenderBundle['materialRegistry']
+  } catch {
+    window.alert('注册表 JSON 解析失败')
+    return
+  }
+
+  const bundle: WikiRenderBundle = { document, blockRegistry, materialRegistry }
+  try {
+    validateWikiRenderBundle(bundle)
+  } catch (e) {
+    window.alert(e instanceof Error ? e.message : String(e))
+    return
+  }
+
+  const id =
+    uploadSceneIdInput.value.trim() ||
+    (typeof document === 'object' &&
+      document !== null &&
+      'id' in document &&
+      typeof (document as { id: unknown }).id === 'string'
+      ? (document as { id: string }).id
+      : '')
+  if (!id) {
+    window.alert('请填写上传场景 id，或确保 document 含字符串 id')
+    return
+  }
+
+  try {
+    saveUploadedWikiRenderBundle(id, bundle)
+  } catch (e) {
+    window.alert(e instanceof Error ? e.message : String(e))
+    return
+  }
+
+  persistDevPreviewPatch({ sceneId: id })
+  window.location.reload()
+}
+
+function downloadCurrentBundle(): void {
+  const b = props.mergedConfig.wikiRenderBundle
+  const sid = props.mergedConfig.sceneId ?? DEFAULT_PREVIEW_SCENE_ID
+  const prefix = sid.replace(/[/\\:]/g, '_')
+  const trigger = (filename: string, text: string) => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+    a.download = `${prefix}.${filename}`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+  trigger('document.json', JSON.stringify(b.document, null, 2))
+  trigger('block_registry.json', JSON.stringify(b.blockRegistry, null, 2))
+  trigger('material_registry.json', JSON.stringify(b.materialRegistry, null, 2))
+}
+
+function removeUploadedAndReload(): void {
+  const sid = sceneId.value.trim() || props.mergedConfig.sceneId
+  if (!sid) {
+    window.alert('请先选择已上传的场景 id')
+    return
+  }
+  if (!isUploadedScene(sid)) {
+    window.alert('当前选中场景不是本地上传项')
+    return
+  }
+  if (!window.confirm(`删除本地上传场景「${sid}」？`)) return
+  removeUploadedScene(sid)
+  persistDevPreviewPatch({ sceneId: '' })
   window.location.reload()
 }
 </script>
@@ -107,34 +249,73 @@ function clearAndReload(): void {
   >
     <div class="wm-dev-panel-inner">
     <h2 class="wm-dev-panel-title">
-      开发者配置（本地覆盖）
+      开发者配置（本地模拟服务端）
     </h2>
     <p class="wm-dev-panel-hint">
-      保存后将写入 localStorage 并刷新页面；<code>showDeveloperPanel</code> 仅在 appPreviewConfig 中配置，不在此修改。
+      保存后将写入 localStorage 并刷新；数据目录为 <code>data/server/scenes</code>；上传覆盖存于浏览器。
     </p>
+
+    <div class="wm-dev-devinfo" role="region" aria-label="开发者信息">
+      <div class="wm-dev-devinfo-title">
+        开发者信息
+      </div>
+      <div
+        v-for="(line, i) in devInfoLines"
+        :key="i"
+        class="wm-dev-devinfo-line"
+      >
+        {{ line }}
+      </div>
+    </div>
+
     <div class="wm-dev-panel-grid">
       <label class="wm-dev-field wm-dev-field--full">
-        <span>结构文件（data/structures/*.json，构建时扫描）</span>
-        <select v-model="structureModuleId">
+        <span>场景 id（data/server/scenes/&lt;id&gt;/document.json）</span>
+        <select v-model="sceneId">
           <option value="">
-            默认（appPreviewConfig 中的 minimalComplete）
+            默认（{{ DEFAULT_PREVIEW_SCENE_ID }}）
           </option>
           <option
-            v-for="id in structureModuleIds"
+            v-for="id in selectableSceneIds"
             :key="id"
             :value="id"
           >
-            {{ id }}.json
+            {{ id }}{{ isUploadedScene(id) ? ' · 上传' : '' }}
           </option>
         </select>
       </label>
+
+      <div class="wm-dev-field wm-dev-field--full wm-dev-upload-row">
+        <label class="wm-dev-field">
+          <span>上传场景 id（可留空用 document.id）</span>
+          <input v-model="uploadSceneIdInput" type="text" spellcheck="false" placeholder="例如 my_scene">
+        </label>
+        <input
+          ref="fileInputRef"
+          type="file"
+          multiple
+          accept=".json,application/json"
+          class="wm-dev-file-hidden"
+          @change="onUploadFiles"
+        >
+        <button type="button" class="wm-dev-btn" @click="triggerFilePick">
+          上传三 JSON…
+        </button>
+        <button type="button" class="wm-dev-btn" @click="downloadCurrentBundle">
+          下载当前 bundle
+        </button>
+        <button type="button" class="wm-dev-btn wm-dev-btn--danger" @click="removeUploadedAndReload">
+          删除选中上传场景
+        </button>
+      </div>
+
       <label class="wm-dev-field wm-dev-field--row">
-        <input v-model="showBlockStatsSidebar" type="checkbox" />
+        <input v-model="showBlockStatsSidebar" type="checkbox">
         <span>方块统计侧栏</span>
       </label>
       <label class="wm-dev-field">
         <span>initialLayerWorldY（-1=全部层）</span>
-        <input v-model.number="initialLayerWorldY" type="number" step="1" />
+        <input v-model.number="initialLayerWorldY" type="number" step="1">
       </label>
       <label class="wm-dev-field">
         <span>初始投影</span>
@@ -149,23 +330,23 @@ function clearAndReload(): void {
       </label>
       <label class="wm-dev-field">
         <span>场景背景 #RRGGBB</span>
-        <input v-model="sceneBackgroundHex" type="text" spellcheck="false" />
+        <input v-model="sceneBackgroundHex" type="text" spellcheck="false">
       </label>
       <label class="wm-dev-field">
         <span>图标 sizePx</span>
-        <input v-model.number="iconSizePx" type="number" min="8" step="8" />
+        <input v-model.number="iconSizePx" type="number" min="8" step="8">
       </label>
       <label class="wm-dev-field">
         <span>图标 orthoHalf（越小越大）</span>
-        <input v-model.number="orthoHalf" type="number" min="0.1" step="0.01" />
+        <input v-model.number="orthoHalf" type="number" min="0.1" step="0.01">
       </label>
       <label class="wm-dev-field">
         <span>图标清屏色 #RRGGBB</span>
-        <input v-model="clearColorHex" type="text" spellcheck="false" />
+        <input v-model="clearColorHex" type="text" spellcheck="false">
       </label>
       <label class="wm-dev-field">
         <span>图标 clearAlpha（0=透明底）</span>
-        <input v-model.number="clearAlpha" type="number" min="0" max="1" step="0.05" />
+        <input v-model.number="clearAlpha" type="number" min="0" max="1" step="0.05">
       </label>
     </div>
     <div class="wm-dev-panel-actions">
@@ -181,7 +362,6 @@ function clearAndReload(): void {
 </template>
 
 <style scoped>
-/* 与主界面 NEI 分层条 / 视口底栏一致：浅灰外框 + 深色内凹内容区 + 浅色字 */
 .wm-dev-panel {
   margin-top: 10px;
   padding: 0;
@@ -222,11 +402,46 @@ function clearAndReload(): void {
   padding: 0 4px;
   border-radius: 0;
 }
+.wm-dev-devinfo {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--nei-inset-bg-mid);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+}
+.wm-dev-devinfo-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
+}
+.wm-dev-devinfo-line {
+  line-height: 1.5;
+  color: var(--nei-text-muted);
+  word-break: break-all;
+}
 .wm-dev-panel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 8px 14px;
   align-items: center;
+}
+.wm-dev-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.wm-dev-upload-row .wm-dev-field {
+  flex: 1;
+  min-width: 160px;
+}
+.wm-dev-file-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 .wm-dev-field {
   display: flex;

@@ -1,28 +1,21 @@
 /**
- * 预览页默认配置：最小完备集（结构 + block/material 表）、图标缓存参数等。
+ * 预览页默认配置：Wiki 渲染包（document + 注册表）、图标缓存参数等。
  */
 
-import electroDef from '@renderData/structures/industrial_electrolyzer.simple.json'
-import blockRegistryJson from '@renderData/registries/block_registry.json'
-import materialRegistryJson from '@renderData/registries/material_registry.json'
-
 import type { BlockIconCacheOptions } from '@/render/blockIconCache'
-import type { BlockRegistryData, MaterialRegistryData, MinimalCompletePayload, StructureData } from '@/render/types'
+import type { WikiRenderBundle } from '@/render/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
+import { defaultWikiRenderBundle } from './previewDevServer'
+
 export interface AppPreviewConfig {
-  /** 与服务端契约一致：一次 payload 内含 structure + blockRegistry + materialRegistry */
-  minimalComplete: MinimalCompletePayload
+  /** 与服务端契约一致：document（StructureData 或 World）+ blockRegistry + materialRegistry */
+  wikiRenderBundle: WikiRenderBundle
   /**
-   * 可选：仅本地/调试。在 mergeStructureData 合并链最前注入（模拟服务端全局库底稿）。
-   * 线上应省略，由 `minimalComplete.blockRegistry` 已含切片。
+   * 可选：`data/server/scenes/<id>` 场景 id；dev 持久化可覆盖。
+   * 为空时 `resolveAppPreviewConfig` 使用 `DEFAULT_PREVIEW_SCENE_ID` 拉取 bundle。
    */
-  devGlobalBlockRegistry?: BlockRegistryData
-  /**
-   * 可选：data/structures 下文件名（不含 .json），与 dev 扫描一致。
-   * 若 localStorage 覆盖指定，则 `minimalComplete` 由该 id 与同 stem 的导出表解析；否则以 `minimalComplete` 为准。
-   */
-  structureModuleId?: string
+  sceneId?: string
   blockIconCacheOptions: BlockIconCacheOptions
   /** -1 = 全部层 */
   initialLayerWorldY: number
@@ -37,11 +30,7 @@ export interface AppPreviewConfig {
 }
 
 export const defaultAppPreviewConfig: AppPreviewConfig = {
-  minimalComplete: {
-    structure: electroDef as StructureData,
-    blockRegistry: blockRegistryJson as BlockRegistryData,
-    materialRegistry: materialRegistryJson as MaterialRegistryData,
-  },
+  wikiRenderBundle: defaultWikiRenderBundle(),
   blockIconCacheOptions: {
     sizePx: 128,
     /** 正交相机半宽/半高，略小于库默认 1.22，使方块在精灵图中更大；再减小则更「拉近」 */

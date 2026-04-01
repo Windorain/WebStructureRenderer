@@ -4,6 +4,6 @@
  */
 export function main(): void {
   console.info(
-    '[adapter] 占位：实现时解析参数、读入上游数据、写出 data/structures/*.simple.json（schemaVersion 6, voxelPalette）。',
+    '[adapter] 占位：实现时解析参数、读入上游数据、写出 data/server/scenes/<id>/document.json（schemaVersion 6, voxelPalette）。',
   )
 }

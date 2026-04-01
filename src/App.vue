@@ -10,15 +10,14 @@ import DeveloperConfigPanel from '@/components/DeveloperConfigPanel.vue'
 import LayerPreviewBar from '@/components/LayerPreviewBar.vue'
 import StructureViewport from '@/components/StructureViewport.vue'
 import ToolTipBox from '@/components/ToolTipBox.vue'
-import { defaultAppPreviewConfig } from '@/preview/appPreviewConfig'
-import { buildActiveAppPreviewConfig } from '@/preview/devConfigOverrides'
+import { resolveAppPreviewConfig } from '@/preview/previewConfig'
 import { PreviewSceneContextKey } from '@/preview/context'
 import { createPreviewSceneStore } from '@/preview/previewSceneStore'
 import { usePreviewTooltip } from '@/preview/usePreviewTooltip'
 import { resolveBlockTooltip } from '@/render/blockTooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
-const mergedConfig = buildActiveAppPreviewConfig(defaultAppPreviewConfig)
+const mergedConfig = resolveAppPreviewConfig()
 const store = createPreviewSceneStore(mergedConfig)
 provide(PreviewSceneContextKey, store)
 
