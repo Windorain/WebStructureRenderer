@@ -5,7 +5,7 @@
  *   StructureDefinition
  *     → buildVoxelVolume
  *     → 可选 layerPreview：effectiveVoxelState
- *     → 遍历格点：邻格暴露则该朝向外露（见 neighborCulling）
+ *     → 遍历格点：生成 Quad 前做邻接剔除（含玻璃–玻璃共面，见 neighborCulling）
  *     → layersForFace；meshKind（非 WebGLRenderer）为 SimpleCube 等
  */
 
@@ -81,7 +81,7 @@ export async function buildSimpleMesh(
             sizeRow,
             layerPreview,
           )
-          if (!shouldExposeFaceTowardNeighbor(neighborState, def.blocks)) continue
+          if (!shouldExposeFaceTowardNeighbor(state, neighborState, def.blocks)) continue
 
           const layerDefs = layersForFace(block, face)
           if (!layerDefs.length) continue
