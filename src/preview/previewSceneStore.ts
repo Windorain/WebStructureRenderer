@@ -23,7 +23,7 @@ import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
 import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
 import type { LayerPreviewMode } from '@/render/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
-import { loadStructureData } from '@/render/pipeline'
+import { loadStructureOrWorld } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
 import type { StructureDefinition } from '@/render/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
@@ -120,7 +120,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     loadStatus.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
-      const def = loadStructureData(config.structureData)
+      const def = loadStructureOrWorld(config.structureData)
       structureDefinition.value = def
       const lib = new SimpleMaterialLibrary(config.materialRegistry)
       materialLibrary.value = lib

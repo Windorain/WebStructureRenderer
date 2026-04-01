@@ -1,9 +1,16 @@
 /**
  * 数据入口：unknown → StructureData 校验 → mergeStructureData → StructureDefinition（无 Three）。
+ * 支持顶层为 **World**（多帧）时取某一内嵌帧的 StructureData。
  */
 
-import type { FaceName, StructureData, StructureDefinition } from './types'
+import type { FaceName, StructureData, StructureDefinition, World } from './types'
 import { mergeStructureData } from './mergeScene'
+import {
+  WORLD_DOCUMENT_SCHEMA_VERSION,
+  embeddedStructure,
+  frameAt,
+  getDefaultFrameIndex,
+} from './worldPlayback'
 
 export const STRUCTURE_SCHEMA_VERSION = 6 as const
 
@@ -133,4 +140,62 @@ export function loadStructureData(raw: unknown): StructureDefinition {
   }
   validateStructureData(m as StructureData)
   return mergeStructureData(m as StructureData)
+}
+
+/** 顶层 JSON 是否为 World（多帧）文档 */
+export function isWorldDocument(raw: unknown): raw is World {
+  if (!raw || typeof raw !== 'object') return false
+  const o = raw as Record<string, unknown>
+  return Array.isArray(o.frames) && typeof o.id === 'string'
+}
+
+/** 校验 World 文档形状（内嵌帧会递归校验 StructureData） */
+export function validateWorldDocument(w: World): void {
+  if (w.schemaVersion !== WORLD_DOCUMENT_SCHEMA_VERSION) {
+    throw new Error(`World.schemaVersion 必须为 ${WORLD_DOCUMENT_SCHEMA_VERSION}`)
+  }
+  if (typeof w.id !== 'string' || w.id.length === 0) throw new Error('World.id 必填')
+  if (!Array.isArray(w.frames) || w.frames.length === 0) throw new Error('World.frames 不能为空')
+  let embedded = 0
+  for (let i = 0; i < w.frames.length; i++) {
+    const f = w.frames[i]
+    if (!f || typeof f !== 'object') throw new Error(`World.frames[${i}] 无效`)
+    if (f.structure !== undefined) {
+      embedded++
+      validateStructureData(f.structure)
+    }
+    if (f.structureRef !== undefined && typeof f.structureRef !== 'string') {
+      throw new Error(`World.frames[${i}].structureRef 须为字符串`)
+    }
+  }
+  if (embedded === 0) {
+    throw new Error('World 至少需要一帧含内嵌 structure（structureRef 远程加载尚未实现）')
+  }
+}
+
+/**
+ * 从 World 文档加载指定帧的内嵌 StructureData（仅支持 `frame.structure` 已嵌入；`structureRef` 待实现）。
+ */
+export function loadWorldEmbeddedFrame(raw: unknown, frameIndex?: number): StructureDefinition {
+  if (!isWorldDocument(raw)) throw new Error('不是 World 文档')
+  const w = raw
+  validateWorldDocument(w)
+  const idx = frameIndex !== undefined ? Math.floor(frameIndex) : getDefaultFrameIndex(w)
+  const frame = frameAt(w, idx)
+  if (!frame) throw new Error(`World 无帧索引 ${idx}`)
+  const data = embeddedStructure(frame)
+  if (!data) {
+    throw new Error(
+      `World.frames[${idx}] 无内嵌 structure（仅 structureRef 的帧尚无法加载）`,
+    )
+  }
+  return loadStructureData(data)
+}
+
+/** 自动识别顶层为 StructureData 或 World，返回当前可渲染的 StructureDefinition */
+export function loadStructureOrWorld(raw: unknown, frameIndex?: number): StructureDefinition {
+  if (isWorldDocument(raw)) {
+    return loadWorldEmbeddedFrame(raw, frameIndex)
+  }
+  return loadStructureData(raw)
 }

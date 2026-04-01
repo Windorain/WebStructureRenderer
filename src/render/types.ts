@@ -149,8 +149,12 @@ export interface VoxelVolume {
   get(column: number, row: number, zSlice: number): VoxelState
 }
 
-/** 多帧容器（可选；单帧场景可仅用 StructureData） */
-export interface WorldFrame {
+/**
+ * 逻辑一帧：内嵌 StructureData 或引用外部文件（由加载器解析）。
+ */
+export interface Frame {
+  /** 可选；与数组下标一致时可省略 */
+  index?: number
   /** 内嵌单帧结构；与 structureRef 二选一 */
   structure?: StructureData
   /** 相对 data/structures 的路径或 id，由加载器解析 */
@@ -159,9 +163,10 @@ export interface WorldFrame {
   label?: string
 }
 
-export interface WorldData {
+/** 多帧世界文档（磁盘 JSON）；与单文件 StructureData 区分：含 `frames`。 */
+export interface World {
   schemaVersion: number
   id: string
-  frames: WorldFrame[]
+  frames: Frame[]
   playback?: { loop?: boolean; defaultFrameIndex?: number }
 }
