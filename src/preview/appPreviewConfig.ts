@@ -1,23 +1,28 @@
 /**
- * 预览页默认配置：结构数据、材质表、图标缓存参数等。
+ * 预览页默认配置：最小完备集（结构 + block/material 表）、图标缓存参数等。
  */
 
 import electroDef from '@renderData/structures/industrial_electrolyzer.simple.json'
+import blockRegistryJson from '@renderData/registries/block_registry.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
 
 import type { BlockIconCacheOptions } from '@/render/blockIconCache'
-import type { MaterialRegistryData } from '@/render/types'
+import type { BlockRegistryData, MaterialRegistryData, MinimalCompletePayload, StructureData } from '@/render/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 export interface AppPreviewConfig {
-  /** 原始 JSON（经 pipeline 解析） */
-  structureData: unknown
+  /** 与服务端契约一致：一次 payload 内含 structure + blockRegistry + materialRegistry */
+  minimalComplete: MinimalCompletePayload
+  /**
+   * 可选：仅本地/调试。在 mergeStructureData 合并链最前注入（模拟服务端全局库底稿）。
+   * 线上应省略，由 `minimalComplete.blockRegistry` 已含切片。
+   */
+  devGlobalBlockRegistry?: BlockRegistryData
   /**
    * 可选：data/structures 下文件名（不含 .json），与 dev 扫描一致。
-   * 若 localStorage 覆盖指定，则 structureData 由该 id 解析；否则以 structureData 为准。
+   * 若 localStorage 覆盖指定，则 `minimalComplete` 由该 id 与同 stem 的导出表解析；否则以 `minimalComplete` 为准。
    */
   structureModuleId?: string
-  materialRegistry: MaterialRegistryData
   blockIconCacheOptions: BlockIconCacheOptions
   /** -1 = 全部层 */
   initialLayerWorldY: number
@@ -32,8 +37,11 @@ export interface AppPreviewConfig {
 }
 
 export const defaultAppPreviewConfig: AppPreviewConfig = {
-  structureData: electroDef,
-  materialRegistry: materialRegistryJson as MaterialRegistryData,
+  minimalComplete: {
+    structure: electroDef as StructureData,
+    blockRegistry: blockRegistryJson as BlockRegistryData,
+    materialRegistry: materialRegistryJson as MaterialRegistryData,
+  },
   blockIconCacheOptions: {
     sizePx: 128,
     /** 正交相机半宽/半高，略小于库默认 1.22，使方块在精灵图中更大；再减小则更「拉近」 */

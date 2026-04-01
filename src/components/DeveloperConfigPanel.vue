@@ -25,7 +25,7 @@ const iconSizePx = ref(128)
 const orthoHalf = ref(0.85)
 const clearColorHex = ref('#000000')
 const clearAlpha = ref(0)
-/** 选中的结构模块 id（空串 = 使用 appPreviewConfig 默认 structureData） */
+/** 选中的结构模块 id（空串 = 使用 appPreviewConfig 默认 minimalComplete） */
 const structureModuleId = ref('')
 
 function numToHex6(n: number): string {
@@ -117,7 +117,7 @@ function clearAndReload(): void {
         <span>结构文件（data/structures/*.json，构建时扫描）</span>
         <select v-model="structureModuleId">
           <option value="">
-            默认（appPreviewConfig 中的 structureData）
+            默认（appPreviewConfig 中的 minimalComplete）
           </option>
           <option
             v-for="id in structureModuleIds"

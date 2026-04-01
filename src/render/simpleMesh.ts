@@ -67,6 +67,7 @@ export async function buildSimpleMesh(
         if (!block) continue
 
         const meshKind = block.meshKind ?? 'SimpleCube'
+        if (meshKind === 'Unknown') continue
         if (meshKind !== 'SimpleCube') {
           throw new Error(`未实现的网格构建策略: ${meshKind}`)
         }

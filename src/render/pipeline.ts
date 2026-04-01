@@ -3,8 +3,21 @@
  * 支持顶层为 **World**（多帧）时取某一内嵌帧的 StructureData。
  */
 
-import type { BlockRegistryOverlayData, FaceName, StructureData, StructureDefinition, World } from './types'
-import { mergeStructureData } from './mergeScene'
+import type {
+  BlockRegistryOverlayData,
+  BlockRegistryData,
+  FaceName,
+  MaterialRegistryData,
+  MinimalCompletePayload,
+  StructureData,
+  StructureDefinition,
+  World,
+} from './types'
+import {
+  mergeMaterialRegistries,
+  mergeStructureData,
+  type MergeStructureDataOptions,
+} from './mergeScene'
 import {
   WORLD_DOCUMENT_SCHEMA_VERSION,
   embeddedStructure,
@@ -155,17 +168,20 @@ export function validateStructureData(m: StructureData): void {
   }
 }
 
-export function loadStructureData(raw: unknown): StructureDefinition {
+export function loadStructureData(
+  raw: unknown,
+  options?: MergeStructureDataOptions,
+): StructureDefinition {
   if (!raw || typeof raw !== 'object') throw new Error('StructureData 无效')
   const m = raw as Partial<StructureData>
   if (m.mode !== 'voxelPalette') throw new Error('仅支持 mode=voxelPalette')
   if (!m.cellGrid?.length) throw new Error('缺少 cellGrid')
   if (!m.palette?.length) throw new Error('缺少 palette')
   if ((m as { blocks?: unknown }).blocks !== undefined) {
-    throw new Error('StructureData 不应包含顶层 blocks；机器生成片段请使用 blockRegistryOverlay')
+    throw new Error('StructureData 不应包含顶层 blocks；导出表请使用独立 *.block_registry.json 或 blockRegistryOverlay')
   }
   validateStructureData(m as StructureData)
-  return mergeStructureData(m as StructureData)
+  return mergeStructureData(m as StructureData, options)
 }
 
 /** 顶层 JSON 是否为 World（多帧）文档 */
@@ -202,7 +218,11 @@ export function validateWorldDocument(w: World): void {
 /**
  * 从 World 文档加载指定帧的内嵌 StructureData（仅支持 `frame.structure` 已嵌入；`structureRef` 待实现）。
  */
-export function loadWorldEmbeddedFrame(raw: unknown, frameIndex?: number): StructureDefinition {
+export function loadWorldEmbeddedFrame(
+  raw: unknown,
+  frameIndex?: number,
+  options?: MergeStructureDataOptions,
+): StructureDefinition {
   if (!isWorldDocument(raw)) throw new Error('不是 World 文档')
   const w = raw
   validateWorldDocument(w)
@@ -215,13 +235,75 @@ export function loadWorldEmbeddedFrame(raw: unknown, frameIndex?: number): Struc
       `World.frames[${idx}] 无内嵌 structure（仅 structureRef 的帧尚无法加载）`,
     )
   }
-  return loadStructureData(data)
+  return loadStructureData(data, options)
 }
 
 /** 自动识别顶层为 StructureData 或 World，返回当前可渲染的 StructureDefinition */
-export function loadStructureOrWorld(raw: unknown, frameIndex?: number): StructureDefinition {
+export function loadStructureOrWorld(
+  raw: unknown,
+  frameIndex?: number,
+  options?: MergeStructureDataOptions,
+): StructureDefinition {
   if (isWorldDocument(raw)) {
-    return loadWorldEmbeddedFrame(raw, frameIndex)
+    return loadWorldEmbeddedFrame(raw, frameIndex, options)
   }
-  return loadStructureData(raw)
+  return loadStructureData(raw, options)
 }
+
+const EMPTY_MATERIAL_REGISTRY: MaterialRegistryData = { schemaVersion: 0, materials: {} }
+
+function validateBlockRegistryData(r: BlockRegistryData, label: string): void {
+  if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
+    throw new Error(`${label}.schemaVersion 须为数字`)
+  }
+  if (!r.blocks || typeof r.blocks !== 'object') {
+    throw new Error(`${label}.blocks 须为对象`)
+  }
+}
+
+function validateMaterialRegistryData(r: MaterialRegistryData, label: string): void {
+  if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
+    throw new Error(`${label}.schemaVersion 须为数字`)
+  }
+  if (!r.materials || typeof r.materials !== 'object') {
+    throw new Error(`${label}.materials 须为对象`)
+  }
+}
+
+/** 校验服务端下发的最小完备集形状（不含 StructureData 全量语义，语义由 loadStructureData 负责） */
+export function validateMinimalCompletePayload(p: MinimalCompletePayload): void {
+  if (!p || typeof p !== 'object') throw new Error('MinimalCompletePayload 无效')
+  if (!p.structure || typeof p.structure !== 'object') {
+    throw new Error('MinimalCompletePayload.structure 必填')
+  }
+  validateBlockRegistryData(p.blockRegistry, 'MinimalCompletePayload.blockRegistry')
+  validateMaterialRegistryData(p.materialRegistry, 'MinimalCompletePayload.materialRegistry')
+}
+
+export interface ResolveFromMinimalCompleteResult {
+  definition: StructureDefinition
+  /** 已与空材质底稿合并，可直接交给 SimpleMaterialLibrary */
+  materialRegistry: MaterialRegistryData
+}
+
+/**
+ * 单次装配：校验 payload → StructureDefinition + 材质表（无隐式内置 block_registry）。
+ * `extraMergeOptions` 仅用于本地调试（如 `devGlobalBlockRegistry`）。
+ */
+export function resolveFromMinimalCompletePayload(
+  payload: MinimalCompletePayload,
+  extraMergeOptions?: MergeStructureDataOptions,
+): ResolveFromMinimalCompleteResult {
+  validateMinimalCompletePayload(payload)
+  const mergeOpts: MergeStructureDataOptions = {
+    ...extraMergeOptions,
+    exportBlockRegistry: payload.blockRegistry,
+  }
+  const definition = loadStructureData(payload.structure, mergeOpts)
+  const materialRegistry = mergeMaterialRegistries(EMPTY_MATERIAL_REGISTRY, payload.materialRegistry)
+  return { definition, materialRegistry }
+}
+
+export type { MergeStructureDataOptions } from './mergeScene'
+export { mergeMaterialRegistries } from './mergeScene'
+export type { BlockRegistryData, MaterialRegistryData, MinimalCompletePayload } from './types'

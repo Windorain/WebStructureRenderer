@@ -4,7 +4,9 @@
  * **结构 JSON schemaVersion**：`6` 起形状为 `palette` + `cellGrid`（Wiki 体素轴不变）。
  *
  * 数据流概览：
- *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry（+ 可选 blockRegistryOverlay）→ StructureDefinition
+ *   磁盘 JSON（StructureData）→ mergeStructureData（空或显式全局底稿 + 服务端/导出 block 片段 + 可选结构内 blockRegistryOverlay）→ StructureDefinition
+ *   Wiki 主路径：`MinimalCompletePayload` 一次装配；本地 dev 可在预览配置中显式注入 `devGlobalBlockRegistry` 兜底。
+ *   材质：空底稿 + payload.materialRegistry（mergeMaterialRegistries）→ SimpleMaterialLibrary
  *   StructureDefinition → VoxelVolume（get(column,row,zSlice) → VoxelState）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
  *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial
@@ -30,6 +32,20 @@ export interface MaterialRegistryData {
   materials: Record<string, MaterialEntry>
 }
 
+/**
+ * 服务端一次下发的「最小完备集」：结构 + 本次渲染所需的 block/material 注册表切片（键与 palette / 面引用一致即可）。
+ * 客户端主路径不再依赖库内内置全局 block_registry；合并链见 `mergeStructureData`（空全局 + 本字段 + 结构内 overlay）。
+ */
+export interface MinimalCompletePayload {
+  /** 可选；契约版本，便于灰机与库同步演进 */
+  payloadSchemaVersion?: number
+  structure: StructureData
+  blockRegistry: BlockRegistryData
+  materialRegistry: MaterialRegistryData
+  bundleId?: string
+  assetsBaseUrl?: string
+}
+
 export type FaceName = '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
 
 /** 多层贴花时：底层不透明，上层可透明镂空；`glass` 与 `cutout` 在材质上同义（alpha 镂空） */
@@ -47,8 +63,9 @@ export interface FaceLayersDef {
 
 /**
  * 方块几何构建策略（非 Three.js WebGLRenderer）；缺省为 SimpleCube。
+ * `Unknown`：导出白名单未命中或尚未在 Wiki 配置外观，网格阶段跳过体素。
  */
-export type BlockMeshKind = 'SimpleCube'
+export type BlockMeshKind = 'SimpleCube' | 'Unknown'
 
 /** 方块在六个方向上的贴图层；可只写 all 表示六面相同。面专属层与 `all` 合并，见 `layersForFace`。 */
 export interface BlockEntry {
@@ -57,6 +74,8 @@ export interface BlockEntry {
   description?: string
   /** 缺省为 `SimpleCube` */
   meshKind?: BlockMeshKind
+  /** 导出器写入的 GT 白名单逻辑类名，如 `MB_MACHINE`；仅提示，不参与渲染分支 */
+  logicalKind?: string
   /**
    * 当本格作为**邻格**时是否遮挡另一侧体素朝向本格的外露面；缺省 `true`。
    * 玻璃等须为 `false`。
@@ -133,7 +152,7 @@ export interface StructureData {
    * 值为 `palette` 下标。
    */
   cellGrid: number[][][]
-  /** 可选；与 `data/registries/block_registry.json` 深合并，键规则见 `blockRegistryResolve.ts` */
+  /** 可选；与合并后的 block 表深合并，键规则见 `blockRegistryResolve.ts` */
   blockRegistryOverlay?: BlockRegistryOverlayData
   initialCamera?: InitialCameraDef
 }

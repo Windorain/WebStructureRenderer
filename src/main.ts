@@ -11,6 +11,13 @@ import '@/styles/nei-tokens.css'
 /** 灰机 Wiki 页面中与模板约定的挂载点 */
 export const MOUNT_SELECTOR = '#wiki-multi-structure-render'
 
+export { resolveFromMinimalCompletePayload, validateMinimalCompletePayload } from './render/pipeline'
+export {
+  mergeManyBlockRegistryLayers,
+  sliceBlockRegistryByPalette,
+  sliceMaterialRegistryForBlocks,
+} from './render/registrySlice'
+
 export function mount(target?: string | Element | null) {
   const el =
     target == null

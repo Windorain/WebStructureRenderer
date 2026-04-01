@@ -23,7 +23,7 @@ import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
 import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
 import type { LayerPreviewMode } from '@/render/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
-import { loadStructureOrWorld } from '@/render/pipeline'
+import { resolveFromMinimalCompletePayload, type MergeStructureDataOptions } from '@/render/pipeline'
 import { buildSimpleMesh } from '@/render/simpleMesh'
 import type { StructureDefinition } from '@/render/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
@@ -120,13 +120,17 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     loadStatus.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
-      const def = loadStructureOrWorld(config.structureData)
-      structureDefinition.value = def
-      const lib = new SimpleMaterialLibrary(config.materialRegistry)
+      const extraMerge: MergeStructureDataOptions | undefined =
+        config.devGlobalBlockRegistry !== undefined
+          ? { globalBlockRegistry: config.devGlobalBlockRegistry }
+          : undefined
+      const resolved = resolveFromMinimalCompletePayload(config.minimalComplete, extraMerge)
+      structureDefinition.value = resolved.definition
+      const lib = new SimpleMaterialLibrary(resolved.materialRegistry)
       materialLibrary.value = lib
-      const iconCache = new BlockIconCache(lib, def.blocks, config.blockIconCacheOptions)
+      const iconCache = new BlockIconCache(lib, resolved.definition.blocks, config.blockIconCacheOptions)
       iconCache.setRevisionKey(
-        `${def.id}:${summarizeBlocksForCache(def.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'

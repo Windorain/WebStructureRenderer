@@ -1,5 +1,5 @@
 /**
- * block_registry 键解析：全局表多为 `registryId`；导出 overlay 可为 `registryId@meta`。
+ * block_registry 键解析：全局表多为 `registryId`；导出表与 overlay 可为 `registryId@meta`。
  * 见 StructureDataExporter 与 `.refs/DESIGN_MEMO` 约定。
  */
 
