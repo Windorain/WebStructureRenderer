@@ -12,7 +12,7 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 
 import type { StructureDefinition } from './types'
 import { FACE_NORMAL } from './faceConstants'
-import { buildVoxelGrid, findFirstVoxelWithBlockId } from './grid'
+import { buildVoxelVolume, findFirstVoxelWithBlockId } from './grid'
 import type { VoxelCell } from './grid'
 import { structureRowToWorldY } from './structureCoords'
 
@@ -43,7 +43,7 @@ export function voxelCenterWorld(
 export function findFirstFocusVoxel(def: StructureDefinition): VoxelCell | null {
   const ic = def.initialCamera
   if (!ic) return null
-  return findFirstVoxelWithBlockId(buildVoxelGrid(def), ic.focusBlockId)
+  return findFirstVoxelWithBlockId(buildVoxelVolume(def), ic.focusBlockId)
 }
 
 /**
@@ -122,7 +122,7 @@ export function applyInitialCamera(
     return
   }
 
-  const grid = buildVoxelGrid(def)
+  const grid = buildVoxelVolume(def)
   const cell = findFirstVoxelWithBlockId(grid, ic.focusBlockId)
   if (!cell) {
     controls.target.copy(fallbackTarget)

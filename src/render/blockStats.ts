@@ -1,33 +1,33 @@
 /**
- * 结构体素 → 按 blockId 计数（不含 air），供侧栏等只读展示。
+ * 结构体素 → 按 registryId 计数（不含 air），供侧栏等只读展示。
  * 与 `simpleMesh` 一致：`LayerPreviewMode` 下切片外体素视为空气。
  */
 
-import { buildVoxelGrid } from './grid'
-import { effectiveBlockId, type LayerPreviewMode } from './layerPreview'
+import { buildVoxelVolume } from './grid'
+import { effectiveVoxelState, type LayerPreviewMode } from './layerPreview'
+import { isAirState } from './types'
 import type { StructureDefinition } from './types'
-
-const AIR = 'air'
 
 export interface BlockStatRow {
   blockId: string
   count: number
 }
 
-/** 遍历体素网格，统计每种非空气方块出现次数（与 `effectiveBlockId` 语义一致） */
+/** 遍历体素体积，统计每种非空气方块出现次数（与 `effectiveVoxelState` 语义一致） */
 export function countBlocksById(
   def: StructureDefinition,
   layerPreview: LayerPreviewMode = 'all',
 ): Map<string, number> {
-  const grid = buildVoxelGrid(def)
-  const { sizeColumn, sizeRow, sizeZSlice } = grid
+  const volume = buildVoxelVolume(def)
+  const { sizeColumn, sizeRow, sizeZSlice } = volume
   const counts = new Map<string, number>()
 
   for (let zSlice = 0; zSlice < sizeZSlice; zSlice++) {
     for (let row = 0; row < sizeRow; row++) {
       for (let col = 0; col < sizeColumn; col++) {
-        const id = effectiveBlockId(grid, col, row, zSlice, sizeRow, layerPreview)
-        if (id === AIR) continue
+        const st = effectiveVoxelState(volume, col, row, zSlice, sizeRow, layerPreview)
+        if (isAirState(st)) continue
+        const id = st.registryId
         counts.set(id, (counts.get(id) ?? 0) + 1)
       }
     }

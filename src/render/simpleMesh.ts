@@ -1,32 +1,27 @@
 /**
- * Simple 模式：体素 → 外露面四边形 → 按材质批次合并 → THREE.Group。
+ * voxelPalette 模式：体素 → 外露面四边形 → 按材质批次合并 → THREE.Group。
  *
  * 数据流：
  *   StructureDefinition
- *     → buildVoxelGrid（符号 → 方块 id）
- *     → 可选 layerPreview：切片外视为空气（effectiveBlockId）
+ *     → buildVoxelVolume
+ *     → 可选 layerPreview：effectiveVoxelState
  *     → 遍历格点：非空气且邻格为空气则该朝向外露
- *     → layersForFace 得到材质层序列；每层生成一个 quad，按「材质+色调+层序+role」分批
- *     → mergeGeometries 合并同批几何体（批次元数据见 `batchDescriptor`）
- *     → 每面 UV / 顶点：`blockFaceUv.uv8ForFace` + `quadGeometryForFace`（与 MyCTMLib `QuadRender` + `UVDomain` 满格约定一致）
- *     → SimpleMaterialLibrary.getMaterialForBatch(descriptor)（纹理 / mcmeta / 动画由库负责）
- *   几何 dispose 在本模块；材质与纹理由库的 dispose() 释放。
+ *     → layersForFace；meshKind（非 WebGLRenderer）为 SimpleCube 等
  */
 
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { FaceName, LayerRole, StructureDefinition } from './types'
+import { isAirState } from './types'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
-import { buildVoxelGrid } from './grid'
+import { buildVoxelVolume } from './grid'
 import { layersForFace, listFaceNames } from './faceResolve'
 import { FACE_NORMAL, NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from './structureCoords'
 import { uv8ForFace } from './blockFaceUv'
-import { effectiveBlockId, type LayerPreviewMode } from './layerPreview'
-
-const AIR = 'air'
+import { effectiveVoxelState, type LayerPreviewMode } from './layerPreview'
 
 export interface BuildSimpleMeshOptions {
   /** 默认 `all`：显示全部；指定 `worldY` 时仅该世界体素 Y 层（0=底） */
@@ -42,7 +37,6 @@ function effectiveLayerRole(layer: { layerRole?: LayerRole }, layerIdx: number):
   return layer.layerRole ?? (layerIdx === 0 ? 'base' : 'cutout')
 }
 
-
 export interface SimpleMeshResult {
   group: THREE.Group
   /** 仅释放合并后的几何体；材质由 SimpleMaterialLibrary.dispose 释放 */
@@ -55,8 +49,8 @@ export async function buildSimpleMesh(
   options?: BuildSimpleMeshOptions,
 ): Promise<SimpleMeshResult> {
   const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'
-  const grid = buildVoxelGrid(def)
-  const { sizeColumn, sizeRow, sizeZSlice } = grid
+  const volume = buildVoxelVolume(def)
+  const { sizeColumn, sizeRow, sizeZSlice } = volume
 
   const batches = new Map<string, { descriptor: BatchDescriptor; geometries: THREE.BufferGeometry[] }>()
   const faces = listFaceNames()
@@ -64,28 +58,28 @@ export async function buildSimpleMesh(
   for (let zSlice = 0; zSlice < sizeZSlice; zSlice++) {
     for (let row = 0; row < sizeRow; row++) {
       for (let col = 0; col < sizeColumn; col++) {
-        const id = effectiveBlockId(grid, col, row, zSlice, sizeRow, layerPreview)
-        if (id === AIR) continue
+        const state = effectiveVoxelState(volume, col, row, zSlice, sizeRow, layerPreview)
+        if (isAirState(state)) continue
 
-        const block = def.blocks[id]
+        const block = def.blocks[state.registryId]
         if (!block) continue
 
-        const rendererKind = block.renderer ?? 'SimpleCube'
-        if (rendererKind !== 'SimpleCube') {
-          throw new Error(`未实现的渲染器: ${rendererKind}`)
+        const meshKind = block.meshKind ?? 'SimpleCube'
+        if (meshKind !== 'SimpleCube') {
+          throw new Error(`未实现的网格构建策略: ${meshKind}`)
         }
 
         for (const face of faces) {
           const [dCol, dRow, dZ] = NEIGHBOR_STRUCTURE_DELTA[face]
-          const neighbor = effectiveBlockId(
-            grid,
+          const neighborState = effectiveVoxelState(
+            volume,
             col + dCol,
             row + dRow,
             zSlice + dZ,
             sizeRow,
             layerPreview,
           )
-          if (neighbor !== AIR) continue
+          if (!isAirState(neighborState)) continue
 
           const layerDefs = layersForFace(block, face)
           if (!layerDefs.length) continue
@@ -149,10 +143,6 @@ export async function buildSimpleMesh(
 
 /**
  * 单格单面四边形：column、zSlice 为体素索引；voxelY 为包围盒内体素层 Y 索引（经 structureRowToWorldY）；略沿法线偏移避免 z-fighting。
- *
- * **顶点**：与 MyCTMLib `QuadRender.drawFace` 中 `addVertexWithUV` 四条顶点顺序一致（Forge 面名见 `faceConstants`）。
- * **UV**：`blockFaceUv.uv8ForFace` 使用同一约定（满 tile 时 minU/maxU/minV/maxV → 0/1）。
- * 三角索引 `(0,1,2)(0,2,3)`。
  */
 /** 导出供物品栏 RTT 单方块烘焙复用（与体素网格同一套顶点/UV 约定） */
 export function quadGeometryForFace(
@@ -184,37 +174,37 @@ export function quadGeometryForFace(
   let q3: THREE.Vector3
 
   switch (face) {
-    case '+x': // EAST — QuadRender case EAST
+    case '+x':
       q0 = p(new THREE.Vector3(maxX, minY, maxZ))
       q1 = p(new THREE.Vector3(maxX, minY, minZ))
       q2 = p(new THREE.Vector3(maxX, maxY, minZ))
       q3 = p(new THREE.Vector3(maxX, maxY, maxZ))
       break
-    case '-x': // WEST
+    case '-x':
       q0 = p(new THREE.Vector3(minX, maxY, maxZ))
       q1 = p(new THREE.Vector3(minX, maxY, minZ))
       q2 = p(new THREE.Vector3(minX, minY, minZ))
       q3 = p(new THREE.Vector3(minX, minY, maxZ))
       break
-    case '+y': // UP
+    case '+y':
       q0 = p(new THREE.Vector3(maxX, maxY, maxZ))
       q1 = p(new THREE.Vector3(maxX, maxY, minZ))
       q2 = p(new THREE.Vector3(minX, maxY, minZ))
       q3 = p(new THREE.Vector3(minX, maxY, maxZ))
       break
-    case '-y': // DOWN
+    case '-y':
       q0 = p(new THREE.Vector3(minX, minY, maxZ))
       q1 = p(new THREE.Vector3(minX, minY, minZ))
       q2 = p(new THREE.Vector3(maxX, minY, minZ))
       q3 = p(new THREE.Vector3(maxX, minY, maxZ))
       break
-    case '+z': // SOUTH
+    case '+z':
       q0 = p(new THREE.Vector3(minX, maxY, maxZ))
       q1 = p(new THREE.Vector3(minX, minY, maxZ))
       q2 = p(new THREE.Vector3(maxX, minY, maxZ))
       q3 = p(new THREE.Vector3(maxX, maxY, maxZ))
       break
-    case '-z': // NORTH
+    case '-z':
       q0 = p(new THREE.Vector3(minX, maxY, minZ))
       q1 = p(new THREE.Vector3(maxX, maxY, minZ))
       q2 = p(new THREE.Vector3(maxX, minY, minZ))

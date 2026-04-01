@@ -1,15 +1,14 @@
 /**
- * Simple 模式（mode=simple）下的类型定义。
+ * Simple / voxelPalette 模式下的类型定义。
  *
- * **结构 JSON schemaVersion**：`5` 起形状字段为 `zSlices`（Wiki 体素轴，见 `StructureData`）；`4` 已废弃。
+ * **结构 JSON schemaVersion**：`6` 起形状为 `palette` + `cellGrid`（Wiki 体素轴不变）。
  *
  * 数据流概览：
  *   磁盘 JSON（StructureData）→ mergeStructureData + block_registry → StructureDefinition
- *   StructureDefinition → VoxelGrid（get(column,row,zSlice)，符号 → 方块 id）
+ *   StructureDefinition → VoxelVolume（get(column,row,zSlice) → VoxelState）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
- *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial，tick 驱动动画
- *   simpleMesh：体素 → BatchDescriptor 合并批次；面几何/UV 与 Forge 约定对齐（见 faceConstants、blockFaceUv）
- *   viewport/RenderViewport：WebGLRenderer + 透视/正交相机与 OrbitControls（与场景内容无关）
+ *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial
+ *   simpleMesh：体素 → BatchDescriptor；**WebGLRenderer** 在 viewport 中绘制
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
@@ -47,10 +46,9 @@ export interface FaceLayersDef {
 }
 
 /**
- * 方块几何生成策略；缺省为 SimpleCube（六面体素 + 面贴图）。
- * 后续可扩展用于管道、自定义 mesh 等。
+ * 方块几何构建策略（非 Three.js WebGLRenderer）；缺省为 SimpleCube。
  */
-export type BlockRendererKind = 'SimpleCube'
+export type BlockMeshKind = 'SimpleCube'
 
 /** 方块在六个方向上的贴图层；可只写 all 表示六面相同。面专属层与 `all` 合并，见 `layersForFace`。 */
 export interface BlockEntry {
@@ -58,7 +56,7 @@ export interface BlockEntry {
   /** 长说明；与 `label` 可同时存在，tooltip 中分行展示 */
   description?: string
   /** 缺省为 `SimpleCube` */
-  renderer?: BlockRendererKind
+  meshKind?: BlockMeshKind
   faces: {
     all?: FaceLayersDef
   } & Partial<Record<FaceName, FaceLayersDef>>
@@ -72,7 +70,7 @@ export interface BlockRegistryData {
 
 /**
  * 初始相机（可选块）：若存在则必须写全；用于轨道中心与「机器正面」朝外法线。
- * - `focusBlockId`：与 `symbolMap` 的值一致，网格中第一个匹配体素为焦点。
+ * - `focusBlockId`：与 palette 中某体素的 `registryId` 一致，网格中第一个匹配体素为焦点。
  * - `frontFace`：机器正面朝外的世界法线（默认朝北为 **-z**）。
  */
 export interface InitialCameraDef {
@@ -82,63 +80,88 @@ export interface InitialCameraDef {
   distance?: number
 }
 
+/** JSON 可序列化的 NBT 子集（嵌套对象/数组 + 叶子原语） */
+export type JsonNbt = Record<string, unknown>
+
 /**
- * Wiki 结构数据（磁盘 JSON，不含方块外观表）。
- *
- * **`zSlices`**：`zSlices[i]` 为沿 **世界 Z** 的第 i 个水平截面；每个截面为从上到下的 **行** 数组；
- * **行 0 = 结构几何顶部**（最高世界 Y）；行内字符从左到右为 **世界 X**（列）。
- * 索引 i 增大方向与渲染中体素中心 `zSlice + 0.5 - sizeZSlice/2` 一致（见 `voxelCenterWorld`）。
- *
- * 上游 GT / StructureLib 与本书写约定不同时，由仓库外 `scripts/` 适配层转换后再写入本格式。
+ * 单个体素逻辑状态（GTNH 1.7.10：registryId + meta + 可选 TE NBT）。
+ */
+export interface VoxelState {
+  registryId: string
+  meta: number
+  nbt?: JsonNbt
+}
+
+/** 与磁盘 palette 中空气条目一致 */
+export const AIR_VOXEL: VoxelState = { registryId: 'air', meta: 0 }
+
+/** 与磁盘/合并后 `palette` 中空气条目一致时使用 */
+export function isAirState(v: VoxelState): boolean {
+  return v.registryId === 'air'
+}
+
+/**
+ * 磁盘结构数据（schemaVersion 6）：调色板 + 三维整数网格（palette 下标）。
+ * `cellGrid[zSlice][row][column]`，轴约定与旧版 zSlices 相同。
  */
 export interface StructureData {
-  /** 当前简单结构格式为 `5`（`zSlices` + `initialCamera` 形状） */
-  schemaVersion: number
-  mode: 'simple'
+  schemaVersion: 6
+  mode: 'voxelPalette'
   id: string
   source?: { javaClass?: string; structurePiece?: string; note?: string }
-  /** 可选：仅作文档/工具提示，不参与解析 */
   axis?: {
-    /** 沿世界 Z 堆叠的切片下标 */
     zSlice?: string
-    /** 截面内行下标；0 = 顶行 */
     row?: string
-    /** 行内列 / 世界 X */
     column?: string
     spaceChar?: string
   }
+  /** 去重后的体素状态；须含空气项（registryId `air`） */
+  palette: VoxelState[]
   /**
-   * 沿 Z 的切片序列；`zSlices[i][row][col]` 为字符，经 `symbolMap` 映射为方块 id。
-   * 类型上等价于 `string[][]`：外层 = Z 切片，中层 = 行，内层字符串 = 一行列字符。
+   * 与 zSlices 同形：外层 Z 切片 → 行（顶行先）→ 列（世界 X）。
+   * 值为 `palette` 下标。
    */
-  zSlices: string[][]
-  symbolMap: Record<string, string>
+  cellGrid: number[][][]
   initialCamera?: InitialCameraDef
 }
 
 /**
- * 合并 block_registry 后的运行时定义：形状 + 符号表 + 方块外观表。
+ * 合并 block_registry 后的运行时定义。
  */
 export interface StructureDefinition {
-  schemaVersion: number
-  mode: 'simple'
+  schemaVersion: 6
+  mode: 'voxelPalette'
   id: string
-  zSlices: string[][]
-  symbolMap: Record<string, string>
+  palette: VoxelState[]
+  cellGrid: number[][][]
   blocks: Record<string, BlockEntry>
   initialCamera?: InitialCameraDef
 }
 
 /**
- * 体素查询：索引 (column, row, zSlice) 与 `zSlices[zSlice][row][column]` 一致；
- * **row 0 = 顶行**（最高 Y）。`get` 返回方块逻辑 id；空气为 `air`。
+ * 体素查询：索引 (column, row, zSlice) 与 `cellGrid[zSlice][row][column]` 一致；
+ * **row 0 = 顶行**（最高 Y）。`get` 返回 `VoxelState`；空气为 `registryId === 'air'`。
  */
-export interface VoxelGrid {
-  /** 单行字符长度（列数 / 世界 X 方向格数） */
+export interface VoxelVolume {
   sizeColumn: number
-  /** 每个 Z 切片内的行数（世界 Y 方向格数） */
   sizeRow: number
-  /** Z 切片个数（世界 Z 方向格数） */
   sizeZSlice: number
-  get(column: number, row: number, zSlice: number): string
+  get(column: number, row: number, zSlice: number): VoxelState
+}
+
+/** 多帧容器（可选；单帧场景可仅用 StructureData） */
+export interface WorldFrame {
+  /** 内嵌单帧结构；与 structureRef 二选一 */
+  structure?: StructureData
+  /** 相对 data/structures 的路径或 id，由加载器解析 */
+  structureRef?: string
+  durationMs?: number
+  label?: string
+}
+
+export interface WorldData {
+  schemaVersion: number
+  id: string
+  frames: WorldFrame[]
+  playback?: { loop?: boolean; defaultFrameIndex?: number }
 }

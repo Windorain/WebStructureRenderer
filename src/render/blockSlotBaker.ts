@@ -35,9 +35,9 @@ export async function buildSingleBlockPreviewGroup(
   block: BlockEntry,
   library: SimpleMaterialLibrary,
 ): Promise<SingleBlockBakeResult> {
-  const rendererKind = block.renderer ?? 'SimpleCube'
-  if (rendererKind !== 'SimpleCube') {
-    throw new Error(`物品预览未实现渲染器: ${rendererKind}`)
+  const meshKind = block.meshKind ?? 'SimpleCube'
+  if (meshKind !== 'SimpleCube') {
+    throw new Error(`物品预览未实现网格策略: ${meshKind}`)
   }
 
   const sizeColumn = 1

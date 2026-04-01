@@ -1,10 +1,10 @@
 /**
- * 视口内鼠标 → 体素 blockId：Raycaster + 命中点推入体内 + 与 simpleMesh 一致的格点映射 + effectiveBlockId。
+ * 视口内鼠标 → 体素 registryId：Raycaster + 命中点推入体内 + 与 simpleMesh 一致的格点映射 + effectiveBlockId。
  */
 
 import * as THREE from 'three'
 
-import { buildVoxelGrid } from './grid'
+import { buildVoxelVolume } from './grid'
 import { effectiveBlockId, type LayerPreviewMode } from './layerPreview'
 import type { StructureDefinition } from './types'
 
@@ -59,17 +59,17 @@ export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null
 
   const inside = hit.point.clone().addScaledVector(normalWorld, -NUDGE)
 
-  const grid = buildVoxelGrid(def)
-  const { sizeColumn, sizeRow, sizeZSlice } = grid
+  const volume = buildVoxelVolume(def)
+  const { sizeColumn, sizeRow, sizeZSlice } = volume
 
   let { column, voxelY, zSlice } = worldPointToVoxelIndices(inside, sizeColumn, sizeRow, sizeZSlice)
   const row = sizeRow - 1 - voxelY
 
-  let id = effectiveBlockId(grid, column, row, zSlice, sizeRow, layerPreview)
+  let id = effectiveBlockId(volume, column, row, zSlice, sizeRow, layerPreview)
   if (id === AIR) {
     const p2 = hit.point.clone().addScaledVector(normalWorld, -NUDGE * 4)
     ;({ column, voxelY, zSlice } = worldPointToVoxelIndices(p2, sizeColumn, sizeRow, sizeZSlice))
-    id = effectiveBlockId(grid, column, sizeRow - 1 - voxelY, zSlice, sizeRow, layerPreview)
+    id = effectiveBlockId(volume, column, sizeRow - 1 - voxelY, zSlice, sizeRow, layerPreview)
   }
 
   if (id === AIR) return null

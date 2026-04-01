@@ -80,7 +80,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
   let disposeContent: (() => void) | null = null
   let meshBuildSeq = 0
 
-  const sizeRow = computed(() => structureDefinition.value?.zSlices[0]?.length ?? 0)
+  const sizeRow = computed(() => structureDefinition.value?.cellGrid[0]?.length ?? 0)
 
   const layerPreviewMode = computed<LayerPreviewMode>(() => {
     const y = layerWorldY.value

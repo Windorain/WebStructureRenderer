@@ -11,10 +11,10 @@ const blockRegistry = blockRegistryJson as BlockRegistryData
 export function mergeStructureData(model: StructureData): StructureDefinition {
   return {
     schemaVersion: model.schemaVersion,
-    mode: 'simple',
+    mode: 'voxelPalette',
     id: model.id,
-    zSlices: model.zSlices,
-    symbolMap: model.symbolMap,
+    palette: model.palette,
+    cellGrid: model.cellGrid,
     blocks: { ...blockRegistry.blocks },
     initialCamera: model.initialCamera,
   }
