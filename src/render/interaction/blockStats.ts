@@ -1,13 +1,15 @@
 /**
- * 结构体素 → 按 registryId 计数（不含 air），供侧栏等只读展示。
+ * 结构体素 → 按 block_registry 键计数（与 `blockRegistryKeyForPalette` 一致，非仅 registryId），供侧栏等只读展示。
  * 与 `simpleMesh` 一致：`LayerPreviewMode` 下切片外体素视为空气。
  */
 
+import { blockRegistryKeyForPalette } from '../data/blockRegistryResolve'
 import { buildVoxelVolume } from '../data/grid'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
 import { isAirState } from '../schema/types'
 import type { StructureDefinition } from '../schema/types'
 
+/** `blockId` 与 `StructureDefinition.blocks` / `BlockIconCache` 键一致：`registryId` 或 `registryId@meta` */
 export interface BlockStatRow {
   blockId: string
   count: number
@@ -27,7 +29,7 @@ export function countBlocksById(
       for (let col = 0; col < sizeColumn; col++) {
         const st = effectiveVoxelState(volume, col, row, zSlice, sizeRow, layerPreview)
         if (isAirState(st)) continue
-        const id = st.registryId
+        const id = blockRegistryKeyForPalette(st.registryId, st.meta)
         counts.set(id, (counts.get(id) ?? 0) + 1)
       }
     }

@@ -24,7 +24,10 @@ import { MC_ITEM_SLOT_BAKE_REVISION, summarizeBlocksForCache } from '@/render/in
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import { resolveRenderBundle } from '@/render/data/bundleResolve'
-import { buildBlockMesh } from '@/render/mesh/blockMesh'
+import {
+  buildBlockMesh,
+  formatUndefinedBlockDetailsForStatus,
+} from '@/render/mesh/blockMesh'
 import type { StructureDefinition } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { formatUnknownError } from '@/util/formatUnknownError'
@@ -175,16 +178,21 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
 
       const { stats } = result
       const hasMesh = result.group.children.length > 0
+      const undefinedAppend = formatUndefinedBlockDetailsForStatus(stats.undefinedBlockDetails)
+      const hasUndefined = stats.undefinedBlockDetails.length > 0
+
       if (hasMesh) {
-        statusBarTone.value = 'ok'
-        statusMessage.value = config.okMessage(def.id)
+        statusBarTone.value = hasUndefined ? 'warn' : 'ok'
+        statusMessage.value = config.okMessage(def.id) + undefinedAppend
       } else if (stats.nonAirVoxelCount === 0) {
         statusBarTone.value = 'ok'
         statusMessage.value =
           '无可视方块：当前分层下无体素或结构全为空气（可调整分层预览或检查 palette）'
       } else {
         statusBarTone.value = 'warn'
-        statusMessage.value = `无可见几何：${stats.nonAirVoxelCount} 个非空气体素未在 block_registry 中映射（palette 的 registryId@meta 须与注册表键一致）`
+        statusMessage.value =
+          `无可见几何：${stats.nonAirVoxelCount} 个非空气体素未在 block_registry 中映射（palette 的 registryId@meta 须与注册表键一致）` +
+          undefinedAppend
       }
     } catch (e) {
       statusBarTone.value = 'error'

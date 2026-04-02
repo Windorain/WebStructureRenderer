@@ -1,5 +1,5 @@
 /**
- * 视口内鼠标 → 体素 registryId：Raycaster + 命中点推入体内 + 与 simpleMesh 一致的格点映射 + effectiveBlockId。
+ * 视口内鼠标 → 体素 block_registry 键（effectiveBlockId）：Raycaster + 命中点推入体内 + 与 simpleMesh 一致的格点映射。
  */
 
 import * as THREE from 'three'

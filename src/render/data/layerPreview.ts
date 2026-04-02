@@ -5,6 +5,7 @@
 
 import type { VoxelState, VoxelVolume } from '../schema/types'
 import { AIR_VOXEL } from '../schema/types'
+import { blockRegistryKeyForPalette } from './blockRegistryResolve'
 import { structureRowToWorldY } from './grid'
 
 export type LayerPreviewMode = 'all' | { worldY: number }
@@ -30,7 +31,7 @@ export function effectiveVoxelState(
 }
 
 /**
- * 与 `effectiveVoxelState` 等价，仅返回 `registryId`（与旧 string 网格 id 对齐）。
+ * 与 `effectiveVoxelState` 等价，返回 **block_registry 键**（`registryId` 或 `registryId@meta`），与拾取/tooltip/侧栏一致。
  */
 export function effectiveBlockId(
   volume: VoxelVolume,
@@ -40,5 +41,6 @@ export function effectiveBlockId(
   sizeRow: number,
   mode: LayerPreviewMode,
 ): string {
-  return effectiveVoxelState(volume, column, row, zSlice, sizeRow, mode).registryId
+  const st = effectiveVoxelState(volume, column, row, zSlice, sizeRow, mode)
+  return blockRegistryKeyForPalette(st.registryId, st.meta)
 }
