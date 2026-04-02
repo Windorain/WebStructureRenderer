@@ -1,5 +1,5 @@
 /**
- * 本地 dev 入口 URL 查询参数（白名单）。与 dev/previewBootstrap 合并；不含 wikiRenderBundle。
+ * 本地 dev 入口 URL 查询参数（白名单）。与 dev/previewBootstrap 合并（覆盖默认值）；不含 wikiRenderBundle。
  */
 
 import type { WikiRendererFeatures } from '@/embed/wikiRendererContract'
@@ -22,9 +22,6 @@ function parseHex6(s: string | null): number | undefined {
   return parseInt(m[1], 16)
 }
 
-/**
- * 合并顺序见 dev/previewBootstrap：在 dev 默认之后、localStorage 之前应用。
- */
 export function parseUrlPreviewParams(
   search: string = typeof window !== 'undefined' ? window.location.search : '',
 ): Partial<AppPreviewConfig> {
@@ -74,6 +71,13 @@ export function parseUrlPreviewParams(
   if (orthoHalf !== null && orthoHalf !== '') {
     const n = Number(orthoHalf)
     if (Number.isFinite(n) && n > 0) bco.orthoHalf = n
+  }
+  const clearColor = parseHex6(params.get('clearColor'))
+  if (clearColor !== undefined) bco.clearColor = clearColor
+  const clearAlphaParam = params.get('clearAlpha')
+  if (clearAlphaParam !== null && clearAlphaParam !== '') {
+    const n = Number(clearAlphaParam)
+    if (Number.isFinite(n) && n >= 0 && n <= 1) bco.clearAlpha = n
   }
   if (Object.keys(bco).length > 0) {
     out.blockIconCacheOptions = bco as AppPreviewConfig['blockIconCacheOptions']

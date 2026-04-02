@@ -1,14 +1,10 @@
 <script setup lang="ts">
 /**
- * 本地入口初始状态：持久化补丁、带参链接、下载 bundle。
+ * 本地 dev：URL 带参链接、下载当前 bundle（数据来自 HTTP，非 localStorage）。
  */
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import {
-  clearPersistedDevPreview,
-  persistDevPreviewPatch,
-} from '@/dev/previewPersistence'
 import { DEFAULT_PREVIEW_SCENE_ID, listSelectableSceneIds } from '@/preview/previewDevServer'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
@@ -36,8 +32,8 @@ const devInfoLines = computed(() => {
   const resolved = sid === '' ? DEFAULT_PREVIEW_SCENE_ID : sid
   return [
     `场景 id（解析用）: ${resolved}`,
-    `持久化 sceneId: ${sid || '（空=默认）'}`,
-    `bundle 来源: GET /preview-api/scenes/:id/bundle（服务端按 palette 裁剪注册表）`,
+    `URL sceneId: ${sid || '（空=默认）'}`,
+    `bundle 来源: GET /preview-api/scenes/:id/bundle（wiki-mock；按 palette 裁剪注册表）`,
     `import.meta.env.MODE: ${import.meta.env.MODE}`,
     `应用版本: ${'version' in pkg && typeof pkg.version === 'string' ? pkg.version : '—'}`,
   ]
@@ -55,6 +51,9 @@ const previewEntryUrl = computed(() => {
   p.set('devPanel', showDeveloperPanel.value ? '1' : '0')
   const bg = parseHexColor(sceneBackgroundHex.value)
   if (bg !== null) p.set('bg', `#${(bg >>> 0).toString(16).padStart(6, '0')}`)
+  const cc = parseHexColor(clearColorHex.value)
+  if (cc !== null) p.set('clearColor', `#${(cc >>> 0).toString(16).padStart(6, '0')}`)
+  p.set('clearAlpha', String(clearAlpha.value))
   p.set('iconSizePx', String(Math.round(iconSizePx.value)))
   p.set('orthoHalf', String(orthoHalf.value))
   const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : ''
@@ -100,7 +99,7 @@ onMounted(async () => {
 
 watch(() => props.mergedConfig, syncFromMerged, { deep: true })
 
-function applyAndReload(): void {
+function applyUrlAndNavigate(): void {
   const bg = parseHexColor(sceneBackgroundHex.value)
   const cc = parseHexColor(clearColorHex.value)
   if (bg === null || cc === null) {
@@ -121,29 +120,13 @@ function applyAndReload(): void {
     return
   }
 
-  persistDevPreviewPatch({
-    sceneId: sceneId.value,
-    features: {
-      blockStatsSidebar: showBlockStatsSidebar.value,
-      layerBar: showLayerBar.value,
-      developerPanel: showDeveloperPanel.value,
-    },
-    initialLayerWorldY: initialLayerWorldY.value,
-    initialProjectionMode: initialProjectionMode.value,
-    sceneBackground: bg,
-    blockIconCacheOptions: {
-      sizePx: Math.round(iconSizePx.value),
-      orthoHalf: orthoHalf.value,
-      clearColor: cc,
-      clearAlpha: ca,
-    },
-  })
-  window.location.reload()
+  window.location.assign(previewEntryUrl.value)
 }
 
-function clearAndReload(): void {
-  clearPersistedDevPreview()
-  window.location.reload()
+function clearQueryAndReload(): void {
+  const path =
+    typeof window !== 'undefined' ? `${window.location.pathname}${window.location.hash}` : '/'
+  window.location.assign(path)
 }
 
 function copyPreviewLink(): void {
@@ -178,11 +161,12 @@ function downloadCurrentBundle(): void {
   >
     <div class="wm-dev-panel-inner">
       <h2 class="wm-dev-panel-title">
-        开发者配置（入口初始状态）
+        开发者配置（URL 参数）
       </h2>
       <p class="wm-dev-panel-hint">
-        保存后将写入 localStorage（<code>wmr-preview-dev-v3</code>）并刷新。场景数据由 Mock
-        <code>server/wiki-mock</code> 提供 <code>/preview-api</code>；开发请使用 <code>npm run dev</code>（同时启动 Mock 与 Vite）。
+        场景与 bundle 仅通过 HTTP（<code>/preview-api</code>、<code>/namespace</code> 经 Vite 代理到
+        <code>server/wiki-mock</code> 拉取）。本面板用查询参数表达「应用并跳转」，不写入 localStorage。开发请使用
+        <code>npm run dev</code>。
       </p>
 
       <div class="wm-dev-devinfo" role="region" aria-label="开发者信息">
@@ -210,7 +194,7 @@ function downloadCurrentBundle(): void {
 
       <div class="wm-dev-panel-grid">
         <label class="wm-dev-field wm-dev-field--full">
-          <span>场景 id（<code>data/server/scenes/&lt;id&gt;/</code> 四件套 JSON）</span>
+          <span>场景 id（wiki-mock 从磁盘目录提供对应 bundle）</span>
           <select v-model="sceneId">
             <option value="">
               默认（{{ DEFAULT_PREVIEW_SCENE_ID }}）
@@ -280,11 +264,11 @@ function downloadCurrentBundle(): void {
         </label>
       </div>
       <div class="wm-dev-panel-actions">
-        <button type="button" class="wm-dev-btn" @click="applyAndReload">
-          保存覆盖并刷新
+        <button type="button" class="wm-dev-btn" @click="applyUrlAndNavigate">
+          应用为 URL 并跳转
         </button>
-        <button type="button" class="wm-dev-btn wm-dev-btn--danger" @click="clearAndReload">
-          清除覆盖并刷新
+        <button type="button" class="wm-dev-btn wm-dev-btn--danger" @click="clearQueryAndReload">
+          清除查询参数并刷新
         </button>
       </div>
     </div>

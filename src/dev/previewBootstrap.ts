@@ -1,13 +1,11 @@
 /**
- * 本地 dev 入口：默认配置 + URL + localStorage → 完整 AppPreviewConfig（经 Mock HTTP 拉 bundle）。
+ * 本地 dev 入口：默认配置 + URL 查询参数 → AppPreviewConfig；场景数据仅经 Mock HTTP（GET /preview-api/…）拉取，不使用 localStorage。
  */
 
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
 import { defaultWikiEmbedUi } from '@/preview/appPreviewConfig'
 import { DEFAULT_PREVIEW_SCENE_ID, getWikiRenderBundle } from '@/preview/previewDevServer'
 import { parseUrlPreviewParams } from '@/preview/urlPreviewParams'
-
-import { loadPersistedDevPatch } from './previewPersistence'
 
 const defaultDevPreviewBase: Omit<AppPreviewConfig, 'wikiRenderBundle'> = {
   ...defaultWikiEmbedUi,
@@ -18,32 +16,26 @@ const defaultDevPreviewBase: Omit<AppPreviewConfig, 'wikiRenderBundle'> = {
   },
 }
 
-function resolveSceneIdForBundle(patch: Partial<AppPreviewConfig>): string {
-  const s = patch.sceneId
+function resolveSceneIdForBundle(config: Partial<AppPreviewConfig>): string {
+  const s = config.sceneId
   if (s === undefined || s === '') return DEFAULT_PREVIEW_SCENE_ID
   return s
 }
 
 export async function resolveDevPreviewConfigAsync(): Promise<AppPreviewConfig> {
   const url = parseUrlPreviewParams()
-  const patch = loadPersistedDevPatch()
-
   const { features: urlFeatures, ...urlRest } = url
-  const { features: patchFeatures, ...patchRest } = patch
 
   const mergedBase: Omit<AppPreviewConfig, 'wikiRenderBundle'> = {
     ...defaultDevPreviewBase,
     ...urlRest,
-    ...patchRest,
     features: {
       ...defaultDevPreviewBase.features,
       ...(urlFeatures ?? {}),
-      ...(patchFeatures ?? {}),
     },
     blockIconCacheOptions: {
       ...defaultDevPreviewBase.blockIconCacheOptions,
       ...(url.blockIconCacheOptions ?? {}),
-      ...(patch.blockIconCacheOptions ?? {}),
     },
   }
 

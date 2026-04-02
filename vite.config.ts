@@ -30,6 +30,10 @@ export default defineConfig({
         target: getPreviewHttpProxyTarget(),
         changeOrigin: true,
       },
+      '/namespace': {
+        target: getPreviewHttpProxyTarget(),
+        changeOrigin: true,
+      },
     },
   },
   resolve: {

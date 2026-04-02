@@ -1,10 +1,19 @@
 /**
- * 运行时通过 `/preview-api`（Mock wiki-mock + Vite 代理）拉取场景列表与 WikiRenderBundle。
+ * 运行时通过 `/preview-api`（Mock wiki-mock + Vite 代理）拉取场景列表与 WikiRenderBundle；
+ * Namespace/Data 通过 `/namespace`（同 wiki-mock，见 `huijiNamespace.ts`）。
  */
 
 import type { WikiRenderBundle } from '@/render/schema/types'
 
 import { fetchWikiRenderBundle } from './fetchWikiBundle'
+
+export {
+  encodeNamespaceAggrSegment,
+  fetchNamespaceDataAggregate,
+  fetchNamespaceDataByTitle,
+  fetchNamespaceDataList,
+  type NamespaceDataDoc,
+} from './huijiNamespace'
 
 const PREFIX = '/preview-api'
 

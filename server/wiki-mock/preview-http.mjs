@@ -10,6 +10,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { sliceWikiRenderBundleForHttp } from './bundleSliceServer.mjs'
+import { loadNamespaceDataFromDisk, runInMemoryAggregate } from './namespaceMemory.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
@@ -118,10 +119,72 @@ async function tryStaticFile(staticRoot, urlPath, res) {
   }
 }
 
-function createServer(scenesRoot, staticRoot) {
+/** 灰机风格 JSON 外层（Mock；与 src/preview/huijiNamespace.ts 成对） */
+function jsonHuijiOk(res, data) {
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+  res.end(JSON.stringify({ success: true, data }))
+}
+
+function jsonHuijiErr(res, status, code, message) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+  res.end(JSON.stringify({ success: false, error: { code, message } }))
+}
+
+function decodeBase64Url(s) {
+  let b64 = s.replace(/-/g, '+').replace(/_/g, '/')
+  const pad = b64.length % 4
+  if (pad) b64 += '='.repeat(4 - pad)
+  return Buffer.from(b64, 'base64').toString('utf8')
+}
+
+function createServer(scenesRoot, staticRoot, namespaceStore) {
   return http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host}`)
     const pathname = url.pathname
+
+    if (req.method === 'GET' && pathname === '/namespace/data') {
+      try {
+        jsonHuijiOk(res, namespaceStore.docs)
+      } catch (e) {
+        jsonHuijiErr(res, 500, 'INTERNAL', e instanceof Error ? e.message : String(e))
+      }
+      return
+    }
+
+    const mDataTitle = /^\/namespace\/data\/(.+)$/.exec(pathname)
+    if (req.method === 'GET' && mDataTitle) {
+      const title = decodeURIComponent(mDataTitle[1])
+      const doc = namespaceStore.byTitle.get(title)
+      if (!doc) {
+        jsonHuijiErr(res, 404, 'NOT_FOUND', `no Data namespace document for title: ${title}`)
+        return
+      }
+      jsonHuijiOk(res, doc)
+      return
+    }
+
+    const mAggr = /^\/namespace\/data_aggr\/(.+)$/.exec(pathname)
+    if (req.method === 'GET' && mAggr) {
+      const raw = mAggr[1]
+      if (!raw) {
+        jsonHuijiErr(res, 400, 'BAD_REQUEST', 'empty data_aggr segment')
+        return
+      }
+      try {
+        const json = decodeBase64Url(raw)
+        const pipeline = JSON.parse(json)
+        const result = runInMemoryAggregate(namespaceStore.docs, pipeline)
+        jsonHuijiOk(res, result)
+      } catch (e) {
+        jsonHuijiErr(
+          res,
+          400,
+          'BAD_PIPELINE',
+          e instanceof Error ? e.message : String(e),
+        )
+      }
+      return
+    }
 
     if (pathname === '/preview-api/scenes' && req.method === 'GET') {
       try {
@@ -219,6 +282,9 @@ function listenServer(server, port, host) {
 }
 
 async function main() {
+  const namespaceStore = await loadNamespaceDataFromDisk(scenesRoot)
+  console.log(`[wiki-mock] namespace Data: ${namespaceStore.docs.length} document(s) in memory`)
+
   let server
   let boundPort
   for (const port of PORT_CANDIDATES) {
@@ -226,7 +292,7 @@ async function main() {
       console.error('[wiki-mock] Invalid PREVIEW_HTTP_PORT')
       process.exit(1)
     }
-    server = createServer(scenesRoot, staticRoot)
+    server = createServer(scenesRoot, staticRoot, namespaceStore)
     const r = await listenServer(server, port, '127.0.0.1')
     if (r.ok) {
       boundPort = port
@@ -262,6 +328,9 @@ async function main() {
   if (staticRoot) console.log(`[wiki-mock] static root: ${staticRoot}`)
   console.log(`[wiki-mock] GET /preview-api/scenes`)
   console.log(`[wiki-mock] GET /preview-api/scenes/:id/bundle`)
+  console.log(`[wiki-mock] GET /namespace/data`)
+  console.log(`[wiki-mock] GET /namespace/data/:title`)
+  console.log(`[wiki-mock] GET /namespace/data_aggr/:base64url_pipeline`)
 }
 
 main().catch((e) => {
