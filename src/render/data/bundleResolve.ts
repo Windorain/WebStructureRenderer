@@ -14,14 +14,7 @@ import type {
   World,
 } from '../schema/types'
 import { mergeStructureData, type MergeStructureDataInput } from './mergeScene'
-import {
-  WORLD_DOCUMENT_SCHEMA_VERSION,
-  embeddedStructure,
-  frameAt,
-  getDefaultFrameIndex,
-} from './worldPlayback'
-
-export const STRUCTURE_SCHEMA_VERSION = 6 as const
+import { embeddedStructure, frameAt, getDefaultFrameIndex } from './worldPlayback'
 
 const INITIAL_CAMERA_KEYS = new Set(['focusBlockId', 'frontFace', 'distance'])
 
@@ -83,6 +76,11 @@ function validatePalette(data: StructureData): void {
     if (typeof p.meta !== 'number' || !Number.isInteger(p.meta) || p.meta < 0) {
       throw new Error(`palette[${i}].meta 须为非负整数`)
     }
+    if (p.facing !== undefined) {
+      if (typeof p.facing !== 'string' || !isFaceName(p.facing)) {
+        throw new Error(`palette[${i}].facing 须为 FaceName（+x/-x/+y/-y/+z/-z），当前: ${String(p.facing)}`)
+      }
+    }
   }
   for (let zi = 0; zi < cellGrid.length; zi++) {
     const slice = cellGrid[zi]
@@ -98,11 +96,8 @@ function validatePalette(data: StructureData): void {
   }
 }
 
-/** 磁盘 StructureData 形状与语义校验（schemaVersion 6） */
+/** 磁盘 StructureData 形状与语义校验 */
 export function validateStructureData(m: StructureData): void {
-  if (m.schemaVersion !== STRUCTURE_SCHEMA_VERSION) {
-    throw new Error(`StructureData.schemaVersion 必须为 ${STRUCTURE_SCHEMA_VERSION}，当前为 ${m.schemaVersion}`)
-  }
   if (m.mode !== 'voxelPalette') {
     throw new Error('仅支持 mode=voxelPalette')
   }
@@ -160,9 +155,6 @@ export function isWorldDocument(raw: unknown): raw is World {
 
 /** 校验 World 文档形状（内嵌帧会递归校验 StructureData） */
 export function validateWorldDocument(w: World): void {
-  if (w.schemaVersion !== WORLD_DOCUMENT_SCHEMA_VERSION) {
-    throw new Error(`World.schemaVersion 必须为 ${WORLD_DOCUMENT_SCHEMA_VERSION}`)
-  }
   if (typeof w.id !== 'string' || w.id.length === 0) throw new Error('World.id 必填')
   if (!Array.isArray(w.frames) || w.frames.length === 0) throw new Error('World.frames 不能为空')
   let embedded = 0
@@ -218,27 +210,18 @@ export function loadStructureOrWorld(
 }
 
 function validateBlockRegistryData(r: BlockRegistryData, label: string): void {
-  if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
-    throw new Error(`${label}.schemaVersion 须为数字`)
-  }
   if (!r.blocks || typeof r.blocks !== 'object') {
     throw new Error(`${label}.blocks 须为对象`)
   }
 }
 
 function validateMaterialRegistryData(r: MaterialRegistryData, label: string): void {
-  if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
-    throw new Error(`${label}.schemaVersion 须为数字`)
-  }
   if (!r.materials || typeof r.materials !== 'object') {
     throw new Error(`${label}.materials 须为对象`)
   }
 }
 
 function validateModelRegistryData(r: ModelRegistryData, label: string): void {
-  if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
-    throw new Error(`${label}.schemaVersion 须为数字`)
-  }
   if (!r.models || typeof r.models !== 'object') {
     throw new Error(`${label}.models 须为对象`)
   }

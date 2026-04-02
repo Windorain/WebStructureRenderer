@@ -1,8 +1,6 @@
 /**
  * Simple / voxelPalette 模式下的类型定义。
  *
- * 结构 JSON schemaVersion 6：`palette` + `cellGrid`。
- *
  * 数据流：HTTP 拉取 `RenderBundle` → 校验 → `resolveRenderBundle` → StructureDefinition；
  * 纹理经 `/preview-api/resources/...` 预取后注入 SimpleMaterialLibrary；材质动画参数以 `material_registry` 为准。
  */
@@ -35,7 +33,7 @@ export interface MaterialEntry {
 
 /** material_registry.json 根结构 */
 export interface MaterialRegistryData {
-  schemaVersion: number
+  schemaVersion?: number
   materials: Record<string, MaterialEntry>
 }
 
@@ -130,13 +128,13 @@ export interface ModelDocument {
 
 /** model_registry.json 根结构 */
 export interface ModelRegistryData {
-  schemaVersion: number
+  schemaVersion?: number
   models: Record<string, ModelDocument>
 }
 
 /** block_registry.json 根结构 */
 export interface BlockRegistryData {
-  schemaVersion: number
+  schemaVersion?: number
   blocks: Record<string, BlockEntry>
 }
 
@@ -157,10 +155,13 @@ export type JsonNbt = Record<string, unknown>
 
 /**
  * 单个体素逻辑状态（GTNH 1.7.10：registryId + meta + 可选 TE NBT）。
+ * 可选 `facing`：机器正面在世界中的外法线；缺省为 `-z`（北），与 block_registry 以北为正面烘焙一致。
  */
 export interface VoxelState {
   registryId: string
   meta: number
+  /** 正面外法线；省略时与旧数据一致，等价于朝北 `-z` */
+  facing?: FaceName
   nbt?: JsonNbt
 }
 
@@ -173,11 +174,11 @@ export function isAirState(v: VoxelState): boolean {
 }
 
 /**
- * 磁盘结构数据（schemaVersion 6）：调色板 + 三维整数网格（palette 下标）。
+ * 磁盘结构数据：调色板 + 三维整数网格（palette 下标）。
  * `cellGrid[zSlice][row][column]`，轴约定与旧版 zSlices 相同。
  */
 export interface StructureData {
-  schemaVersion: 6
+  schemaVersion?: number
   mode: 'voxelPalette'
   id: string
   source?: { javaClass?: string; structurePiece?: string; note?: string }
@@ -201,7 +202,7 @@ export interface StructureData {
  * 合并 block_registry 后的运行时定义。
  */
 export interface StructureDefinition {
-  schemaVersion: 6
+  schemaVersion?: number
   mode: 'voxelPalette'
   id: string
   palette: VoxelState[]
@@ -231,7 +232,7 @@ export interface Frame {
   index?: number
   /** 内嵌单帧结构；与 structureRef 二选一 */
   structure?: StructureData
-  /** 相对场景根的路径或 id，由加载器解析（如 data/server/scenes） */
+  /** 相对场景根的路径或 id，由加载器解析（如 data/scenes） */
   structureRef?: string
   durationMs?: number
   label?: string
@@ -239,7 +240,7 @@ export interface Frame {
 
 /** 多帧世界文档（磁盘 JSON）；与单文件 StructureData 区分：含 `frames`。 */
 export interface World {
-  schemaVersion: number
+  schemaVersion?: number
   id: string
   frames: Frame[]
   playback?: { loop?: boolean; defaultFrameIndex?: number }

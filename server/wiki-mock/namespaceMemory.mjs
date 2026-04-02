@@ -19,21 +19,10 @@ async function listValidSceneIds(scenesRoot) {
   }
   const ids = []
   for (const d of names) {
-    if (!d.isDirectory()) continue
-    const id = d.name
+    if (!d.isFile() || !d.name.endsWith('.json')) continue
+    const id = d.name.slice(0, -'.json'.length)
     if (!safeSceneId(id)) continue
-    const base = path.join(scenesRoot, id)
-    const need = ['document.json', 'block_registry.json', 'material_registry.json', 'model_registry.json']
-    let ok = true
-    for (const f of need) {
-      try {
-        await fsp.access(path.join(base, f))
-      } catch {
-        ok = false
-        break
-      }
-    }
-    if (ok) ids.push(id)
+    ids.push(id)
   }
   return ids.sort((a, b) => a.localeCompare(b))
 }
@@ -48,7 +37,7 @@ export async function loadNamespaceDataFromDisk(scenesRoot) {
   for (const sceneId of ids) {
     let updatedAt = null
     try {
-      const st = await fsp.stat(path.join(scenesRoot, sceneId, 'document.json'))
+      const st = await fsp.stat(path.join(scenesRoot, `${sceneId}.json`))
       updatedAt = new Date(st.mtimeMs).toISOString()
     } catch {
       /* ignore */

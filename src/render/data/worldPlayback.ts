@@ -4,9 +4,6 @@
 
 import type { Frame, StructureData, World } from '../schema/types'
 
-/** 与磁盘 `world.json` 等约定的 schemaVersion 对齐 */
-export const WORLD_DOCUMENT_SCHEMA_VERSION = 1 as const
-
 /** 解析默认帧下标（含 loop 时对帧数取模） */
 export function getDefaultFrameIndex(world: World): number {
   const n = world.frames.length

@@ -35,7 +35,7 @@ export function sliceBlockRegistryByPalette(
   for (const k of needed) {
     if (global.blocks[k] !== undefined) blocks[k] = global.blocks[k]
   }
-  return { schemaVersion: global.schemaVersion, blocks }
+  return { blocks }
 }
 
 function collectMaterialIdsFromBlockEntry(entry: BlockEntry): Set<string> {
@@ -61,8 +61,10 @@ function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<str
     const fm = el.faces ?? {}
     for (const f of Object.values(fm)) {
       if (!f) continue
-      if (f.layers) {
-        for (const L of f.layers) ids.add(stripTextureHash(L.texture))
+      if (f.layers && f.layers.length > 0) {
+        for (const L of f.layers) {
+          if (L.texture) ids.add(stripTextureHash(L.texture))
+        }
       } else if (f.texture) {
         ids.add(stripTextureHash(f.texture))
       }
@@ -90,16 +92,15 @@ export function sliceMaterialRegistryForBlocks(
     const m = global.materials[id]
     if (m !== undefined) materials[id] = m
   }
-  return { schemaVersion: global.schemaVersion, materials }
+  return { materials }
 }
 
 /** 多上传方/多包 block 片段顺序合并（与 mergeStructureData 内链一致） */
 export function mergeManyBlockRegistryLayers(layers: BlockRegistryData[]): BlockRegistryData {
-  if (layers.length === 0) return { schemaVersion: 1, blocks: {} }
+  if (layers.length === 0) return { blocks: {} }
   let blocks = mergeBlockRegistries({}, layers[0].blocks)
   for (let i = 1; i < layers.length; i++) {
     blocks = mergeBlockRegistries(blocks, layers[i].blocks)
   }
-  const schemaVersion = Math.max(...layers.map((l) => l.schemaVersion))
-  return { schemaVersion, blocks }
+  return { blocks }
 }

@@ -63,7 +63,7 @@ function sliceBlockRegistry(global: BlockRegistryData, neededKeys: Set<string>):
   for (const k of neededKeys) {
     if (global.blocks[k] !== undefined) blocks[k] = global.blocks[k]
   }
-  return { schemaVersion: global.schemaVersion, blocks }
+  return { blocks }
 }
 
 function collectMaterialIdsFromBlockEntry(entry: BlockEntry): Set<string> {
@@ -89,8 +89,11 @@ function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<str
     const fm = el.faces ?? {}
     for (const f of Object.values(fm)) {
       if (!f) continue
-      if (f.layers) {
-        for (const L of f.layers) ids.add(stripTextureHash(L.texture))
+      // 须与 modelMesh.modelFaceToLayerDefs 一致：`[]` 为假长度，回退 `texture`
+      if (f.layers && f.layers.length > 0) {
+        for (const L of f.layers) {
+          if (L.texture) ids.add(stripTextureHash(L.texture))
+        }
       } else if (f.texture) {
         ids.add(stripTextureHash(f.texture))
       }
@@ -117,7 +120,7 @@ function sliceMaterialRegistryForBlocks(
     const m = global.materials[id]
     if (m !== undefined) materials[id] = m
   }
-  return { schemaVersion: global.schemaVersion, materials }
+  return { materials }
 }
 
 function sliceModelRegistry(
@@ -132,7 +135,7 @@ function sliceModelRegistry(
   for (const id of modelIds) {
     if (fullModelRegistry.models[id] !== undefined) models[id] = fullModelRegistry.models[id]
   }
-  return { schemaVersion: fullModelRegistry.schemaVersion, models }
+  return { models }
 }
 
 /**

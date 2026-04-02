@@ -14,7 +14,8 @@ import { loadNamespaceDataFromDisk, runInMemoryAggregate } from './namespaceMemo
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
-const DEFAULT_DATA_SCENES = path.join(REPO_ROOT, 'data', 'server', 'scenes')
+const DEFAULT_DATA_SCENES = path.join(REPO_ROOT, 'data', 'scenes')
+const DEFAULT_DATA_REGISTRIES = path.join(REPO_ROOT, 'data', 'registries')
 const DEFAULT_DATA_RESOURCES = path.join(REPO_ROOT, 'data', 'resources')
 const PORT_FILE = path.join(REPO_ROOT, '.wmr-preview-port')
 
@@ -45,37 +46,63 @@ async function listSceneIds(scenesRoot) {
   } catch {
     return []
   }
-  const ids = []
+  const ids = new Set()
   for (const d of names) {
-    if (!d.isDirectory()) continue
-    const id = d.name
-    if (!safeSceneId(id)) continue
-    const base = path.join(scenesRoot, id)
-    const need = ['document.json', 'block_registry.json', 'material_registry.json', 'model_registry.json']
-    let ok = true
-    for (const f of need) {
+    if (d.isFile() && d.name.endsWith('.json')) {
+      const id = d.name.slice(0, -'.json'.length)
+      if (safeSceneId(id)) ids.add(id)
+      continue
+    }
+    if (d.isDirectory()) {
+      const id = d.name
+      if (!safeSceneId(id)) continue
       try {
-        await fsp.access(path.join(base, f))
+        await fsp.access(path.join(scenesRoot, id, 'document.json'))
+        ids.add(id)
       } catch {
-        ok = false
-        break
+        /* ignore */
       }
     }
-    if (ok) ids.push(id)
   }
-  return ids.sort((a, b) => a.localeCompare(b))
+  return [...ids].sort((a, b) => a.localeCompare(b))
 }
 
-async function readBundleJson(scenesRoot, sceneId) {
-  const base = path.join(scenesRoot, sceneId)
-  const read = async (name) => {
-    const raw = await fsp.readFile(path.join(base, name), 'utf8')
-    return JSON.parse(raw)
+/** 依次尝试路径，仅 ENOENT 继续；与迁移前 `data/server/scenes/<id>/document.json` 及当前 `data/scenes/<id>.json` 兼容 */
+async function readFirstExistingUtf8(paths) {
+  let last
+  for (const p of paths) {
+    try {
+      return await fsp.readFile(p, 'utf8')
+    } catch (e) {
+      last = e
+      if (e.code !== 'ENOENT') throw e
+    }
   }
-  const document = await read('document.json')
-  const blockRegistry = await read('block_registry.json')
-  const materialRegistry = await read('material_registry.json')
-  const modelRegistry = await read('model_registry.json')
+  throw last
+}
+
+async function readBundleJson(scenesRoot, registriesRoot, sceneId) {
+  const readRegistry = async (name) => {
+    const primary = path.join(registriesRoot, name)
+    try {
+      const raw = await fsp.readFile(primary, 'utf8')
+      return JSON.parse(raw)
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e
+      const fb = path.join(DEFAULT_DATA_REGISTRIES, name)
+      const raw = await fsp.readFile(fb, 'utf8')
+      return JSON.parse(raw)
+    }
+  }
+  const docRaw = await readFirstExistingUtf8([
+    path.join(scenesRoot, `${sceneId}.json`),
+    path.join(scenesRoot, sceneId, 'document.json'),
+    path.join(DEFAULT_DATA_SCENES, `${sceneId}.json`),
+  ])
+  const document = JSON.parse(docRaw)
+  const blockRegistry = await readRegistry('block_registry.json')
+  const materialRegistry = await readRegistry('material_registry.json')
+  const modelRegistry = await readRegistry('model_registry.json')
   return { document, blockRegistry, materialRegistry, modelRegistry }
 }
 
@@ -199,7 +226,7 @@ async function serveResourcesFile(res, resourcesRoot, relEncoded, sendBody) {
   }
 }
 
-function createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot) {
+function createServer(scenesRoot, registriesRoot, staticRoot, namespaceStore, resourcesRoot) {
   return http.createServer(async (req, res) => {
     const pathname = normalizePathnameSlashes(pathnameOnly(req))
 
@@ -292,7 +319,7 @@ function createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot) {
         return
       }
       try {
-        let bundle = await readBundleJson(scenesRoot, id)
+        let bundle = await readBundleJson(scenesRoot, registriesRoot, id)
         if (!process.env.PREVIEW_BUNDLE_NO_SLICE) {
           bundle = sliceRenderBundleForHttp(bundle)
         }
@@ -328,6 +355,9 @@ const { staticRoot } = parseArgs(process.argv)
 const scenesRoot = process.env.PREVIEW_DATA_SCENES
   ? path.resolve(process.env.PREVIEW_DATA_SCENES)
   : DEFAULT_DATA_SCENES
+const registriesRoot = process.env.PREVIEW_DATA_REGISTRIES
+  ? path.resolve(process.env.PREVIEW_DATA_REGISTRIES)
+  : DEFAULT_DATA_REGISTRIES
 const resourcesRoot = process.env.PREVIEW_DATA_RESOURCES
   ? path.resolve(process.env.PREVIEW_DATA_RESOURCES)
   : DEFAULT_DATA_RESOURCES
@@ -380,7 +410,7 @@ async function main() {
       console.error('[wiki-mock] Invalid PREVIEW_HTTP_PORT')
       process.exit(1)
     }
-    server = createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot)
+    server = createServer(scenesRoot, registriesRoot, staticRoot, namespaceStore, resourcesRoot)
     const r = await listenServer(server, port, '127.0.0.1')
     if (r.ok) {
       boundPort = port
@@ -411,7 +441,8 @@ async function main() {
     process.exit(0)
   })
 
-  console.log(`[wiki-mock] scenes root: ${scenesRoot}`)
+  console.log(`[wiki-mock] scenes root (single .json per id): ${scenesRoot}`)
+  console.log(`[wiki-mock] registries root: ${registriesRoot}`)
   console.log(`[wiki-mock] resources root: ${resourcesRoot}`)
   console.log(`[wiki-mock] listening http://127.0.0.1:${boundPort}`)
   if (staticRoot) console.log(`[wiki-mock] static root: ${staticRoot}`)

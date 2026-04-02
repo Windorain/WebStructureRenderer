@@ -23,6 +23,13 @@ import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelVolume } from '../data/grid'
 import { FACE_NORMAL } from './faceConstants'
 import { NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
+import {
+  applyRotationAboutCenter,
+  machineFrontQuaternion,
+  vec3ToFaceName,
+  voxelCenterWorld,
+  worldNormalFromRegistryFace,
+} from './facingMap'
 import { structureRowToWorldY } from '../data/grid'
 import { uv8ForFace } from './blockFaceUv'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
@@ -252,6 +259,17 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
 
   const doc = getModelDoc(ctx.def.modelRegistry, modelId)
 
+  const machineFront = state.facing ?? '-z'
+  const rotQ = machineFrontQuaternion(machineFront)
+  const voxelCenter = voxelCenterWorld(
+    col,
+    row,
+    zSlice,
+    ctx.sizeColumn,
+    ctx.sizeRow,
+    ctx.sizeZSlice,
+  )
+
   for (const el of doc.elements) {
     const { minX, maxX, minY, maxY, minZ, maxZ } = elementWorldBounds(
       el,
@@ -266,10 +284,12 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
     for (const mcFace of Object.keys(faces) as ModelFaceName[]) {
       const faceDef = faces[mcFace]
       if (!faceDef) continue
-      const worldFace = MC_FACE_TO_WORLD[mcFace]
-      if (!worldFace) continue
+      const registryWorldFace = MC_FACE_TO_WORLD[mcFace]
+      if (!registryWorldFace) continue
 
-      const [dCol, dRow, dZ] = NEIGHBOR_STRUCTURE_DELTA[worldFace]
+      const worldNormal = worldNormalFromRegistryFace(registryWorldFace, machineFront)
+      const neighborFace = vec3ToFaceName(worldNormal)
+      const [dCol, dRow, dZ] = NEIGHBOR_STRUCTURE_DELTA[neighborFace]
       const neighborState = effectiveVoxelState(
         ctx.volume,
         col + dCol,
@@ -283,7 +303,7 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
       const layerDefs = modelFaceToLayerDefs(faceDef)
       if (!layerDefs.length) continue
 
-      const uvs = normalizedUvForFace(worldFace, faceDef.uv)
+      const uvs = normalizedUvForFace(registryWorldFace, faceDef.uv)
 
       layerDefs.forEach((layer, layerIdx) => {
         const descriptor: BatchDescriptor = {
@@ -294,7 +314,7 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
         }
         const key = batchMaterialCacheKey(descriptor)
         const geom = quadGeometryForAxisFace(
-          worldFace,
+          registryWorldFace,
           minX,
           maxX,
           minY,
@@ -304,6 +324,7 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
           uvs,
           layerIdx,
         )
+        applyRotationAboutCenter(geom, voxelCenter, rotQ)
         let bucket = ctx.batches.get(key)
         if (!bucket) {
           bucket = { descriptor, geometries: [] }

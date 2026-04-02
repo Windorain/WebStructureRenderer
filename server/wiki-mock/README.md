@@ -10,7 +10,8 @@
 | GET | `/preview-api/scenes/:sceneId/bundle` | `RenderBundle` JSON（可按 palette 裁剪注册表） |
 | GET | `/preview-api/resources/*` | 资源文件（相对 `data/resources` 根）；如 `.../assets/<ns>/textures/...png` |
 
-场景根目录：仓库 `data/server/scenes/<id>/` 下四文件 `document.json`、`block_registry.json`、`material_registry.json`、`model_registry.json`。
+- **场景**：仓库 `data/scenes/<id>.json`（单文件，即 StructureData `document`）。
+- **注册表**：仓库 `data/registries/` 下 `block_registry.json`、`material_registry.json`、`model_registry.json`（全场景共用）。
 
 ## Namespace / Data（与 `src/preview/namespaceHttp.ts` 一致）
 
@@ -26,7 +27,8 @@
 ## 环境变量
 
 - `PREVIEW_HTTP_PORT`：固定监听端口；未设置时在 8787–8791 间尝试。
-- `PREVIEW_DATA_SCENES`：覆盖场景根目录。
+- `PREVIEW_DATA_SCENES`：覆盖场景目录（默认 `data/scenes`，内含 `*.json`）。
+- `PREVIEW_DATA_REGISTRIES`：覆盖注册表目录（默认 `data/registries`）。
 - `PREVIEW_DATA_RESOURCES`：覆盖资源根目录（默认 `data/resources`）。
 - `PREVIEW_BUNDLE_NO_SLICE=1`：关闭按 palette 裁剪（调试用）。
 

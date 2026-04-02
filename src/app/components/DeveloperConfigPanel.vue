@@ -33,7 +33,7 @@ const devInfoLines = computed(() => {
   return [
     `场景 id（解析用）: ${resolved}`,
     `URL sceneId: ${sid || '（空=默认）'}`,
-    `bundle 来源: GET /preview-api/scenes/:id/bundle（wiki-mock；按 palette 裁剪注册表）`,
+    `bundle 来源: GET /preview-api/scenes/:id/bundle（场景=data/scenes/<id>.json，注册表=data/registries；按 palette 裁剪）`,
     `import.meta.env.MODE: ${import.meta.env.MODE}`,
     `应用版本: ${'version' in pkg && typeof pkg.version === 'string' ? pkg.version : '—'}`,
   ]
@@ -84,7 +84,6 @@ function syncFromMerged(): void {
   orthoHalf.value = c.blockIconCacheOptions.orthoHalf ?? 1.22
   clearColorHex.value = numToHex6(c.blockIconCacheOptions.clearColor ?? 0)
   clearAlpha.value = c.blockIconCacheOptions.clearAlpha ?? 0
-  sceneId.value = c.sceneId ?? ''
 }
 
 onMounted(async () => {
@@ -98,6 +97,15 @@ onMounted(async () => {
 })
 
 watch(() => props.mergedConfig, syncFromMerged, { deep: true })
+
+/** sceneId 仅随 URL/父级传入的 scene 变化同步；勿放进 syncFromMerged，否则 mergedConfig 深层更新（如 bundle）会把下拉里刚选的值冲掉 */
+watch(
+  () => props.mergedConfig.sceneId,
+  (sid) => {
+    sceneId.value = sid ?? ''
+  },
+  { immediate: true },
+)
 
 function applyUrlAndNavigate(): void {
   const bg = parseHexColor(sceneBackgroundHex.value)
@@ -194,7 +202,7 @@ function downloadCurrentBundle(): void {
 
       <div class="wm-dev-panel-grid">
         <label class="wm-dev-field wm-dev-field--full">
-          <span>场景 id（wiki-mock 从磁盘目录提供对应 bundle）</span>
+          <span>场景 id（对应 data/scenes/&lt;id&gt;.json，注册表来自 data/registries）</span>
           <select v-model="sceneId">
             <option value="">
               默认（{{ DEFAULT_PREVIEW_SCENE_ID }}）

@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import electroStructure from '@renderData/server/scenes/industrial_electrolyzer.simple/document.json'
-import exportStructure from '@renderData/server/scenes/export/document.json'
-import exportBlockRegistryJson from '@renderData/server/scenes/export/block_registry.json'
-import exportMaterialRegistryJson from '@renderData/server/scenes/export/material_registry.json'
+import electroStructure from '@renderData/scenes/industrial_electrolyzer.simple.json'
+import exportStructure from '@renderData/scenes/export.json'
 import blockRegistryJson from '@renderData/registries/block_registry.json'
 import materialRegistryJson from '@renderData/registries/material_registry.json'
 import modelRegistryJson from '@renderData/registries/model_registry.json'
-import exportModelRegistryJson from '@renderData/server/scenes/export/model_registry.json'
 
 import { mergeManyBlockRegistryLayers, sliceBlockRegistryByPalette } from '@/render/data/registrySlice'
 import { loadStructureData, resolveRenderBundle } from '@/render/data/bundleResolve'
@@ -29,7 +26,6 @@ describe('resolveRenderBundle', () => {
     })
 
     expect(viaBundle.definition).toEqual(viaLoad)
-    expect(viaBundle.materialRegistry.schemaVersion).toBeGreaterThanOrEqual(materialRegistry.schemaVersion)
     expect(Object.keys(viaBundle.materialRegistry.materials).length).toBe(
       Object.keys(materialRegistry.materials).length,
     )
@@ -41,7 +37,6 @@ describe('resolveRenderBundle', () => {
     const materialRegistry = materialRegistryJson as MaterialRegistryData
     const modelRegistry = modelRegistryJson as unknown as ModelRegistryData
     const world: World = {
-      schemaVersion: 1,
       id: 'fixture.world',
       frames: [{ structure }],
     }
@@ -60,10 +55,10 @@ describe('resolveRenderBundle', () => {
     expect(fromWorld.definition).toEqual(fromStructure.definition)
   })
 
-  it('StructureDataExporter 导出三件套（export.json + 同 stem 注册表）可装配', () => {
-    const blockRegistry = exportBlockRegistryJson as BlockRegistryData
-    const materialRegistry = exportMaterialRegistryJson as MaterialRegistryData
-    const modelRegistry = exportModelRegistryJson as unknown as ModelRegistryData
+  it('export 场景单文件 + data/registries 可装配', () => {
+    const blockRegistry = blockRegistryJson as BlockRegistryData
+    const materialRegistry = materialRegistryJson as MaterialRegistryData
+    const modelRegistry = modelRegistryJson as unknown as ModelRegistryData
     const r = resolveRenderBundle({
       document: exportStructure,
       blockRegistry,
@@ -71,8 +66,7 @@ describe('resolveRenderBundle', () => {
       modelRegistry,
     })
     expect(r.definition.id).toBe('structuredata.exported')
-    expect(r.definition.blocks['gregtech:gt.blockcasings@11']?.meshKind).toBe('SimpleCube')
-    expect(r.definition.blocks['gregtech:gt.blockmachines@1000']).toBeDefined()
+    expect(r.definition.palette.length).toBeGreaterThan(1)
   })
 
   it('definition.blocks 与 blockRegistry.blocks 条目引用一致（库内仅浅拷贝顶层表）', () => {
@@ -92,7 +86,6 @@ describe('resolveRenderBundle', () => {
 describe('registrySlice', () => {
   it('sliceBlockRegistryByPalette 只保留 palette 相关键', () => {
     const structure: StructureData = {
-      schemaVersion: 6,
       mode: 'voxelPalette',
       id: 'test',
       palette: [
@@ -102,7 +95,6 @@ describe('registrySlice', () => {
       cellGrid: [[[0, 1]]],
     }
     const global: BlockRegistryData = {
-      schemaVersion: 1,
       blocks: {
         air: {
           meshKind: 'SimpleCube',
@@ -124,9 +116,8 @@ describe('registrySlice', () => {
   })
 
   it('mergeManyBlockRegistryLayers 顺序合并', () => {
-    const a: BlockRegistryData = { schemaVersion: 1, blocks: { x: { meshKind: 'SimpleCube', faces: {} } } }
+    const a: BlockRegistryData = { blocks: { x: { meshKind: 'SimpleCube', faces: {} } } }
     const b: BlockRegistryData = {
-      schemaVersion: 1,
       blocks: {
         x: {
           meshKind: 'SimpleCube',

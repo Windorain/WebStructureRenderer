@@ -47,7 +47,7 @@ function mergeBlockEntry(base: BlockEntry, partial: Partial<BlockEntry>): BlockE
   }
 }
 
-const EMPTY_MODEL_REGISTRY: ModelRegistryData = { schemaVersion: 1, models: {} }
+const EMPTY_MODEL_REGISTRY: ModelRegistryData = { models: {} }
 
 /**
  * 无基底时由片段补全；**meshKind 必填**（破坏性契约）。
@@ -99,7 +99,6 @@ export function mergeMaterialRegistries(
     return base
   }
   return {
-    schemaVersion: Math.max(base.schemaVersion, overlay.schemaVersion),
     materials: { ...base.materials, ...overlay.materials },
   }
 }
@@ -113,7 +112,6 @@ export function mergeModelRegistries(
     return base
   }
   return {
-    schemaVersion: Math.max(base.schemaVersion, overlay.schemaVersion),
     models: { ...base.models, ...overlay.models },
   }
 }
@@ -129,7 +127,6 @@ export function mergeStructureData(model: StructureData, input: MergeStructureDa
   const blocks = { ...input.blockRegistry.blocks }
   const modelRegistry = input.modelRegistry ?? EMPTY_MODEL_REGISTRY
   return {
-    schemaVersion: model.schemaVersion,
     mode: 'voxelPalette',
     id: model.id,
     palette: model.palette,

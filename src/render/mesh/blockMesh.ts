@@ -18,6 +18,7 @@ import { structureRowToWorldY } from '../data/grid'
 import { quadGeometryForFace } from './quadGeometry'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
 import { collectModelVoxelMeshes, type ModelMeshCollectContext } from './modelMesh'
+import { registryFaceForWorldFace } from './facingMap'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
@@ -92,7 +93,9 @@ export async function buildBlockMesh(
           )
           if (!shouldExposeFaceTowardNeighbor(state, neighborState, def.blocks)) continue
 
-          const layerDefs = layersForFace(block, face)
+          const registryFace =
+            state.facing !== undefined ? registryFaceForWorldFace(face, state.facing) : face
+          const layerDefs = layersForFace(block, registryFace)
           if (!layerDefs.length) continue
 
           const n = FACE_NORMAL[face]
