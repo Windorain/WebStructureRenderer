@@ -1,16 +1,15 @@
 /**
- * 预览应用配置：默认值 + localStorage 可序列化补丁 → 唯一装配入口 `resolveAppPreviewConfig`。
- * `wikiRenderBundle` 仅由 `previewDevServer.getWikiRenderBundle(sceneId)` 填入，不持久化整包。
+ * 预览应用配置：默认值 + URL 白名单 + localStorage 补丁 → resolveAppPreviewConfigAsync。
+ * 合并顺序（后者覆盖前者）：defaultAppPreviewConfigBase → parseUrlPreviewParams → loadPersistedDevPatch。
+ * wikiRenderBundle 由 getWikiRenderBundle(sceneId) 异步注入。
  */
 
 import type { AppPreviewConfig } from './appPreviewConfig'
-import { defaultAppPreviewConfig } from './appPreviewConfig'
+import { defaultAppPreviewConfigBase } from './appPreviewConfig'
 import { DEFAULT_PREVIEW_SCENE_ID, getWikiRenderBundle } from './previewDevServer'
+import { parseUrlPreviewParams } from './urlPreviewParams'
 
-/** 当前 dev 覆盖存储键（破坏性更新自 `wmr-dev-config-overrides`） */
 export const PREVIEW_DEV_STORAGE_KEY = 'wmr-preview-dev-v2'
-
-const LEGACY_DEV_STORAGE_KEY = 'wmr-dev-config-overrides'
 
 function resolveSceneIdForBundle(patch: Partial<AppPreviewConfig>): string {
   const s = patch.sceneId
@@ -19,49 +18,44 @@ function resolveSceneIdForBundle(patch: Partial<AppPreviewConfig>): string {
 }
 
 /**
- * 唯一对外入口：组装完整 `AppPreviewConfig`（含从 `data/server` 或上传解析的 `wikiRenderBundle`）。
+ * 组装完整 AppPreviewConfig（含从预览 HTTP 拉取的 wikiRenderBundle）。
  */
-export function resolveAppPreviewConfig(): AppPreviewConfig {
-  const base = defaultAppPreviewConfig
+export async function resolveAppPreviewConfigAsync(): Promise<AppPreviewConfig> {
+  const url = parseUrlPreviewParams()
   const patch = loadPersistedDevPatch()
-  const sceneIdForBundle = resolveSceneIdForBundle(patch)
-  const wikiRenderBundle = getWikiRenderBundle(sceneIdForBundle)
-
-  return {
-    ...base,
+  const mergedBase: Omit<AppPreviewConfig, 'wikiRenderBundle'> = {
+    ...defaultAppPreviewConfigBase,
+    ...url,
     ...patch,
-    wikiRenderBundle,
-    sceneId: patch.sceneId === '' || patch.sceneId === undefined ? undefined : patch.sceneId,
-    showDeveloperPanel: base.showDeveloperPanel,
     blockIconCacheOptions: {
-      ...base.blockIconCacheOptions,
+      ...defaultAppPreviewConfigBase.blockIconCacheOptions,
+      ...(url.blockIconCacheOptions ?? {}),
       ...(patch.blockIconCacheOptions ?? {}),
     },
-    okMessage: patch.okMessage ?? base.okMessage,
-    loadingMessage: patch.loadingMessage ?? base.loadingMessage,
+  }
+  const sceneIdForBundle = resolveSceneIdForBundle(mergedBase)
+  const wikiRenderBundle = await getWikiRenderBundle(sceneIdForBundle)
+
+  return {
+    ...mergedBase,
+    wikiRenderBundle,
+    sceneId: mergedBase.sceneId === '' || mergedBase.sceneId === undefined ? undefined : mergedBase.sceneId,
+    showDeveloperPanel: defaultAppPreviewConfigBase.showDeveloperPanel,
+    okMessage: mergedBase.okMessage ?? defaultAppPreviewConfigBase.okMessage,
+    loadingMessage: mergedBase.loadingMessage ?? defaultAppPreviewConfigBase.loadingMessage,
   }
 }
 
 export function loadPersistedDevPatch(): Partial<AppPreviewConfig> {
   if (typeof localStorage === 'undefined') return {}
   try {
-    let raw = localStorage.getItem(PREVIEW_DEV_STORAGE_KEY)
-    if (!raw) {
-      raw = localStorage.getItem(LEGACY_DEV_STORAGE_KEY)
-      if (raw) {
-        localStorage.setItem(PREVIEW_DEV_STORAGE_KEY, raw)
-      }
-    }
+    const raw = localStorage.getItem(PREVIEW_DEV_STORAGE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as Record<string, unknown>
     delete parsed.wikiRenderBundle
     delete parsed.showDeveloperPanel
     delete parsed.minimalComplete
     delete parsed.devGlobalBlockRegistry
-    if (typeof parsed.structureModuleId === 'string' && parsed.sceneId === undefined) {
-      parsed.sceneId = parsed.structureModuleId
-    }
-    delete parsed.structureModuleId
     return parsed as Partial<AppPreviewConfig>
   } catch {
     return {}
@@ -82,7 +76,6 @@ function buildSerializablePatch(patch: Partial<AppPreviewConfig>): Record<string
   return serializable
 }
 
-/** 持久化 dev UI 补丁（非整包 bundle） */
 export function persistDevPreviewPatch(patch: Partial<AppPreviewConfig>): void {
   if (typeof localStorage === 'undefined') return
   let prev: Record<string, unknown> = {}
@@ -92,7 +85,6 @@ export function persistDevPreviewPatch(patch: Partial<AppPreviewConfig>): void {
   } catch {
     prev = {}
   }
-  delete prev.structureModuleId
   const next = { ...prev, ...buildSerializablePatch(patch) }
   if (patch.sceneId === '') {
     delete next.sceneId
@@ -103,5 +95,4 @@ export function persistDevPreviewPatch(patch: Partial<AppPreviewConfig>): void {
 export function clearPersistedDevPreview(): void {
   if (typeof localStorage === 'undefined') return
   localStorage.removeItem(PREVIEW_DEV_STORAGE_KEY)
-  localStorage.removeItem(LEGACY_DEV_STORAGE_KEY)
 }

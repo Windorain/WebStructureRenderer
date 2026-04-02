@@ -1,6 +1,6 @@
 /**
- * 服务端可复用的纯函数：按 palette 从全局注册表切片、多段 block 表合并、按方块条目收集材质。
- * 非浏览器渲染主路径必选项。
+ * 按 palette 从全局注册表切片、多段 block 表合并、按方块条目收集材质。
+ * Wiki / 预览 HTTP 应在返回 WikiRenderBundle 前做等价裁剪（见 `scripts/bundleSliceServer.mjs`），避免嵌入页下载并解析全量注册表。
  */
 
 import { blockRegistryKeyForPalette } from './blockRegistryResolve'

@@ -1,19 +1,17 @@
 /**
- * 预览页默认配置：Wiki 渲染包（document + 注册表）、图标缓存参数等。
+ * 预览页默认配置（不含 wikiRenderBundle；由 resolveAppPreviewConfigAsync 注入）。
  */
 
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 import type { WikiRenderBundle } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
-import { defaultWikiRenderBundle } from './previewDevServer'
-
 export interface AppPreviewConfig {
   /** 与服务端契约一致：document + blockRegistry + materialRegistry + modelRegistry */
   wikiRenderBundle: WikiRenderBundle
   /**
    * 可选：`data/server/scenes/<id>` 场景 id；dev 持久化可覆盖。
-   * 为空时 `resolveAppPreviewConfig` 使用 `DEFAULT_PREVIEW_SCENE_ID` 拉取 bundle。
+   * 为空时使用 `DEFAULT_PREVIEW_SCENE_ID` 拉取 bundle。
    */
   sceneId?: string
   blockIconCacheOptions: BlockIconCacheOptions
@@ -21,7 +19,6 @@ export interface AppPreviewConfig {
   initialLayerWorldY: number
   initialProjectionMode: ProjectionMode
   sceneBackground: number
-  /** 是否在主界面展示方块统计侧栏（由嵌入方配置，无运行时开关） */
   showBlockStatsSidebar: boolean
   /** 是否挂载开发者配置面板（仅嵌入配置；不受 localStorage 覆盖）。生产嵌入请显式传 false */
   showDeveloperPanel: boolean
@@ -29,11 +26,10 @@ export interface AppPreviewConfig {
   okMessage: (modelId: string) => string
 }
 
-export const defaultAppPreviewConfig: AppPreviewConfig = {
-  wikiRenderBundle: defaultWikiRenderBundle(),
+/** 不含 wikiRenderBundle；与预览 HTTP 拉取合并后得到完整 AppPreviewConfig */
+export const defaultAppPreviewConfigBase: Omit<AppPreviewConfig, 'wikiRenderBundle'> = {
   blockIconCacheOptions: {
     sizePx: 128,
-    /** 正交相机半宽/半高，略小于库默认 1.22，使方块在精灵图中更大；再减小则更「拉近」 */
     orthoHalf: 0.85,
     clearColor: 0x000000,
     clearAlpha: 0,
@@ -42,7 +38,6 @@ export const defaultAppPreviewConfig: AppPreviewConfig = {
   initialProjectionMode: 'orthographic',
   sceneBackground: 0x5a5a5a,
   showBlockStatsSidebar: true,
-  /** Vite 开发服务器为 true，生产构建为 false；本地若需关闭可改为 false */
   showDeveloperPanel: Boolean(import.meta.env.DEV),
   loadingMessage: '正在加载数据与构建网格…',
   okMessage: (modelId: string) =>

@@ -3,7 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k \"npm run preview:http\" \"npm run wait-on-preview-port && npm run dev:vite\"",
+    "wait-on-preview-port": "node scripts/wait-preview-port.mjs",
+    "dev:vite": "vite",
+    "dev:only": "vite",
+    "preview:http": "node scripts/preview-http.mjs",
+    "serve:http": "node scripts/preview-http.mjs --static dist",
+    "local:http": "npm run build && npm run serve:http",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run"
@@ -16,6 +22,7 @@
     "@types/node": "^25.5.0",
     "@types/three": "^0.183.1",
     "@vitejs/plugin-vue": "^5.2.1",
+    "concurrently": "^9.1.2",
     "typescript": "~5.7.2",
     "vite": "^6.0.7",
     "vitest": "^4.1.2",

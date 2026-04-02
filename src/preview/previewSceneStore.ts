@@ -24,7 +24,7 @@ import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/interaction/mcItemViewMatri
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
 import { resolveWikiRenderBundle } from '@/render/data/pipeline'
-import { buildSimpleMesh } from '@/render/mesh/simpleMesh'
+import { buildBlockMesh } from '@/render/mesh/blockMesh'
 import type { StructureDefinition } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
@@ -160,7 +160,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
         contentGroupRef.value = null
         disposeContent = null
       }
-      const result = await buildSimpleMesh(def, lib, { layerPreview: layerPreviewMode.value })
+      const result = await buildBlockMesh(def, lib, { layerPreview: layerPreviewMode.value })
       if (seq !== meshBuildSeq) {
         result.dispose()
         return
@@ -171,7 +171,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     } catch (e) {
       // 数据已加载成功，仅标记网格构建失败，避免卸载视口
       statusMessage.value = `网格构建失败: ${formatError(e)}`
-      console.error('[WikiMultiStructureRender] buildSimpleMesh', e)
+      console.error('[WikiMultiStructureRender] buildBlockMesh', e)
     } finally {
       if (seq === meshBuildSeq) meshBusy.value = false
     }
