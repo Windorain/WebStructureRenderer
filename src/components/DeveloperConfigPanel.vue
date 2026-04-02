@@ -8,7 +8,7 @@ import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
 import {
   clearPersistedDevPreview,
   persistDevPreviewPatch,
-} from '@/preview/previewConfig'
+} from '@/dev/previewPersistence'
 import { DEFAULT_PREVIEW_SCENE_ID, listSelectableSceneIds } from '@/preview/previewDevServer'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
@@ -20,6 +20,8 @@ const props = defineProps<{
 
 const selectableSceneIds = ref<string[]>([])
 const showBlockStatsSidebar = ref(false)
+const showLayerBar = ref(true)
+const showDeveloperPanel = ref(false)
 const initialLayerWorldY = ref(-1)
 const initialProjectionMode = ref<ProjectionMode>('orthographic')
 const sceneBackgroundHex = ref('#5a5a5a')
@@ -49,6 +51,8 @@ const previewEntryUrl = computed(() => {
   p.set('layer', String(initialLayerWorldY.value))
   p.set('projection', initialProjectionMode.value)
   p.set('stats', showBlockStatsSidebar.value ? '1' : '0')
+  p.set('layerBar', showLayerBar.value ? '1' : '0')
+  p.set('devPanel', showDeveloperPanel.value ? '1' : '0')
   const bg = parseHexColor(sceneBackgroundHex.value)
   if (bg !== null) p.set('bg', `#${(bg >>> 0).toString(16).padStart(6, '0')}`)
   p.set('iconSizePx', String(Math.round(iconSizePx.value)))
@@ -71,7 +75,9 @@ function parseHexColor(s: string): number | null {
 
 function syncFromMerged(): void {
   const c = props.mergedConfig
-  showBlockStatsSidebar.value = c.showBlockStatsSidebar
+  showBlockStatsSidebar.value = c.features.blockStatsSidebar
+  showLayerBar.value = c.features.layerBar
+  showDeveloperPanel.value = c.features.developerPanel
   initialLayerWorldY.value = c.initialLayerWorldY
   initialProjectionMode.value = c.initialProjectionMode
   sceneBackgroundHex.value = numToHex6(c.sceneBackground)
@@ -117,7 +123,11 @@ function applyAndReload(): void {
 
   persistDevPreviewPatch({
     sceneId: sceneId.value,
-    showBlockStatsSidebar: showBlockStatsSidebar.value,
+    features: {
+      blockStatsSidebar: showBlockStatsSidebar.value,
+      layerBar: showLayerBar.value,
+      developerPanel: showDeveloperPanel.value,
+    },
     initialLayerWorldY: initialLayerWorldY.value,
     initialProjectionMode: initialProjectionMode.value,
     sceneBackground: bg,
@@ -171,8 +181,8 @@ function downloadCurrentBundle(): void {
         开发者配置（入口初始状态）
       </h2>
       <p class="wm-dev-panel-hint">
-        保存后将写入 localStorage（<code>wmr-preview-dev-v2</code>）并刷新。场景数据由本机
-        <code>preview-http</code> 提供 <code>/preview-api</code>；开发请使用 <code>npm run dev</code>（同时启动预览 HTTP 与 Vite）。
+        保存后将写入 localStorage（<code>wmr-preview-dev-v3</code>）并刷新。场景数据由 Mock
+        <code>server/wiki-mock</code> 提供 <code>/preview-api</code>；开发请使用 <code>npm run dev</code>（同时启动 Mock 与 Vite）。
       </p>
 
       <div class="wm-dev-devinfo" role="region" aria-label="开发者信息">
@@ -224,6 +234,14 @@ function downloadCurrentBundle(): void {
         <label class="wm-dev-field wm-dev-field--row">
           <input v-model="showBlockStatsSidebar" type="checkbox">
           <span>方块统计侧栏</span>
+        </label>
+        <label class="wm-dev-field wm-dev-field--row">
+          <input v-model="showLayerBar" type="checkbox">
+          <span>分层条（Y）</span>
+        </label>
+        <label class="wm-dev-field wm-dev-field--row">
+          <input v-model="showDeveloperPanel" type="checkbox">
+          <span>开发者面板</span>
         </label>
         <label class="wm-dev-field">
           <span>initialLayerWorldY（-1=全部层）</span>

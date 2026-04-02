@@ -39,6 +39,8 @@ const {
   contentGroupRef,
 } = store
 
+const showLayerBar = computed(() => props.mergedConfig.features.layerBar)
+
 const tooltipDisplayText = computed(() => {
   const def = structureDefinition.value
   const h = hover.value
@@ -126,7 +128,7 @@ onBeforeUnmount(() => {
           @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"
         />
-        <LayerPreviewBar v-if="loadStatus === 'ok'" />
+        <LayerPreviewBar v-if="showLayerBar && loadStatus === 'ok'" />
       </div>
     </div>
     <div :class="statusBarClass" role="status" aria-live="polite">
@@ -141,7 +143,7 @@ onBeforeUnmount(() => {
     />
   </div>
   <DeveloperConfigPanel
-    v-if="mergedConfig.showDeveloperPanel"
+    v-if="mergedConfig.features.developerPanel"
     :merged-config="mergedConfig"
   />
 </template>

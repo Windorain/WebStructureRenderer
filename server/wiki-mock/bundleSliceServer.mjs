@@ -1,6 +1,6 @@
 /**
  * 与 src/render/data/registrySlice.ts 对齐：按 document 内 palette 从全局注册表切最小子集。
- * 供 preview-http（及 Wiki 侧同源实现）在返回 WikiRenderBundle 前调用，避免把全量 block/material/model 表交给嵌入页解析。
+ * 供 wiki-mock（及 Wiki 侧同源实现）在返回 WikiRenderBundle 前调用，避免把全量 block/material/model 表交给嵌入页解析。
  */
 
 function blockRegistryKeyForPalette(registryId, meta) {

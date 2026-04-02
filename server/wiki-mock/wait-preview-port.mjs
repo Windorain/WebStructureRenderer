@@ -1,13 +1,13 @@
 /**
- * 等待 preview-http 写入仓库根目录 .wmr-preview-port（供 Vite 读代理端口）。
- * 替代 wait-on，避免 Windows 下对路径/冒号的解析问题。
+ * 等待 wiki-mock 写入仓库根目录 .wmr-preview-port（供 Vite 读代理端口）。
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PORT_FILE = path.join(__dirname, '..', '.wmr-preview-port')
+const REPO_ROOT = path.resolve(__dirname, '..', '..')
+const PORT_FILE = path.join(REPO_ROOT, '.wmr-preview-port')
 const TIMEOUT_MS = Number(process.env.WAIT_PREVIEW_PORT_MS || 30000)
 const INTERVAL_MS = 100
 

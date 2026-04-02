@@ -1,9 +1,10 @@
 /**
- * 运行时通过 `/preview-api`（preview-http.mjs + Vite 代理）拉取场景列表与 WikiRenderBundle。
- * 场景目录须含 document + block + material + model 四件套；无 data/registries 回退。
+ * 运行时通过 `/preview-api`（Mock wiki-mock + Vite 代理）拉取场景列表与 WikiRenderBundle。
  */
 
 import type { WikiRenderBundle } from '@/render/schema/types'
+
+import { fetchWikiRenderBundle } from './fetchWikiBundle'
 
 const PREFIX = '/preview-api'
 
@@ -21,6 +22,5 @@ export async function listDiskSceneIds(): Promise<string[]> {
 }
 
 export async function getDiskWikiRenderBundle(sceneId: string): Promise<WikiRenderBundle> {
-  const enc = encodeURIComponent(sceneId)
-  return fetchJson<WikiRenderBundle>(`/scenes/${enc}/bundle`)
+  return fetchWikiRenderBundle(sceneId)
 }

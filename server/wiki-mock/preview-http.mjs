@@ -1,8 +1,7 @@
 /**
- * 本地预览 HTTP：/preview-api 场景列表与 WikiRenderBundle（严格四件套，无 data/registries 回退）。
- * 返回 bundle 前按 document.palette 裁剪 block/material/model 注册表（与 src/render/data/registrySlice 语义一致），减轻嵌入页 JSON 解析与内存占用。
- * 设 PREVIEW_BUNDLE_NO_SLICE=1 可关闭裁剪（调试磁盘全量表）。
- * 可选：静态托管 dist/（--static <dir>）供 build 后验收。
+ * Mock Wiki 数据服务：仅实现与渲染器约定的 /preview-api 契约；不依赖 src/。
+ * 设 PREVIEW_BUNDLE_NO_SLICE=1 可关闭注册表裁剪。
+ * 可选：--static dist 托管构建产物。
  */
 import http from 'node:http'
 import fs from 'node:fs'
@@ -13,9 +12,8 @@ import { fileURLToPath } from 'node:url'
 import { sliceWikiRenderBundleForHttp } from './bundleSliceServer.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = path.resolve(__dirname, '..')
+const REPO_ROOT = path.resolve(__dirname, '..', '..')
 const DEFAULT_DATA_SCENES = path.join(REPO_ROOT, 'data', 'server', 'scenes')
-/** 供 Vite 代理读取当前实际端口（与 PREVIEW_HTTP_PORT 或 8787 起连续尝试一致） */
 const PORT_FILE = path.join(REPO_ROOT, '.wmr-preview-port')
 
 const PORT_CANDIDATES = process.env.PREVIEW_HTTP_PORT
@@ -187,7 +185,7 @@ function writePortFile(port) {
   try {
     fs.writeFileSync(PORT_FILE, String(port), 'utf8')
   } catch (e) {
-    console.warn('[preview-http] could not write .wmr-preview-port:', e instanceof Error ? e.message : e)
+    console.warn('[wiki-mock] could not write .wmr-preview-port:', e instanceof Error ? e.message : e)
   }
 }
 
@@ -225,7 +223,7 @@ async function main() {
   let boundPort
   for (const port of PORT_CANDIDATES) {
     if (!Number.isFinite(port) || port <= 0 || port > 65535) {
-      console.error('[preview-http] Invalid PREVIEW_HTTP_PORT')
+      console.error('[wiki-mock] Invalid PREVIEW_HTTP_PORT')
       process.exit(1)
     }
     server = createServer(scenesRoot, staticRoot)
@@ -237,7 +235,7 @@ async function main() {
     server.close()
   }
   if (boundPort === undefined) {
-    console.error('[preview-http] No free port in candidate range (8787–8791). Set PREVIEW_HTTP_PORT or free a port.')
+    console.error('[wiki-mock] No free port in candidate range (8787–8791). Set PREVIEW_HTTP_PORT or free a port.')
     process.exit(1)
   }
 
@@ -259,11 +257,11 @@ async function main() {
     process.exit(0)
   })
 
-  console.log(`[preview-http] scenes root: ${scenesRoot}`)
-  console.log(`[preview-http] listening http://127.0.0.1:${boundPort}`)
-  if (staticRoot) console.log(`[preview-http] static root: ${staticRoot}`)
-  console.log(`[preview-http] GET /preview-api/scenes`)
-  console.log(`[preview-http] GET /preview-api/scenes/:id/bundle`)
+  console.log(`[wiki-mock] scenes root: ${scenesRoot}`)
+  console.log(`[wiki-mock] listening http://127.0.0.1:${boundPort}`)
+  if (staticRoot) console.log(`[wiki-mock] static root: ${staticRoot}`)
+  console.log(`[wiki-mock] GET /preview-api/scenes`)
+  console.log(`[wiki-mock] GET /preview-api/scenes/:id/bundle`)
 }
 
 main().catch((e) => {

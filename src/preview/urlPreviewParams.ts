@@ -1,9 +1,11 @@
 /**
- * 本地入口 URL 查询参数（白名单），与 previewConfig 合并；不含 wikiRenderBundle。
+ * 本地 dev 入口 URL 查询参数（白名单）。与 dev/previewBootstrap 合并；不含 wikiRenderBundle。
  */
 
-import type { AppPreviewConfig } from './appPreviewConfig'
+import type { WikiRendererFeatures } from '@/embed/wikiRendererContract'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
+
+import type { AppPreviewConfig } from './appPreviewConfig'
 
 function parseBool(s: string | null): boolean | undefined {
   if (s === null || s === '') return undefined
@@ -21,32 +23,45 @@ function parseHex6(s: string | null): number | undefined {
 }
 
 /**
- * 合并顺序见 previewConfig：在 defaults 之后、localStorage 之前应用（localStorage 优先覆盖 URL）。
+ * 合并顺序见 dev/previewBootstrap：在 dev 默认之后、localStorage 之前应用。
  */
-export function parseUrlPreviewParams(search: string = typeof window !== 'undefined' ? window.location.search : ''): Partial<AppPreviewConfig> {
+export function parseUrlPreviewParams(
+  search: string = typeof window !== 'undefined' ? window.location.search : '',
+): Partial<AppPreviewConfig> {
   const params = new URLSearchParams(search.startsWith('?') ? search : `?${search}`)
   const out: Partial<AppPreviewConfig> = {}
+  const feat: Partial<WikiRendererFeatures> = {}
 
-  const sceneId = params.get('sceneId') ?? params.get('scene')
+  const sceneId = params.get('sceneId')
   if (sceneId !== null && sceneId !== '') {
     out.sceneId = sceneId
   }
 
-  const layer = params.get('layer') ?? params.get('initialLayerWorldY')
+  const layer = params.get('layer')
   if (layer !== null && layer !== '') {
     const n = Number(layer)
     if (Number.isFinite(n)) out.initialLayerWorldY = n
   }
 
-  const proj = params.get('projection') ?? params.get('initialProjectionMode')
+  const proj = params.get('projection')
   if (proj === 'orthographic' || proj === 'perspective') {
     out.initialProjectionMode = proj as ProjectionMode
   }
 
-  const stats = parseBool(params.get('stats') ?? params.get('showBlockStatsSidebar'))
-  if (stats !== undefined) out.showBlockStatsSidebar = stats
+  const stats = parseBool(params.get('stats'))
+  if (stats !== undefined) feat.blockStatsSidebar = stats
 
-  const bg = parseHex6(params.get('bg') ?? params.get('sceneBackground'))
+  const layerBar = parseBool(params.get('layerBar'))
+  if (layerBar !== undefined) feat.layerBar = layerBar
+
+  const devPanel = parseBool(params.get('devPanel'))
+  if (devPanel !== undefined) feat.developerPanel = devPanel
+
+  if (Object.keys(feat).length > 0) {
+    out.features = { ...feat } as AppPreviewConfig['features']
+  }
+
+  const bg = parseHex6(params.get('bg'))
   if (bg !== undefined) out.sceneBackground = bg
 
   const bco: Partial<AppPreviewConfig['blockIconCacheOptions']> = {}

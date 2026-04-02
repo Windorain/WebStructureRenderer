@@ -1,15 +1,23 @@
 /**
- * 库入口：挂载 Vue 应用。
- *
- * 数据流：选择 DOM 节点 → createApp(App) → 子组件内完成 StructureData 加载与 Three.js 场景（见 App.vue）。
+ * 库入口（IIFE）：对外暴露 mountWikiRenderer 与数据校验 API；无隐式 DOM 挂载。
+ * 本地开发请使用 main-dev.ts（index.html 已指向）。
  */
 
-import { createApp } from 'vue'
-import App from './App.vue'
 import '@/styles/nei-tokens.css'
 
 /** 灰机 Wiki 页面中与模板约定的挂载点 */
 export const MOUNT_SELECTOR = '#wiki-multi-structure-render'
+
+export { mountWikiRenderer } from './embed/mountWikiRenderer'
+export type {
+  WikiRendererBootstrapOptions,
+  WikiRendererData,
+  WikiRendererDataFetch,
+  WikiRendererDataInline,
+  WikiRendererFeatures,
+  WikiRendererUiOptions,
+} from './embed/wikiRendererContract'
+export type { AppPreviewConfig } from './preview/appPreviewConfig'
 
 export {
   resolveWikiRenderBundle,
@@ -17,26 +25,3 @@ export {
   type WikiRenderBundle,
   type WikiRenderResolveResult,
 } from './render/data/pipeline'
-export {
-  mergeManyBlockRegistryLayers,
-  sliceBlockRegistryByPalette,
-  sliceMaterialRegistryForBlocks,
-} from './render/data/registrySlice'
-
-export function mount(target?: string | Element | null) {
-  const el =
-    target == null
-      ? document.querySelector(MOUNT_SELECTOR)
-      : typeof target === 'string'
-        ? document.querySelector(target)
-        : target
-  if (!el) {
-    console.warn('[WikiMultiStructureRender] 未找到挂载节点', target ?? MOUNT_SELECTOR)
-    return
-  }
-  createApp(App).mount(el)
-}
-
-if (typeof document !== 'undefined') {
-  mount()
-}

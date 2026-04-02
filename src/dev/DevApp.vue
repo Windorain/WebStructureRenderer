@@ -1,22 +1,22 @@
 <script setup lang="ts">
 /**
- * 异步拉取预览配置后挂载 AppShell（bundle 经 /preview-api）。
+ * 本地 Vite 入口：异步拉取 dev 配置后挂载 AppShell（bundle 经 Mock /preview-api）。
  */
 import { onMounted, ref } from 'vue'
 
 import AppShell from '@/AppShell.vue'
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import { resolveAppPreviewConfigAsync } from '@/preview/previewConfig'
+import { resolveDevPreviewConfigAsync } from '@/dev/previewBootstrap'
 
 const mergedConfig = ref<AppPreviewConfig | null>(null)
 const loadError = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    mergedConfig.value = await resolveAppPreviewConfigAsync()
+    mergedConfig.value = await resolveDevPreviewConfigAsync()
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : String(e)
-    console.error('[WikiMultiStructureRender] resolveAppPreviewConfigAsync', e)
+    console.error('[WikiMultiStructureRender] resolveDevPreviewConfigAsync', e)
   }
 })
 </script>
