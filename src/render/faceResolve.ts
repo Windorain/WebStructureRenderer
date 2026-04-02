@@ -10,8 +10,9 @@ import type { BlockEntry, FaceLayerDef, FaceName } from './types'
 const ALL_FACES: FaceName[] = ['+x', '-x', '+y', '-y', '+z', '-z']
 
 export function layersForFace(block: BlockEntry, face: FaceName): FaceLayerDef[] {
-  const all = block.faces.all?.layers ?? []
-  const specific = block.faces[face]?.layers ?? []
+  const faces = block.faces ?? {}
+  const all = faces.all?.layers ?? []
+  const specific = faces[face]?.layers ?? []
   return [...all, ...specific]
 }
 

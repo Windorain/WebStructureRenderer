@@ -10,6 +10,8 @@ import type {
   BlockRegistryData,
   MaterialEntry,
   MaterialRegistryData,
+  ModelDocument,
+  ModelRegistryData,
   StructureData,
 } from './types'
 
@@ -48,14 +50,40 @@ function collectMaterialIdsFromBlockEntry(entry: BlockEntry): Set<string> {
   return ids
 }
 
+function stripTextureHash(ref: string): string {
+  return ref.startsWith('#') ? ref.slice(1) : ref
+}
+
+function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<string> {
+  const ids = new Set<string>()
+  if (!doc?.elements) return ids
+  for (const el of doc.elements) {
+    const fm = el.faces ?? {}
+    for (const f of Object.values(fm)) {
+      if (!f) continue
+      if (f.layers) {
+        for (const L of f.layers) ids.add(stripTextureHash(L.texture))
+      } else if (f.texture) {
+        ids.add(stripTextureHash(f.texture))
+      }
+    }
+  }
+  return ids
+}
+
 /** 根据已切片的方块表，从全局材质表中只保留被引用的 materialId */
 export function sliceMaterialRegistryForBlocks(
   blocks: Record<string, BlockEntry>,
   global: MaterialRegistryData,
+  modelRegistry?: ModelRegistryData,
 ): MaterialRegistryData {
   const ids = new Set<string>()
   for (const entry of Object.values(blocks)) {
     collectMaterialIdsFromBlockEntry(entry).forEach((id) => ids.add(id))
+    if (entry.meshKind === 'Model' && entry.modelId && modelRegistry) {
+      const doc = modelRegistry.models[entry.modelId]
+      collectMaterialIdsFromModelDoc(doc).forEach((id) => ids.add(id))
+    }
   }
   const materials: Record<string, MaterialEntry> = {}
   for (const id of ids) {

@@ -124,12 +124,19 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
       structureDefinition.value = resolved.definition
       const lib = new SimpleMaterialLibrary(resolved.materialRegistry)
       materialLibrary.value = lib
-      const iconCache = new BlockIconCache(lib, resolved.definition.blocks, config.blockIconCacheOptions)
+      const iconCache = new BlockIconCache(
+        lib,
+        resolved.definition.blocks,
+        resolved.modelRegistry,
+        config.blockIconCacheOptions,
+      )
       iconCache.setRevisionKey(
         `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
+      // 数据已就绪；完整「渲染正常」文案在视口 mesh 构建完成后由 App 写入
+      statusMessage.value = '正在构建网格…'
     } catch (e) {
       loadStatus.value = 'error'
       statusMessage.value = formatError(e)
@@ -161,6 +168,10 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
       contentGroupRef.value = result.group
       disposeContent = result.dispose
       scene.add(result.group)
+    } catch (e) {
+      // 数据已加载成功，仅标记网格构建失败，避免卸载视口
+      statusMessage.value = `网格构建失败: ${formatError(e)}`
+      console.error('[WikiMultiStructureRender] buildSimpleMesh', e)
     } finally {
       if (seq === meshBuildSeq) meshBusy.value = false
     }

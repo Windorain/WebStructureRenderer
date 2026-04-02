@@ -11,8 +11,9 @@ import { FACE_NORMAL } from './faceConstants'
 import { createMcItemSlotViewRoot } from './mcItemViewMatrix'
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from './structureCoords'
-import { quadGeometryForFace } from './simpleMesh'
-import type { BlockEntry, LayerRole, StructureDefinition } from './types'
+import { collectSingleBlockModelMeshes } from './modelMesh'
+import { quadGeometryForFace } from './quadGeometry'
+import type { BlockEntry, LayerRole, ModelRegistryData, StructureDefinition } from './types'
 
 function parseTint(hex?: string): THREE.Color {
   if (!hex) return new THREE.Color(0xffffff)
@@ -34,10 +35,11 @@ export interface SingleBlockBakeResult {
 export async function buildSingleBlockPreviewGroup(
   block: BlockEntry,
   library: SimpleMaterialLibrary,
+  modelRegistry: ModelRegistryData,
 ): Promise<SingleBlockBakeResult> {
-  const meshKind = block.meshKind ?? 'SimpleCube'
-  if (meshKind !== 'SimpleCube') {
-    throw new Error(`物品预览未实现网格策略: ${meshKind}`)
+  const meshKind = block.meshKind
+  if (meshKind === 'Unknown') {
+    throw new Error('Unknown 方块无物品预览')
   }
 
   const sizeColumn = 1
@@ -51,37 +53,43 @@ export async function buildSingleBlockPreviewGroup(
 
   const batches = new Map<string, { descriptor: BatchDescriptor; geometries: THREE.BufferGeometry[] }>()
 
-  for (const face of faces) {
-    const layerDefs = layersForFace(block, face)
-    if (!layerDefs.length) continue
+  if (meshKind === 'Model') {
+    collectSingleBlockModelMeshes(block, modelRegistry, batches)
+  } else if (meshKind === 'SimpleCube') {
+    for (const face of faces) {
+      const layerDefs = layersForFace(block, face)
+      if (!layerDefs.length) continue
 
-    const n = FACE_NORMAL[face]
-    layerDefs.forEach((layer, layerIdx) => {
-      const descriptor: BatchDescriptor = {
-        materialId: layer.materialId,
-        tint: parseTint(layer.tint),
-        layerIdx,
-        role: effectiveLayerRole(layer, layerIdx),
-      }
-      const key = batchMaterialCacheKey(descriptor)
-      const geom = quadGeometryForFace(
-        face,
-        column,
-        voxelY,
-        zSlice,
-        sizeColumn,
-        sizeRow,
-        sizeZSlice,
-        n,
-        layerIdx,
-      )
-      let bucket = batches.get(key)
-      if (!bucket) {
-        bucket = { descriptor, geometries: [] }
-        batches.set(key, bucket)
-      }
-      bucket.geometries.push(geom)
-    })
+      const n = FACE_NORMAL[face]
+      layerDefs.forEach((layer, layerIdx) => {
+        const descriptor: BatchDescriptor = {
+          materialId: layer.materialId,
+          tint: parseTint(layer.tint),
+          layerIdx,
+          role: effectiveLayerRole(layer, layerIdx),
+        }
+        const key = batchMaterialCacheKey(descriptor)
+        const geom = quadGeometryForFace(
+          face,
+          column,
+          voxelY,
+          zSlice,
+          sizeColumn,
+          sizeRow,
+          sizeZSlice,
+          n,
+          layerIdx,
+        )
+        let bucket = batches.get(key)
+        if (!bucket) {
+          bucket = { descriptor, geometries: [] }
+          batches.set(key, bucket)
+        }
+        bucket.geometries.push(geom)
+      })
+    }
+  } else {
+    throw new Error(`物品预览未实现网格策略: ${String(meshKind)}`)
   }
 
   const { root, meshParent } = createMcItemSlotViewRoot()

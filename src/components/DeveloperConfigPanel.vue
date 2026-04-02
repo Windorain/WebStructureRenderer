@@ -153,9 +153,10 @@ async function onUploadFiles(ev: Event): Promise<void> {
   const docRaw = pickName(map, 'document.json', 'export.json')
   const blockRaw = pickName(map, 'block_registry.json', 'export.block_registry.json')
   const matRaw = pickName(map, 'material_registry.json', 'export.material_registry.json')
+  const modelRaw = pickName(map, 'model_registry.json', 'export.model_registry.json')
 
   if (!docRaw || !blockRaw || !matRaw) {
-    window.alert('需要三个文件：document.json 或 export.json；block_registry 或 export.block_registry；material_registry 或 export.material_registry')
+    window.alert('至少需要：document.json 或 export.json；block_registry；material_registry（model_registry 可省略，将使用空表）')
     return
   }
 
@@ -169,15 +170,19 @@ async function onUploadFiles(ev: Event): Promise<void> {
 
   let blockRegistry: WikiRenderBundle['blockRegistry']
   let materialRegistry: WikiRenderBundle['materialRegistry']
+  let modelRegistry: WikiRenderBundle['modelRegistry']
   try {
     blockRegistry = JSON.parse(blockRaw) as WikiRenderBundle['blockRegistry']
     materialRegistry = JSON.parse(matRaw) as WikiRenderBundle['materialRegistry']
+    modelRegistry = modelRaw
+      ? (JSON.parse(modelRaw) as WikiRenderBundle['modelRegistry'])
+      : { schemaVersion: 1, models: {} }
   } catch {
     window.alert('注册表 JSON 解析失败')
     return
   }
 
-  const bundle: WikiRenderBundle = { document, blockRegistry, materialRegistry }
+  const bundle: WikiRenderBundle = { document, blockRegistry, materialRegistry, modelRegistry }
   try {
     validateWikiRenderBundle(bundle)
   } catch (e) {
@@ -223,6 +228,7 @@ function downloadCurrentBundle(): void {
   trigger('document.json', JSON.stringify(b.document, null, 2))
   trigger('block_registry.json', JSON.stringify(b.blockRegistry, null, 2))
   trigger('material_registry.json', JSON.stringify(b.materialRegistry, null, 2))
+  trigger('model_registry.json', JSON.stringify(b.modelRegistry, null, 2))
 }
 
 function removeUploadedAndReload(): void {

@@ -9,7 +9,7 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { defaultWikiRenderBundle } from './previewDevServer'
 
 export interface AppPreviewConfig {
-  /** 与服务端契约一致：document（StructureData 或 World）+ blockRegistry + materialRegistry */
+  /** 与服务端契约一致：document + blockRegistry + materialRegistry + modelRegistry */
   wikiRenderBundle: WikiRenderBundle
   /**
    * 可选：`data/server/scenes/<id>` 场景 id；dev 持久化可覆盖。

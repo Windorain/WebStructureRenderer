@@ -7,6 +7,7 @@ import type {
   BlockRegistryData,
   FaceName,
   MaterialRegistryData,
+  ModelRegistryData,
   StructureData,
   StructureDefinition,
   WikiRenderBundle,
@@ -234,6 +235,23 @@ function validateMaterialRegistryData(r: MaterialRegistryData, label: string): v
   }
 }
 
+function validateModelRegistryData(r: ModelRegistryData, label: string): void {
+  if (typeof r.schemaVersion !== 'number' || !Number.isFinite(r.schemaVersion)) {
+    throw new Error(`${label}.schemaVersion 须为数字`)
+  }
+  if (!r.models || typeof r.models !== 'object') {
+    throw new Error(`${label}.models 须为对象`)
+  }
+}
+
+function validateBlockRegistryBlocksHaveMeshKind(r: BlockRegistryData, label: string): void {
+  for (const [id, entry] of Object.entries(r.blocks)) {
+    if (!entry || typeof entry.meshKind !== 'string') {
+      throw new Error(`${label}.blocks[${id}].meshKind 必填`)
+    }
+  }
+}
+
 /** 校验 Wiki 渲染包形状（document 的语义校验在 loadStructureData / validateWorldDocument 中） */
 export function validateWikiRenderBundle(b: WikiRenderBundle): void {
   if (!b || typeof b !== 'object') throw new Error('WikiRenderBundle 无效')
@@ -242,11 +260,14 @@ export function validateWikiRenderBundle(b: WikiRenderBundle): void {
   }
   validateBlockRegistryData(b.blockRegistry, 'WikiRenderBundle.blockRegistry')
   validateMaterialRegistryData(b.materialRegistry, 'WikiRenderBundle.materialRegistry')
+  validateModelRegistryData(b.modelRegistry, 'WikiRenderBundle.modelRegistry')
+  validateBlockRegistryBlocksHaveMeshKind(b.blockRegistry, 'WikiRenderBundle')
 }
 
 export interface WikiRenderResolveResult {
   definition: StructureDefinition
   materialRegistry: MaterialRegistryData
+  modelRegistry: ModelRegistryData
 }
 
 /**
@@ -257,11 +278,11 @@ export function resolveWikiRenderBundle(
   frameIndex?: number,
 ): WikiRenderResolveResult {
   validateWikiRenderBundle(bundle)
-  const input: MergeStructureDataInput = { blockRegistry: bundle.blockRegistry }
+  const input: MergeStructureDataInput = { blockRegistry: bundle.blockRegistry, modelRegistry: bundle.modelRegistry }
   const definition = loadStructureOrWorld(bundle.document, frameIndex, input)
-  return { definition, materialRegistry: bundle.materialRegistry }
+  return { definition, materialRegistry: bundle.materialRegistry, modelRegistry: bundle.modelRegistry }
 }
 
 export type { MergeStructureDataInput } from './mergeScene'
-export { mergeMaterialRegistries, mergeStructureData } from './mergeScene'
-export type { BlockRegistryData, MaterialRegistryData, WikiRenderBundle } from './types'
+export { mergeMaterialRegistries, mergeModelRegistries, mergeStructureData } from './mergeScene'
+export type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, WikiRenderBundle } from './types'

@@ -5,7 +5,7 @@
  *
  * 数据流概览：
  *   磁盘 JSON（StructureData）或 World → 与本请求 `blockRegistry` 组装为 StructureDefinition（`blocks` 为注册表拷贝）
- *   Wiki：`WikiRenderBundle`（document + blockRegistry + materialRegistry）一次装配；本地 dev 用 `previewDevServer` + `data/server/scenes`。
+ *   Wiki：`WikiRenderBundle`（document + blockRegistry + materialRegistry + modelRegistry）一次装配；本地 dev 用 `previewDevServer` + `data/server/scenes`。
  *   材质：直接使用 bundle.materialRegistry → SimpleMaterialLibrary
  *   StructureDefinition → VoxelVolume（get(column,row,zSlice) → VoxelState）
  *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
@@ -21,9 +21,16 @@ export type MaterialKind = 'static16' | 'animated'
 /**
  * kind 为提示；运行时是否播放动画以「存在 `.png.mcmeta` 且含 `animation`、且 PNG 为竖直多帧条」为准。
  */
+export type MaterialBlendMode = 'opaque' | 'cutout' | 'translucent'
+
 export interface MaterialEntry {
   locator: ResourceLocator
   kind: MaterialKind
+  /** 混合模式提示；缺省由 layerRole / kind 推断 */
+  blend?: MaterialBlendMode
+  /** 发光提示（0–1 或 bool 语义由渲染侧解释） */
+  emissive?: number
+  emi?: number
 }
 
 /** material_registry.json 根结构 */
@@ -42,6 +49,8 @@ export interface WikiRenderBundle {
   document: unknown
   blockRegistry: BlockRegistryData
   materialRegistry: MaterialRegistryData
+  /** 方块模型注册表；无 Model 方块时可 `models: {}` */
+  modelRegistry: ModelRegistryData
   bundleId?: string
   assetsBaseUrl?: string
 }
@@ -62,28 +71,67 @@ export interface FaceLayersDef {
 }
 
 /**
- * 方块几何构建策略（非 Three.js WebGLRenderer）；缺省为 SimpleCube。
- * `Unknown`：导出白名单未命中或尚未在 Wiki 配置外观，网格阶段跳过体素。
+ * 方块几何构建策略（非 Three.js WebGLRenderer）。
+ * `Model`：使用 `model_registry` 中 `modelId` 对应条目（与 MC 方块模型 JSON 子集对齐）。
+ * `Unknown`：网格阶段跳过体素。
  */
-export type BlockMeshKind = 'SimpleCube' | 'Unknown'
+export type BlockMeshKind = 'SimpleCube' | 'Model' | 'Unknown'
 
-/** 方块在六个方向上的贴图层；可只写 all 表示六面相同。面专属层与 `all` 合并，见 `layersForFace`。 */
+/** 方块在六个方向上的贴图层；可只写 all 表示六面相同。面专属层与 `all` 合并，见 `layersForFace`。SimpleCube 必填；Model 可省略（图标等走 model）。 */
 export interface BlockEntry {
   label?: string
   /** 长说明；与 `label` 可同时存在，tooltip 中分行展示 */
   description?: string
-  /** 缺省为 `SimpleCube` */
-  meshKind?: BlockMeshKind
-  /** 导出器写入的 GT 白名单逻辑类名，如 `MB_MACHINE`；仅提示，不参与渲染分支 */
-  logicalKind?: string
+  meshKind: BlockMeshKind
+  /** `meshKind === 'Model'` 时指向 model_registry.models 的键 */
+  modelId?: string
+  /** 与 SDE GregTech 注册策略一一对应（如 `gregtech.frame`）；仅标识来源，不参与渲染分支 */
+  renderProfile?: string
   /**
    * 当本格作为**邻格**时是否遮挡另一侧体素朝向本格的外露面；缺省 `true`。
    * 玻璃等须为 `false`。
    */
   occludesAdjacentFaces?: boolean
-  faces: {
+  faces?: {
     all?: FaceLayersDef
   } & Partial<Record<FaceName, FaceLayersDef>>
+}
+
+/** MC 模型轴向面名（north = −Z 外法线，与官方 block/model 一致） */
+export type ModelFaceName = 'north' | 'south' | 'east' | 'west' | 'up' | 'down'
+
+/** 模型单面上的贴图层（可与 BlockEntry 面语义一致，用于基底 + cutout） */
+export interface ModelFaceLayerDef {
+  /** `#materialId` */
+  texture: string
+  layerRole?: LayerRole
+  /** 与 BlockEntry 面 tint 一致，如 `#ffffff` */
+  tint?: string
+}
+
+/** 模型中单面：单纹理简写或贴图层列表 */
+export interface ModelElementFaceDef {
+  texture?: string
+  layers?: ModelFaceLayerDef[]
+  /** 纹理矩形，0–16 像素空间；省略则整面 0–1 UV */
+  uv?: [number, number, number, number]
+}
+
+export interface ModelElement {
+  /** MC 模型坐标 0–16；JSON 解析为 number[] */
+  from: number[]
+  to: number[]
+  faces?: Partial<Record<ModelFaceName, ModelElementFaceDef>>
+}
+
+export interface ModelDocument {
+  elements: ModelElement[]
+}
+
+/** model_registry.json 根结构 */
+export interface ModelRegistryData {
+  schemaVersion: number
+  models: Record<string, ModelDocument>
 }
 
 /** block_registry.json 根结构 */
@@ -159,6 +207,8 @@ export interface StructureDefinition {
   palette: VoxelState[]
   cellGrid: number[][][]
   blocks: Record<string, BlockEntry>
+  /** 与 Wiki 包合并后的模型表，供 Model 网格使用 */
+  modelRegistry: ModelRegistryData
   initialCamera?: InitialCameraDef
 }
 

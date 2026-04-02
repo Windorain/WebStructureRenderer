@@ -6,7 +6,7 @@ import * as THREE from 'three'
 
 import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
 import { buildSingleBlockPreviewGroup } from './blockSlotBaker'
-import type { BlockEntry } from './types'
+import type { BlockEntry, ModelRegistryData } from './types'
 
 export type BlockIconCacheStatus = 'idle' | 'pending' | 'ready' | 'error'
 
@@ -54,6 +54,8 @@ export class BlockIconCache {
 
   private readonly blocks: Record<string, BlockEntry>
 
+  private readonly modelRegistry: ModelRegistryData
+
   private readonly opts: Required<BlockIconCacheOptions>
 
   private renderer: THREE.WebGLRenderer | null = null
@@ -73,10 +75,12 @@ export class BlockIconCache {
   constructor(
     library: SimpleMaterialLibrary,
     blocks: Record<string, BlockEntry>,
+    modelRegistry: ModelRegistryData,
     options?: BlockIconCacheOptions,
   ) {
     this.library = library
     this.blocks = blocks
+    this.modelRegistry = modelRegistry
     this.opts = { ...defaultOpts, ...options } as ResolvedIconOpts
   }
 
@@ -169,7 +173,7 @@ export class BlockIconCache {
     let disposeMesh: (() => void) | null = null
 
     try {
-      const built = await buildSingleBlockPreviewGroup(block, this.library)
+      const built = await buildSingleBlockPreviewGroup(block, this.library, this.modelRegistry)
       group = built.group
       disposeMesh = built.dispose
 

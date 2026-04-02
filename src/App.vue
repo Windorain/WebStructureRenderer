@@ -51,9 +51,14 @@ const statusBarClass = computed(() => {
 
 async function onViewportReady(scene: Scene): Promise<void> {
   store.registerScene(scene)
-  await store.rebuildContentMesh()
+  try {
+    await store.rebuildContentMesh()
+  } catch (e) {
+    console.error('[WikiMultiStructureRender] onViewportReady', e)
+    return
+  }
   const def = store.structureDefinition.value
-  if (def) {
+  if (def && store.loadStatus.value === 'ok' && store.contentGroupRef.value) {
     store.statusMessage.value = mergedConfig.okMessage(def.id)
   }
 }

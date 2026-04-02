@@ -8,6 +8,7 @@ import type {
   BlockRegistryData,
   FaceLayersDef,
   MaterialRegistryData,
+  ModelRegistryData,
   StructureData,
   StructureDefinition,
 } from './types'
@@ -21,15 +22,16 @@ function mergeFaceLayersDef(
 }
 
 function mergeFacesDeep(
-  base: BlockEntry['faces'],
+  base: BlockEntry['faces'] | undefined,
   partial: Partial<BlockEntry['faces']> | undefined,
-): BlockEntry['faces'] {
-  if (!partial) return base
-  const out: BlockEntry['faces'] = { ...base }
-  for (const key of Object.keys(partial) as (keyof BlockEntry['faces'])[]) {
+): BlockEntry['faces'] | undefined {
+  if (!partial || Object.keys(partial).length === 0) return base
+  const b = base ?? {}
+  const out: NonNullable<BlockEntry['faces']> = { ...b }
+  for (const key of Object.keys(partial) as (keyof NonNullable<BlockEntry['faces']>)[]) {
     const def = partial[key]
     if (!def) continue
-    const prev = base[key as keyof BlockEntry['faces']]
+    const prev = b[key as keyof typeof b]
     const merged = mergeFaceLayersDef(prev, def as FaceLayersDef)
     if (merged) out[key] = merged
   }
@@ -37,25 +39,33 @@ function mergeFacesDeep(
 }
 
 function mergeBlockEntry(base: BlockEntry, partial: Partial<BlockEntry>): BlockEntry {
+  const mergedFaces = mergeFacesDeep(base.faces, partial.faces)
   return {
     ...base,
     ...partial,
-    faces: mergeFacesDeep(base.faces ?? {}, partial.faces),
+    ...(mergedFaces !== undefined ? { faces: mergedFaces } : {}),
   }
 }
 
+const EMPTY_MODEL_REGISTRY: ModelRegistryData = { schemaVersion: 1, models: {} }
+
 /**
- * 无基底时由片段补全为可渲染条目。
- * `meshKind` 与 `simpleMesh` 对齐：JSON 常省略 meshKind；仅当既无 meshKind 又无面数据时视为 Unknown。
+ * 无基底时由片段补全；**meshKind 必填**（破坏性契约）。
  */
 function completeBlockEntry(partial: Partial<BlockEntry>): BlockEntry {
-  const faces = partial.faces ?? {}
-  const hasFaceData = Object.keys(faces).length > 0
+  if (partial.meshKind === undefined) {
+    throw new Error('block_registry 片段缺少 meshKind')
+  }
+  const { meshKind } = partial
+  if (meshKind === 'Model' && (partial.modelId === undefined || partial.modelId === '')) {
+    throw new Error('meshKind=Model 时 modelId 必填')
+  }
   return {
     ...partial,
-    meshKind: partial.meshKind ?? (hasFaceData ? 'SimpleCube' : 'Unknown'),
-    faces,
-  }
+    meshKind,
+    ...(partial.modelId !== undefined ? { modelId: partial.modelId } : {}),
+    ...(partial.faces !== undefined ? { faces: partial.faces } : {}),
+  } as BlockEntry
 }
 
 /**
@@ -94,13 +104,30 @@ export function mergeMaterialRegistries(
   }
 }
 
+/** 同 modelId 以 overlay 为准 */
+export function mergeModelRegistries(
+  base: ModelRegistryData,
+  overlay?: ModelRegistryData,
+): ModelRegistryData {
+  if (!overlay?.models || Object.keys(overlay.models).length === 0) {
+    return base
+  }
+  return {
+    schemaVersion: Math.max(base.schemaVersion, overlay.schemaVersion),
+    models: { ...base.models, ...overlay.models },
+  }
+}
+
 export interface MergeStructureDataInput {
   /** 本请求已确定的 block 表（服务端或 Mock 给全） */
   blockRegistry: BlockRegistryData
+  /** 与 block 配套的模型表；可省略，等价于空表 */
+  modelRegistry?: ModelRegistryData
 }
 
 export function mergeStructureData(model: StructureData, input: MergeStructureDataInput): StructureDefinition {
   const blocks = { ...input.blockRegistry.blocks }
+  const modelRegistry = input.modelRegistry ?? EMPTY_MODEL_REGISTRY
   return {
     schemaVersion: model.schemaVersion,
     mode: 'voxelPalette',
@@ -108,6 +135,7 @@ export function mergeStructureData(model: StructureData, input: MergeStructureDa
     palette: model.palette,
     cellGrid: model.cellGrid,
     blocks,
+    modelRegistry,
     initialCamera: model.initialCamera,
   }
 }
