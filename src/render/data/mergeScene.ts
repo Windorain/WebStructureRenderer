@@ -11,7 +11,7 @@ import type {
   ModelRegistryData,
   StructureData,
   StructureDefinition,
-} from './types'
+} from '../schema/types'
 
 function mergeFaceLayersDef(
   base: FaceLayersDef | undefined,

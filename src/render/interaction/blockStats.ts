@@ -3,10 +3,10 @@
  * 与 `simpleMesh` 一致：`LayerPreviewMode` 下切片外体素视为空气。
  */
 
-import { buildVoxelVolume } from './grid'
-import { effectiveVoxelState, type LayerPreviewMode } from './layerPreview'
-import { isAirState } from './types'
-import type { StructureDefinition } from './types'
+import { buildVoxelVolume } from '../data/grid'
+import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
+import { isAirState } from '../schema/types'
+import type { StructureDefinition } from '../schema/types'
 
 export interface BlockStatRow {
   blockId: string

@@ -5,7 +5,7 @@
  * 若未配置 `all`，则仅使用面专属层（与「只有某面有贴图」兼容）。
  */
 
-import type { BlockEntry, FaceLayerDef, FaceName } from './types'
+import type { BlockEntry, FaceLayerDef, FaceName } from '../schema/types'
 
 const ALL_FACES: FaceName[] = ['+x', '-x', '+y', '-y', '+z', '-z']
 

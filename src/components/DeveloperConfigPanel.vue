@@ -16,8 +16,8 @@ import {
   removeUploadedScene,
   saveUploadedWikiRenderBundle,
 } from '@/preview/previewDevServer'
-import { validateWikiRenderBundle } from '@/render/pipeline'
-import type { WikiRenderBundle } from '@/render/types'
+import { validateWikiRenderBundle } from '@/render/data/pipeline'
+import type { WikiRenderBundle } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 import pkg from '../../package.json'

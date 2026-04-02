@@ -4,7 +4,7 @@
 
 import * as THREE from 'three'
 
-import type { LayerRole } from './types'
+import type { LayerRole } from '../schema/types'
 
 const BATCH_SEP = '|' as const
 

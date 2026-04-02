@@ -17,15 +17,15 @@ import {
   BlockIconCache,
   BLOCK_ICON_LAYOUT_REVISION,
   blockIconBakeLayoutKey,
-} from '@/render/blockIconCache'
-import { buildBlockStatsEntries, type BlockStatRow } from '@/render/blockStats'
-import { summarizeBlocksForCache } from '@/render/blockSlotBaker'
-import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/mcItemViewMatrix'
-import type { LayerPreviewMode } from '@/render/layerPreview'
+} from '@/render/interaction/blockIconCache'
+import { buildBlockStatsEntries, type BlockStatRow } from '@/render/interaction/blockStats'
+import { summarizeBlocksForCache } from '@/render/interaction/blockSlotBaker'
+import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/interaction/mcItemViewMatrix'
+import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
-import { resolveWikiRenderBundle } from '@/render/pipeline'
-import { buildSimpleMesh } from '@/render/simpleMesh'
-import type { StructureDefinition } from '@/render/types'
+import { resolveWikiRenderBundle } from '@/render/data/pipeline'
+import { buildSimpleMesh } from '@/render/mesh/simpleMesh'
+import type { StructureDefinition } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 import type { AppPreviewConfig } from './appPreviewConfig'

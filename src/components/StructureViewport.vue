@@ -6,11 +6,11 @@ import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 
 import { PreviewSceneContextKey } from '@/preview/context'
-import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/initialCamera'
-import type { LayerPreviewMode } from '@/render/layerPreview'
+import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/interaction/initialCamera'
+import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
-import { pickBlockIdFromPointer } from '@/render/voxelPick'
-import type { StructureDefinition } from '@/render/types'
+import { pickBlockIdFromPointer } from '@/render/interaction/voxelPick'
+import type { StructureDefinition } from '@/render/schema/types'
 import {
   RenderViewport,
   type ProjectionMode,

@@ -18,7 +18,7 @@
 
 import * as THREE from 'three'
 
-import type { FaceName } from './types'
+import type { FaceName } from '../schema/types'
 
 /** 世界空间外法线（与 FaceName 一一对应；命名与 ForgeDirection 对齐见上表） */
 export const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {

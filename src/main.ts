@@ -16,12 +16,12 @@ export {
   validateWikiRenderBundle,
   type WikiRenderBundle,
   type WikiRenderResolveResult,
-} from './render/pipeline'
+} from './render/data/pipeline'
 export {
   mergeManyBlockRegistryLayers,
   sliceBlockRegistryByPalette,
   sliceMaterialRegistryForBlocks,
-} from './render/registrySlice'
+} from './render/data/registrySlice'
 
 export function mount(target?: string | Element | null) {
   const el =

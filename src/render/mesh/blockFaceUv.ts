@@ -13,7 +13,7 @@
  * 上下方向由 `simpleMaterialLibrary.loadTexture` 中 `Texture.flipY` 统一决定（与 QuadRender 一致），此处不改 v。
  */
 
-import type { FaceName } from './types'
+import type { FaceName } from '../schema/types'
 
 /** NORTH / WEST：QuadRender 中 (minU,maxU,minV,maxV) 代入后相同的四角模式 */
 const UV_FULL_TILE_NORTH_OR_WEST = new Float32Array([1, 0, 0, 0, 0, 1, 1, 1])

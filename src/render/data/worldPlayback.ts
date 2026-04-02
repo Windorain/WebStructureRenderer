@@ -2,7 +2,7 @@
  * World 多帧：播放索引与内嵌 StructureData 解析（占位；`structureRef` 异步加载待接）。
  */
 
-import type { Frame, StructureData, World } from './types'
+import type { Frame, StructureData, World } from '../schema/types'
 
 /** 与磁盘 `world.json` 等约定的 schemaVersion 对齐 */
 export const WORLD_DOCUMENT_SCHEMA_VERSION = 1 as const

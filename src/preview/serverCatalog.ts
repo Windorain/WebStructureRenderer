@@ -7,8 +7,8 @@ import fallbackBlockRegistryJson from '@renderData/registries/block_registry.jso
 import fallbackMaterialRegistryJson from '@renderData/registries/material_registry.json'
 import fallbackModelRegistryJson from '@renderData/registries/model_registry.json'
 
-import { mergeModelRegistries } from '@/render/mergeScene'
-import type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, WikiRenderBundle } from '@/render/types'
+import { mergeModelRegistries } from '@/render/data/mergeScene'
+import type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, WikiRenderBundle } from '@/render/schema/types'
 
 const fallbackBlockRegistry = fallbackBlockRegistryJson as BlockRegistryData
 const fallbackMaterialRegistry = fallbackMaterialRegistryJson as MaterialRegistryData

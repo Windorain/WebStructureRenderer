@@ -3,8 +3,8 @@
  * 世界 Y 与结构行 row 的关系见 `structureCoords.structureRowToWorldY`。
  */
 
-import type { VoxelState, VoxelVolume } from './types'
-import { AIR_VOXEL } from './types'
+import type { VoxelState, VoxelVolume } from '../schema/types'
+import { AIR_VOXEL } from '../schema/types'
 import { structureRowToWorldY } from './structureCoords'
 
 export type LayerPreviewMode = 'all' | { worldY: number }

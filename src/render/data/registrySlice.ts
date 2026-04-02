@@ -13,7 +13,7 @@ import type {
   ModelDocument,
   ModelRegistryData,
   StructureData,
-} from './types'
+} from '../schema/types'
 
 /** palette 解析所需的 block 键（含 `registryId@meta` 与裸 `registryId` 回退） */
 export function collectPaletteBlockKeys(structure: StructureData): Set<string> {

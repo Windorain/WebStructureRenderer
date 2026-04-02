@@ -5,15 +5,15 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
-import { layersForFace, listFaceNames } from './faceResolve'
-import { FACE_NORMAL } from './faceConstants'
+import { batchMaterialCacheKey, type BatchDescriptor } from '../mesh/batchDescriptor'
+import { layersForFace, listFaceNames } from '../mesh/faceResolve'
+import { FACE_NORMAL } from '../mesh/faceConstants'
 import { createMcItemSlotViewRoot } from './mcItemViewMatrix'
-import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
-import { structureRowToWorldY } from './structureCoords'
-import { collectSingleBlockModelMeshes } from './modelMesh'
-import { quadGeometryForFace } from './quadGeometry'
-import type { BlockEntry, LayerRole, ModelRegistryData, StructureDefinition } from './types'
+import type { SimpleMaterialLibrary } from '../materials/simpleMaterialLibrary'
+import { structureRowToWorldY } from '../data/structureCoords'
+import { collectSingleBlockModelMeshes } from '../mesh/modelMesh'
+import { quadGeometryForFace } from '../mesh/quadGeometry'
+import type { BlockEntry, LayerRole, ModelRegistryData, StructureDefinition } from '../schema/types'
 
 function parseTint(hex?: string): THREE.Color {
   if (!hex) return new THREE.Color(0xffffff)

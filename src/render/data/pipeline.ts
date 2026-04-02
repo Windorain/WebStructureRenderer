@@ -12,7 +12,7 @@ import type {
   StructureDefinition,
   WikiRenderBundle,
   World,
-} from './types'
+} from '../schema/types'
 import { mergeStructureData, type MergeStructureDataInput } from './mergeScene'
 import {
   WORLD_DOCUMENT_SCHEMA_VERSION,
@@ -285,4 +285,4 @@ export function resolveWikiRenderBundle(
 
 export type { MergeStructureDataInput } from './mergeScene'
 export { mergeMaterialRegistries, mergeModelRegistries, mergeStructureData } from './mergeScene'
-export type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, WikiRenderBundle } from './types'
+export type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, WikiRenderBundle } from '../schema/types'

@@ -3,7 +3,7 @@
  * 见 StructureDataExporter 与 `.refs/DESIGN_MEMO` 约定。
  */
 
-import type { BlockEntry } from './types'
+import type { BlockEntry } from '../schema/types'
 
 /**
  * Palette 体素在合并后 `blocks` 表中的键：`meta === 0` 用 `registryId`，否则 `registryId@meta`。

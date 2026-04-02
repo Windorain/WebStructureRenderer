@@ -4,9 +4,9 @@
 
 import * as THREE from 'three'
 
-import type { SimpleMaterialLibrary } from './materials/simpleMaterialLibrary'
+import type { SimpleMaterialLibrary } from '../materials/simpleMaterialLibrary'
 import { buildSingleBlockPreviewGroup } from './blockSlotBaker'
-import type { BlockEntry, ModelRegistryData } from './types'
+import type { BlockEntry, ModelRegistryData } from '../schema/types'
 
 export type BlockIconCacheStatus = 'idle' | 'pending' | 'ready' | 'error'
 

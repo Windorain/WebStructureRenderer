@@ -7,4 +7,4 @@ export {
   locatorToRelativeMcmetaPath,
   resolveLocatorToUrl,
   resolveMcmetaRawForLocator,
-} from './assets/resolveAssets'
+} from './resolveAssets'

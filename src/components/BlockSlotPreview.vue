@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import type { BlockIconCache } from '@/render/blockIconCache'
+import type { BlockIconCache } from '@/render/interaction/blockIconCache'
 
 const props = defineProps<{
   blockId: string

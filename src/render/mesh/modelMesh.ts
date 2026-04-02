@@ -14,18 +14,18 @@ import type {
   ModelFaceName,
   ModelRegistryData,
   StructureDefinition,
-} from './types'
-import { isAirState } from './types'
-import { getBlockEntry } from './blockRegistryResolve'
-import { shouldExposeFaceTowardNeighbor } from './neighborCulling'
+  LayerRole,
+} from '../schema/types'
+import { isAirState } from '../schema/types'
+import { getBlockEntry } from '../data/blockRegistryResolve'
+import { shouldExposeFaceTowardNeighbor } from '../data/neighborCulling'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
-import { buildVoxelVolume } from './grid'
+import { buildVoxelVolume } from '../data/grid'
 import { FACE_NORMAL } from './faceConstants'
 import { NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
-import { structureRowToWorldY } from './structureCoords'
+import { structureRowToWorldY } from '../data/structureCoords'
 import { uv8ForFace } from './blockFaceUv'
-import { effectiveVoxelState, type LayerPreviewMode } from './layerPreview'
-import type { LayerRole } from './types'
+import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
 
 const MC_FACE_TO_WORLD: Record<ModelFaceName, FaceName> = {
   east: '+x',

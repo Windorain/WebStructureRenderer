@@ -4,9 +4,9 @@
 
 import * as THREE from 'three'
 
-import { buildVoxelVolume } from './grid'
-import { effectiveBlockId, type LayerPreviewMode } from './layerPreview'
-import type { StructureDefinition } from './types'
+import { buildVoxelVolume } from '../data/grid'
+import { effectiveBlockId, type LayerPreviewMode } from '../data/layerPreview'
+import type { StructureDefinition } from '../schema/types'
 
 const AIR = 'air'
 const NUDGE = 0.002

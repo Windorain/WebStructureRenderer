@@ -3,7 +3,7 @@
  * 不负责读文件；调用方决定写入位置。
  */
 
-import type { StructureData, StructureDefinition } from './types'
+import type { StructureData, StructureDefinition } from '../schema/types'
 
 export function exportStructureDefinitionJson(def: StructureDefinition): string {
   return JSON.stringify(def, null, 2)

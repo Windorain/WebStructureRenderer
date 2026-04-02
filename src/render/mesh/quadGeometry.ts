@@ -5,7 +5,7 @@
 import * as THREE from 'three'
 
 import { uv8ForFace } from './blockFaceUv'
-import type { FaceName } from './types'
+import type { FaceName } from '../schema/types'
 
 /** 导出供物品栏 RTT 单方块烘焙复用（与体素网格同一套顶点/UV 约定） */
 export function quadGeometryForFace(

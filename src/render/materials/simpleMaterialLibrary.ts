@@ -11,9 +11,9 @@ import {
   parseMcmetaJson,
   resolveAnimationTimeline,
   type ParsedMcmeta,
-} from '../mcmeta'
-import { batchMaterialCacheKey, type BatchDescriptor } from '../batchDescriptor'
-import type { LayerRole, MaterialRegistryData } from '../types'
+} from '../assets/mcmeta'
+import { batchMaterialCacheKey, type BatchDescriptor } from '../mesh/batchDescriptor'
+import type { LayerRole, MaterialRegistryData } from '../schema/types'
 
 function createFaceMaterial(
   tex: THREE.Texture,

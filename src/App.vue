@@ -14,7 +14,7 @@ import { resolveAppPreviewConfig } from '@/preview/previewConfig'
 import { PreviewSceneContextKey } from '@/preview/context'
 import { createPreviewSceneStore } from '@/preview/previewSceneStore'
 import { usePreviewTooltip } from '@/preview/usePreviewTooltip'
-import { resolveBlockTooltip } from '@/render/blockTooltip'
+import { resolveBlockTooltip } from '@/render/interaction/blockTooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const mergedConfig = resolveAppPreviewConfig()

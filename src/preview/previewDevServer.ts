@@ -3,8 +3,8 @@
  * UI 仅通过本模块访问场景列表与 WikiRenderBundle，不直接 glob。
  */
 
-import { validateWikiRenderBundle } from '@/render/pipeline'
-import type { WikiRenderBundle } from '@/render/types'
+import { validateWikiRenderBundle } from '@/render/data/pipeline'
+import type { WikiRenderBundle } from '@/render/schema/types'
 
 import { getDiskWikiRenderBundle, listDiskSceneIds } from './serverCatalog'
 

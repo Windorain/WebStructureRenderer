@@ -2,8 +2,8 @@
  * 预览页默认配置：Wiki 渲染包（document + 注册表）、图标缓存参数等。
  */
 
-import type { BlockIconCacheOptions } from '@/render/blockIconCache'
-import type { WikiRenderBundle } from '@/render/types'
+import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
+import type { WikiRenderBundle } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 import { defaultWikiRenderBundle } from './previewDevServer'

@@ -3,8 +3,8 @@
  * `def.cellGrid[zSlice][row][column]`；row 0 = 结构顶（最高 Y）；世界 Y 见 `structureRowToWorldY`。
  */
 
-import type { StructureDefinition, VoxelState, VoxelVolume } from './types'
-import { AIR_VOXEL } from './types'
+import type { StructureDefinition, VoxelState, VoxelVolume } from '../schema/types'
+import { AIR_VOXEL } from '../schema/types'
 
 export interface VoxelCell {
   column: number

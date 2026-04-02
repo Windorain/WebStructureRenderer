@@ -6,8 +6,8 @@
  * - 邻格与本格均不遮挡且为同一 palette 键 → 不露面（玻璃–玻璃共面剔除）。
  */
 
-import type { BlockEntry, VoxelState } from './types'
-import { isAirState } from './types'
+import type { BlockEntry, VoxelState } from '../schema/types'
+import { isAirState } from '../schema/types'
 import { getBlockEntry } from './blockRegistryResolve'
 
 export function resolveOccludesAdjacentFaces(entry: BlockEntry | undefined): boolean {

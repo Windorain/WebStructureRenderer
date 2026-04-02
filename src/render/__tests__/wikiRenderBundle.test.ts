@@ -9,9 +9,9 @@ import materialRegistryJson from '@renderData/registries/material_registry.json'
 import modelRegistryJson from '@renderData/registries/model_registry.json'
 import exportModelRegistryJson from '@renderData/server/scenes/export/model_registry.json'
 
-import { mergeManyBlockRegistryLayers, sliceBlockRegistryByPalette } from '@/render/registrySlice'
-import { loadStructureData, resolveWikiRenderBundle } from '@/render/pipeline'
-import type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, StructureData, World } from '@/render/types'
+import { mergeManyBlockRegistryLayers, sliceBlockRegistryByPalette } from '@/render/data/registrySlice'
+import { loadStructureData, resolveWikiRenderBundle } from '@/render/data/pipeline'
+import type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, StructureData, World } from '@/render/schema/types'
 
 describe('resolveWikiRenderBundle', () => {
   it('与 loadStructureData + 同一份 blockRegistry 等价', () => {

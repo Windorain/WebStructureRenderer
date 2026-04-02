@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { BlockIconCache } from '@/render/blockIconCache'
-import type { BlockStatRow } from '@/render/blockStats'
+import type { BlockIconCache } from '@/render/interaction/blockIconCache'
+import type { BlockStatRow } from '@/render/interaction/blockStats'
 
 import BlockSlotPreview from './BlockSlotPreview.vue'
 

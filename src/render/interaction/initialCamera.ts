@@ -10,11 +10,11 @@
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-import type { StructureDefinition } from './types'
-import { FACE_NORMAL } from './faceConstants'
-import { buildVoxelVolume, findFirstVoxelWithBlockId } from './grid'
-import type { VoxelCell } from './grid'
-import { structureRowToWorldY } from './structureCoords'
+import type { StructureDefinition } from '../schema/types'
+import { FACE_NORMAL } from '../mesh/faceConstants'
+import { buildVoxelVolume, findFirstVoxelWithBlockId } from '../data/grid'
+import type { VoxelCell } from '../data/grid'
+import { structureRowToWorldY } from '../data/structureCoords'
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
 
