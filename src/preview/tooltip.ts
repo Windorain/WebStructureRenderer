@@ -1,8 +1,10 @@
 /**
- * 悬停气泡 UI 状态（局部，不并入 previewSceneStore）。
+ * 悬停气泡：Vue 状态 + 方块说明文案解析。
  */
 
 import { ref, type Ref } from 'vue'
+
+import type { StructureDefinition } from '@/render/schema/types'
 
 export type TooltipHoverSource = 'viewport' | 'sidebar'
 
@@ -33,4 +35,16 @@ export function usePreviewTooltip(): UsePreviewTooltip {
   }
 
   return { hover, setHover, clearHover }
+}
+
+/** 方块说明文案：来自合并后的 StructureDefinition.blocks（block_registry 等）。 */
+export function resolveBlockTooltip(blockId: string, def: StructureDefinition): string {
+  const entry = def.blocks[blockId]
+  if (!entry) return blockId
+  const title = entry.label?.trim()
+  const desc = entry.description?.trim()
+  if (title && desc) return `${title}\n${desc}`
+  if (title) return title
+  if (desc) return desc
+  return blockId
 }

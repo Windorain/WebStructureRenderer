@@ -4,14 +4,14 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 
-import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import { DEFAULT_PREVIEW_SCENE_ID, fetchSceneIdList } from '@/preview/wikiSession'
+import type { PreviewConfig } from '@/preview/previewConfig'
+import { DEFAULT_PREVIEW_SCENE_ID, fetchSceneIdList } from '@/preview/previewSession'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
-import pkg from '../../package.json'
+import pkg from '../../../package.json'
 
 const props = defineProps<{
-  mergedConfig: AppPreviewConfig
+  mergedConfig: PreviewConfig
 }>()
 
 const selectableSceneIds = ref<string[]>([])
@@ -39,7 +39,7 @@ const devInfoLines = computed(() => {
   ]
 })
 
-/** 与当前表单一致的入口 URL（白名单键，见 urlPreviewParams.ts） */
+/** 与当前表单一致的入口 URL（白名单键，见 dev/devPreviewConfig.ts 内 parseUrlPreviewParams） */
 const previewEntryUrl = computed(() => {
   const p = new URLSearchParams()
   const sid = sceneId.value.trim() || props.mergedConfig.sceneId || DEFAULT_PREVIEW_SCENE_ID
@@ -137,7 +137,7 @@ function copyPreviewLink(): void {
 }
 
 function downloadCurrentBundle(): void {
-  const b = props.mergedConfig.wikiRenderBundle
+  const b = props.mergedConfig.renderBundle
   const sid = props.mergedConfig.sceneId ?? DEFAULT_PREVIEW_SCENE_ID
   const prefix = sid.replace(/[/\\:]/g, '_')
   const trigger = (filename: string, text: string) => {

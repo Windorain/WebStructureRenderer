@@ -1,21 +1,21 @@
 /**
- * 单一加载阶段：HTTP 拉取 WikiRenderBundle，并行预取 PNG，构造 SimpleMaterialLibrary。
+ * 单一加载阶段：HTTP 拉取 RenderBundle，并行预取 PNG，构造 SimpleMaterialLibrary。
  */
 
 import * as THREE from 'three'
 
 import { locatorToResourceUrl } from '@/render/assets/resolveAssets'
-import { formatUnknownError } from '@/util/formatUnknownError'
-import { validateWikiRenderBundle } from '@/render/data/pipeline'
+import { validateRenderBundle } from '@/render/data/bundleResolve'
 import { SimpleMaterialLibrary, type MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
-import type { WikiRenderBundle } from '@/render/schema/types'
+import type { RenderBundle } from '@/render/schema/types'
+import { formatUnknownError } from '@/util/formatUnknownError'
 
 export const DEFAULT_PREVIEW_SCENE_ID = 'industrial_electrolyzer.simple'
 
 const DEFAULT_API_PREFIX = '/preview-api'
 
-export interface WikiSessionResult {
-  wikiRenderBundle: WikiRenderBundle
+export interface PreviewSessionResult {
+  renderBundle: RenderBundle
   materialLibrary: MaterialLibraryApi
 }
 
@@ -23,7 +23,7 @@ function resourcesBaseFromApiPrefix(apiPrefix: string): string {
   return `${apiPrefix.replace(/\/$/, '')}/resources`
 }
 
-async function fetchBundleJson(sceneId: string, apiPrefix: string): Promise<WikiRenderBundle> {
+async function fetchBundleJson(sceneId: string, apiPrefix: string): Promise<RenderBundle> {
   const enc = encodeURIComponent(sceneId)
   const path = `${apiPrefix.replace(/\/$/, '')}/scenes/${enc}/bundle`
   const res = await fetch(path)
@@ -31,8 +31,8 @@ async function fetchBundleJson(sceneId: string, apiPrefix: string): Promise<Wiki
   if (!res.ok) {
     throw new Error(`拉取 bundle 失败: ${res.status} ${text}`)
   }
-  const raw = JSON.parse(text) as WikiRenderBundle
-  validateWikiRenderBundle(raw)
+  const raw = JSON.parse(text) as RenderBundle
+  validateRenderBundle(raw)
   return raw
 }
 
@@ -65,15 +65,15 @@ async function loadPngTexture(loader: THREE.TextureLoader, url: string): Promise
 /**
  * 拉取 bundle、按 material_registry 并行预取全部 PNG，构造材质库。
  */
-export async function loadWikiPreviewSession(options: {
+export async function loadPreviewSession(options: {
   sceneId: string
   apiPrefix?: string
-}): Promise<WikiSessionResult> {
+}): Promise<PreviewSessionResult> {
   const apiPrefix = options.apiPrefix ?? DEFAULT_API_PREFIX
-  const wikiRenderBundle = await fetchBundleJson(options.sceneId, apiPrefix)
+  const renderBundle = await fetchBundleJson(options.sceneId, apiPrefix)
   const resourcesBase = resourcesBaseFromApiPrefix(apiPrefix)
   const loader = new THREE.TextureLoader()
-  const materials = wikiRenderBundle.materialRegistry.materials
+  const materials = renderBundle.materialRegistry.materials
 
   const entries = Object.entries(materials)
   const textures = await Promise.all(
@@ -85,9 +85,9 @@ export async function loadWikiPreviewSession(options: {
   )
 
   const preloaded = new Map<string, THREE.Texture>(textures)
-  const materialLibrary = new SimpleMaterialLibrary(wikiRenderBundle.materialRegistry, preloaded)
+  const materialLibrary = new SimpleMaterialLibrary(renderBundle.materialRegistry, preloaded)
 
-  return { wikiRenderBundle, materialLibrary }
+  return { renderBundle, materialLibrary }
 }
 
 export async function fetchSceneIdList(apiPrefix: string = DEFAULT_API_PREFIX): Promise<string[]> {
@@ -106,4 +106,4 @@ export {
   fetchNamespaceDataByTitle,
   fetchNamespaceDataList,
   type NamespaceDataDoc,
-} from './wikiNamespaceHttp'
+} from './namespaceHttp'

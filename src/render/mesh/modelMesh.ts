@@ -23,7 +23,7 @@ import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelVolume } from '../data/grid'
 import { FACE_NORMAL } from './faceConstants'
 import { NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
-import { structureRowToWorldY } from '../data/structureCoords'
+import { structureRowToWorldY } from '../data/grid'
 import { uv8ForFace } from './blockFaceUv'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
 

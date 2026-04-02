@@ -1,6 +1,6 @@
 /**
  * 按 palette 从全局注册表切片、多段 block 表合并、按方块条目收集材质。
- * HTTP 返回 bundle 前的裁剪见 `sliceWikiRenderBundleForHttp`。
+ * HTTP 返回 bundle 前的裁剪见 `sliceRenderBundleForHttp`。
  */
 
 import { blockRegistryKeyForPalette } from './blockRegistryResolve'

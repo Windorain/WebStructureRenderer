@@ -156,7 +156,7 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
   private disposed = false
 
   /**
-   * @param preloaded 须已含 material_registry 中全部 materialId；纹理由 wikiSession 预取并传入
+   * @param preloaded 须已含 material_registry 中全部 materialId；纹理由 previewSession 预取并传入
    */
   constructor(registry: MaterialRegistryData, preloaded: Map<string, THREE.Texture>) {
     for (const [materialId, tex] of preloaded) {

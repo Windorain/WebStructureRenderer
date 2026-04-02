@@ -5,7 +5,7 @@
 import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 
-import { PreviewSceneContextKey } from '@/preview/context'
+import { PreviewSceneContextKey } from '@/preview/sceneStore'
 import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/interaction/initialCamera'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'

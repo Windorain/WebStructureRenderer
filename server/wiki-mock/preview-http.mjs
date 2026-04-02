@@ -1,6 +1,6 @@
 /**
  * Mock Wiki 数据服务：`/preview-api`、`/namespace`、静态资源。
- * 注册表裁剪实现见 `src/render/data/sliceWikiRenderBundleForHttp.ts`（经 tsx 加载）。
+ * 注册表裁剪实现见 `src/render/data/sliceRenderBundleForHttp.ts`（经 tsx 加载）。
  * `PREVIEW_BUNDLE_NO_SLICE=1` 可关闭裁剪；`--static dist` 托管构建产物。
  */
 import http from 'node:http'
@@ -9,7 +9,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { sliceWikiRenderBundleForHttp } from '../../src/render/data/sliceWikiRenderBundleForHttp.ts'
+import { sliceRenderBundleForHttp } from '../../src/render/data/sliceRenderBundleForHttp.ts'
 import { loadNamespaceDataFromDisk, runInMemoryAggregate } from './namespaceMemory.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -120,7 +120,7 @@ async function tryStaticFile(staticRoot, urlPath, res) {
   }
 }
 
-/** 灰机风格 JSON 外层（Mock；与 src/preview/wikiNamespaceHttp.ts 成对） */
+/** 灰机风格 JSON 外层（Mock；与 src/preview/namespaceHttp.ts 成对） */
 function jsonHuijiOk(res, data) {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify({ success: true, data }))
@@ -294,7 +294,7 @@ function createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot) {
       try {
         let bundle = await readBundleJson(scenesRoot, id)
         if (!process.env.PREVIEW_BUNDLE_NO_SLICE) {
-          bundle = sliceWikiRenderBundleForHttp(bundle)
+          bundle = sliceRenderBundleForHttp(bundle)
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify(bundle))

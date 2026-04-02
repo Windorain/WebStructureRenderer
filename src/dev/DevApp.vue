@@ -4,12 +4,12 @@
  */
 import { onMounted, ref } from 'vue'
 
-import AppShell from '@/AppShell.vue'
-import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import { resolveDevPreviewConfigAsync } from '@/dev/previewBootstrap'
+import AppShell from '@/app/AppShell.vue'
+import type { PreviewConfig } from '@/preview/previewConfig'
+import { resolveDevPreviewConfigAsync } from '@/dev/devPreviewConfig'
 import { formatUnknownError } from '@/util/formatUnknownError'
 
-const mergedConfig = ref<AppPreviewConfig | null>(null)
+const mergedConfig = ref<PreviewConfig | null>(null)
 const loadError = ref<string | null>(null)
 
 onMounted(async () => {

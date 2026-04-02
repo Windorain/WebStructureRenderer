@@ -5,20 +5,18 @@
 import { computed, onBeforeUnmount, onMounted, provide } from 'vue'
 import type { Scene } from 'three'
 
-import BlockStatsSidebar from '@/components/BlockStatsSidebar.vue'
-import DeveloperConfigPanel from '@/components/DeveloperConfigPanel.vue'
-import LayerPreviewBar from '@/components/LayerPreviewBar.vue'
-import StructureViewport from '@/components/StructureViewport.vue'
-import ToolTipBox from '@/components/ToolTipBox.vue'
-import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import { PreviewSceneContextKey } from '@/preview/context'
-import { createPreviewSceneStore } from '@/preview/previewSceneStore'
-import { usePreviewTooltip } from '@/preview/usePreviewTooltip'
-import { resolveBlockTooltip } from '@/render/interaction/blockTooltip'
+import BlockStatsSidebar from '@/app/components/BlockStatsSidebar.vue'
+import DeveloperConfigPanel from '@/app/components/DeveloperConfigPanel.vue'
+import LayerPreviewBar from '@/app/components/LayerPreviewBar.vue'
+import StructureViewport from '@/app/components/StructureViewport.vue'
+import ToolTipBox from '@/app/components/ToolTipBox.vue'
+import type { PreviewConfig } from '@/preview/previewConfig'
+import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/sceneStore'
+import { usePreviewTooltip, resolveBlockTooltip } from '@/preview/tooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
-  mergedConfig: AppPreviewConfig
+  mergedConfig: PreviewConfig
 }>()
 
 const store = createPreviewSceneStore(props.mergedConfig)

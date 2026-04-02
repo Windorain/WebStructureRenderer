@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 
-import { PreviewSceneContextKey } from '@/preview/context'
+import { PreviewSceneContextKey } from '@/preview/sceneStore'
 
 const store = inject(PreviewSceneContextKey)
 if (!store) {

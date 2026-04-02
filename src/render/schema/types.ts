@@ -3,7 +3,7 @@
  *
  * 结构 JSON schemaVersion 6：`palette` + `cellGrid`。
  *
- * 数据流：HTTP 拉取 `WikiRenderBundle` → 校验 → `resolveWikiRenderBundle` → StructureDefinition；
+ * 数据流：HTTP 拉取 `RenderBundle` → 校验 → `resolveRenderBundle` → StructureDefinition；
  * 纹理经 `/preview-api/resources/...` 预取后注入 SimpleMaterialLibrary；材质动画参数以 `material_registry` 为准。
  */
 
@@ -40,9 +40,9 @@ export interface MaterialRegistryData {
 }
 
 /**
- * Wiki 一次下发的渲染包：`document` 为 **StructureData** 或 **World**（JSON 顶层）；注册表由服务端/Mock 预先定稿。
+ * 一次下发的渲染包：`document` 为 **StructureData** 或 **World**（JSON 顶层）；注册表由服务端/Mock 预先定稿。
  */
-export interface WikiRenderBundle {
+export interface RenderBundle {
   /** 可选；契约版本 */
   payloadSchemaVersion?: number
   /** 单结构 JSON 或 World 多帧文档（内嵌帧须含 `structure`） */

@@ -4,21 +4,21 @@
 
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
-import type { WikiRenderBundle } from '@/render/schema/types'
+import type { RenderBundle } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 /** 功能块开关 */
-export interface WikiRendererFeatures {
+export interface PreviewFeatures {
   blockStatsSidebar: boolean
   layerBar: boolean
   developerPanel: boolean
 }
 
-export interface AppPreviewConfig {
+export interface PreviewConfig {
   sceneId: string
-  wikiRenderBundle: WikiRenderBundle
+  renderBundle: RenderBundle
   materialLibrary: MaterialLibraryApi
-  features: WikiRendererFeatures
+  features: PreviewFeatures
   blockIconCacheOptions: BlockIconCacheOptions
   initialLayerWorldY: number
   initialProjectionMode: ProjectionMode
@@ -27,10 +27,7 @@ export interface AppPreviewConfig {
   okMessage: (modelId: string) => string
 }
 
-export const defaultWikiEmbedUi: Omit<
-  AppPreviewConfig,
-  'wikiRenderBundle' | 'materialLibrary' | 'sceneId'
-> = {
+export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibrary' | 'sceneId'> = {
   features: {
     blockStatsSidebar: false,
     layerBar: false,

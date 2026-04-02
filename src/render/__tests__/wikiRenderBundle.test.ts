@@ -10,10 +10,10 @@ import modelRegistryJson from '@renderData/registries/model_registry.json'
 import exportModelRegistryJson from '@renderData/server/scenes/export/model_registry.json'
 
 import { mergeManyBlockRegistryLayers, sliceBlockRegistryByPalette } from '@/render/data/registrySlice'
-import { loadStructureData, resolveWikiRenderBundle } from '@/render/data/pipeline'
+import { loadStructureData, resolveRenderBundle } from '@/render/data/bundleResolve'
 import type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, StructureData, World } from '@/render/schema/types'
 
-describe('resolveWikiRenderBundle', () => {
+describe('resolveRenderBundle', () => {
   it('与 loadStructureData + 同一份 blockRegistry 等价', () => {
     const structure = electroStructure as StructureData
     const blockRegistry = blockRegistryJson as BlockRegistryData
@@ -21,7 +21,7 @@ describe('resolveWikiRenderBundle', () => {
     const modelRegistry = modelRegistryJson as unknown as ModelRegistryData
 
     const viaLoad = loadStructureData(structure, { blockRegistry, modelRegistry })
-    const viaBundle = resolveWikiRenderBundle({
+    const viaBundle = resolveRenderBundle({
       document: structure,
       blockRegistry,
       materialRegistry,
@@ -45,13 +45,13 @@ describe('resolveWikiRenderBundle', () => {
       id: 'fixture.world',
       frames: [{ structure }],
     }
-    const fromWorld = resolveWikiRenderBundle({
+    const fromWorld = resolveRenderBundle({
       document: world,
       blockRegistry,
       materialRegistry,
       modelRegistry,
     })
-    const fromStructure = resolveWikiRenderBundle({
+    const fromStructure = resolveRenderBundle({
       document: structure,
       blockRegistry,
       materialRegistry,
@@ -64,7 +64,7 @@ describe('resolveWikiRenderBundle', () => {
     const blockRegistry = exportBlockRegistryJson as BlockRegistryData
     const materialRegistry = exportMaterialRegistryJson as MaterialRegistryData
     const modelRegistry = exportModelRegistryJson as unknown as ModelRegistryData
-    const r = resolveWikiRenderBundle({
+    const r = resolveRenderBundle({
       document: exportStructure,
       blockRegistry,
       materialRegistry,
@@ -78,7 +78,7 @@ describe('resolveWikiRenderBundle', () => {
   it('definition.blocks 与 blockRegistry.blocks 条目引用一致（库内仅浅拷贝顶层表）', () => {
     const structure = electroStructure as StructureData
     const blockRegistry = blockRegistryJson as BlockRegistryData
-    const def = resolveWikiRenderBundle({
+    const def = resolveRenderBundle({
       document: structure,
       blockRegistry,
       materialRegistry: materialRegistryJson as MaterialRegistryData,

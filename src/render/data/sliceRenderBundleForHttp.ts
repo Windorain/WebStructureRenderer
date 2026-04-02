@@ -1,5 +1,5 @@
 /**
- * 按 document 内 palette 裁剪 WikiRenderBundle，减小 HTTP 传输体积。
+ * 按 document 内 palette 裁剪 RenderBundle，减小 HTTP 传输体积。
  * 与 wiki-mock 在返回 bundle 前调用同一实现。
  */
 
@@ -10,8 +10,8 @@ import type {
   MaterialRegistryData,
   ModelDocument,
   ModelRegistryData,
+  RenderBundle,
   StructureData,
-  WikiRenderBundle,
   World,
 } from '../schema/types'
 
@@ -138,7 +138,7 @@ function sliceModelRegistry(
 /**
  * 若可从 document 解析出结构，则裁剪注册表；否则原样返回。
  */
-export function sliceWikiRenderBundleForHttp(bundle: WikiRenderBundle): WikiRenderBundle {
+export function sliceRenderBundleForHttp(bundle: RenderBundle): RenderBundle {
   const structures = extractStructuresForPalette(bundle.document)
   if (structures.length === 0) {
     return bundle

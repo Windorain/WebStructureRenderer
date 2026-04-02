@@ -8,9 +8,9 @@ import type {
   FaceName,
   MaterialRegistryData,
   ModelRegistryData,
+  RenderBundle,
   StructureData,
   StructureDefinition,
-  WikiRenderBundle,
   World,
 } from '../schema/types'
 import { mergeStructureData, type MergeStructureDataInput } from './mergeScene'
@@ -145,7 +145,7 @@ export function loadStructureData(raw: unknown, input: MergeStructureDataInput):
   if (!m.cellGrid?.length) throw new Error('缺少 cellGrid')
   if (!m.palette?.length) throw new Error('缺少 palette')
   if ((m as { blocks?: unknown }).blocks !== undefined) {
-    throw new Error('StructureData 不应包含顶层 blocks；方块外观请使用独立 block_registry 并在 WikiRenderBundle 中传入')
+    throw new Error('StructureData 不应包含顶层 blocks；方块外观请使用独立 block_registry 并在 RenderBundle 中传入')
   }
   validateStructureData(m as StructureData)
   return mergeStructureData(m as StructureData, input)
@@ -252,19 +252,19 @@ function validateBlockRegistryBlocksHaveMeshKind(r: BlockRegistryData, label: st
   }
 }
 
-/** 校验 Wiki 渲染包形状（document 的语义校验在 loadStructureData / validateWorldDocument 中） */
-export function validateWikiRenderBundle(b: WikiRenderBundle): void {
-  if (!b || typeof b !== 'object') throw new Error('WikiRenderBundle 无效')
+/** 校验渲染包形状（document 的语义校验在 loadStructureData / validateWorldDocument 中） */
+export function validateRenderBundle(b: RenderBundle): void {
+  if (!b || typeof b !== 'object') throw new Error('RenderBundle 无效')
   if (b.document === undefined || b.document === null) {
-    throw new Error('WikiRenderBundle.document 必填')
+    throw new Error('RenderBundle.document 必填')
   }
-  validateBlockRegistryData(b.blockRegistry, 'WikiRenderBundle.blockRegistry')
-  validateMaterialRegistryData(b.materialRegistry, 'WikiRenderBundle.materialRegistry')
-  validateModelRegistryData(b.modelRegistry, 'WikiRenderBundle.modelRegistry')
-  validateBlockRegistryBlocksHaveMeshKind(b.blockRegistry, 'WikiRenderBundle')
+  validateBlockRegistryData(b.blockRegistry, 'RenderBundle.blockRegistry')
+  validateMaterialRegistryData(b.materialRegistry, 'RenderBundle.materialRegistry')
+  validateModelRegistryData(b.modelRegistry, 'RenderBundle.modelRegistry')
+  validateBlockRegistryBlocksHaveMeshKind(b.blockRegistry, 'RenderBundle')
 }
 
-export interface WikiRenderResolveResult {
+export interface RenderBundleResolveResult {
   definition: StructureDefinition
   materialRegistry: MaterialRegistryData
   modelRegistry: ModelRegistryData
@@ -273,11 +273,8 @@ export interface WikiRenderResolveResult {
 /**
  * 单次装配：校验 bundle → StructureDefinition + 材质表（document 为 StructureData 或 World）。
  */
-export function resolveWikiRenderBundle(
-  bundle: WikiRenderBundle,
-  frameIndex?: number,
-): WikiRenderResolveResult {
-  validateWikiRenderBundle(bundle)
+export function resolveRenderBundle(bundle: RenderBundle, frameIndex?: number): RenderBundleResolveResult {
+  validateRenderBundle(bundle)
   const input: MergeStructureDataInput = { blockRegistry: bundle.blockRegistry, modelRegistry: bundle.modelRegistry }
   const definition = loadStructureOrWorld(bundle.document, frameIndex, input)
   return { definition, materialRegistry: bundle.materialRegistry, modelRegistry: bundle.modelRegistry }
@@ -285,4 +282,4 @@ export function resolveWikiRenderBundle(
 
 export type { MergeStructureDataInput } from './mergeScene'
 export { mergeMaterialRegistries, mergeModelRegistries, mergeStructureData } from './mergeScene'
-export type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, WikiRenderBundle } from '../schema/types'
+export type { BlockRegistryData, MaterialRegistryData, ModelRegistryData, RenderBundle } from '../schema/types'

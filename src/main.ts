@@ -1,23 +1,18 @@
 /**
- * 库入口（IIFE）：mountWikiRenderer、类型与数据校验 API。
+ * 库入口（IIFE）：mount、类型与数据校验 API。
  */
 
 import '@/styles/nei-tokens.css'
 
 export const MOUNT_SELECTOR = '#wiki-multi-structure-render'
 
-export { mountWikiRenderer } from './embed/mountWikiRenderer'
-export type {
-  WikiRendererBootstrapOptions,
-  WikiRendererData,
-  WikiRendererFeatures,
-  WikiRendererUiOptions,
-} from './embed/wikiRendererContract'
-export type { AppPreviewConfig } from './preview/appPreviewConfig'
+export { mount } from './embed/mount'
+export type { EmbedBootstrapOptions, EmbedData, EmbedUiOptions, PreviewFeatures } from './embed/embedContract'
+export type { PreviewConfig } from './preview/previewConfig'
 
 export {
-  resolveWikiRenderBundle,
-  validateWikiRenderBundle,
-  type WikiRenderBundle,
-  type WikiRenderResolveResult,
-} from './render/data/pipeline'
+  resolveRenderBundle,
+  validateRenderBundle,
+  type RenderBundle,
+  type RenderBundleResolveResult,
+} from './render/data/bundleResolve'

@@ -4,13 +4,13 @@
 
 import { createApp } from 'vue'
 
-import WikiRendererRoot from '@/embed/WikiRendererRoot.vue'
+import EmbedRoot from '@/embed/EmbedRoot.vue'
 
-import type { WikiRendererBootstrapOptions } from './wikiRendererContract'
+import type { EmbedBootstrapOptions } from './embedContract'
 
-export function mountWikiRenderer(
+export function mount(
   target: string | Element | null | undefined,
-  options: WikiRendererBootstrapOptions,
+  options: EmbedBootstrapOptions,
 ): void {
   const el =
     target == null
@@ -19,8 +19,8 @@ export function mountWikiRenderer(
         ? document.querySelector(target)
         : target
   if (!el) {
-    console.warn('[WikiMultiStructureRender] mountWikiRenderer: 未找到挂载节点', target ?? '#wiki-multi-structure-render')
+    console.warn('[WikiMultiStructureRender] mount: 未找到挂载节点', target ?? '#wiki-multi-structure-render')
     return
   }
-  createApp(WikiRendererRoot, { bootstrap: options }).mount(el)
+  createApp(EmbedRoot, { bootstrap: options }).mount(el)
 }

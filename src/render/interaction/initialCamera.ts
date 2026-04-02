@@ -14,7 +14,7 @@ import type { StructureDefinition } from '../schema/types'
 import { FACE_NORMAL } from '../mesh/faceConstants'
 import { buildVoxelVolume, findFirstVoxelWithBlockId } from '../data/grid'
 import type { VoxelCell } from '../data/grid'
-import { structureRowToWorldY } from '../data/structureCoords'
+import { structureRowToWorldY } from '../data/grid'
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
 

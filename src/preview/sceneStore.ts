@@ -2,6 +2,7 @@
  * 预览场景：结构、分层、网格、图标缓存与统计的编排。
  */
 
+import type { InjectionKey } from 'vue'
 import {
   computed,
   ref,
@@ -19,18 +20,16 @@ import {
   blockIconBakeLayoutKey,
 } from '@/render/interaction/blockIconCache'
 import { buildBlockStatsEntries, type BlockStatRow } from '@/render/interaction/blockStats'
-import { summarizeBlocksForCache } from '@/render/interaction/blockSlotBaker'
-import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/interaction/mcItemViewMatrix'
+import { MC_ITEM_SLOT_BAKE_REVISION, summarizeBlocksForCache } from '@/render/interaction/blockSlotBaker'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
-import { resolveWikiRenderBundle } from '@/render/data/pipeline'
+import { resolveRenderBundle } from '@/render/data/bundleResolve'
 import { buildBlockMesh } from '@/render/mesh/blockMesh'
 import type { StructureDefinition } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
-
 import { formatUnknownError } from '@/util/formatUnknownError'
 
-import type { AppPreviewConfig } from './appPreviewConfig'
+import type { PreviewConfig } from './previewConfig'
 
 export type LoadStatus = 'loading' | 'ok' | 'error'
 
@@ -57,11 +56,13 @@ export interface PreviewSceneStore {
   contentGroupRef: ShallowRef<THREE.Group | null>
 }
 
+export const PreviewSceneContextKey: InjectionKey<PreviewSceneStore> = Symbol('PreviewSceneContext')
+
 function formatError(err: unknown): string {
   return formatUnknownError(err)
 }
 
-export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneStore {
+export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStore {
   const loadStatus = ref<LoadStatus>('loading')
   const statusMessage = ref(config.loadingMessage)
   const layerWorldY = ref(config.initialLayerWorldY)
@@ -117,7 +118,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     loadStatus.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
-      const resolved = resolveWikiRenderBundle(config.wikiRenderBundle)
+      const resolved = resolveRenderBundle(config.renderBundle)
       structureDefinition.value = resolved.definition
       materialLibrary.value = config.materialLibrary
       const iconCache = new BlockIconCache(

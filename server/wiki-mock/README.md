@@ -1,18 +1,18 @@
 # Mock Wiki HTTP（wiki-mock）
 
-本地/CI 模拟 Wiki 后端；通过 `tsx` 加载 `src/render/data/sliceWikiRenderBundleForHttp.ts` 做 bundle 裁剪。
+本地/CI 模拟 Wiki 后端；通过 `tsx` 加载 `src/render/data/sliceRenderBundleForHttp.ts` 做 bundle 裁剪。
 
 ## REST（`/preview-api`）
 
 | 方法 | 路径 | 响应 |
 |------|------|------|
 | GET | `/preview-api/scenes` | `string[]` 场景 id 列表 |
-| GET | `/preview-api/scenes/:sceneId/bundle` | `WikiRenderBundle` JSON（可按 palette 裁剪注册表） |
+| GET | `/preview-api/scenes/:sceneId/bundle` | `RenderBundle` JSON（可按 palette 裁剪注册表） |
 | GET | `/preview-api/resources/*` | 资源文件（相对 `data/resources` 根）；如 `.../assets/<ns>/textures/...png` |
 
 场景根目录：仓库 `data/server/scenes/<id>/` 下四文件 `document.json`、`block_registry.json`、`material_registry.json`、`model_registry.json`。
 
-## Namespace / Data（与 `src/preview/wikiNamespaceHttp.ts` 一致）
+## Namespace / Data（与 `src/preview/namespaceHttp.ts` 一致）
 
 - **成功**：HTTP 200，body 为 `{ "success": true, "data": ... }`。
 - **失败**：HTTP 4xx/5xx，body 为 `{ "success": false, "error": { "code": string, "message": string } }`。

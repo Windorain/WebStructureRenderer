@@ -1,6 +1,6 @@
 /**
  * 资源定位符 → HTTP 路径（相对 `resources` 根下的 assets 树）。
- * 不含纹理加载；PNG 由 wikiSession 经 HTTP 预取后注入材质库。
+ * 不含纹理加载；PNG 由 previewSession 经 HTTP 预取后注入材质库。
  */
 
 /**

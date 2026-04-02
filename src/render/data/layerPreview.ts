@@ -1,11 +1,11 @@
 /**
  * 分层预览：在 VoxelVolume 读路径上投影，非当前 Y 层视为空气（与 simpleMesh / 拾取 / 统计一致）。
- * 世界 Y 与结构行 row 的关系见 `structureCoords.structureRowToWorldY`。
+ * 世界 Y 与结构行 row 的关系见 `grid.structureRowToWorldY`。
  */
 
 import type { VoxelState, VoxelVolume } from '../schema/types'
 import { AIR_VOXEL } from '../schema/types'
-import { structureRowToWorldY } from './structureCoords'
+import { structureRowToWorldY } from './grid'
 
 export type LayerPreviewMode = 'all' | { worldY: number }
 
