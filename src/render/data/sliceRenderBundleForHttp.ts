@@ -4,16 +4,8 @@
  */
 
 import { blockRegistryKeyForPalette } from './blockRegistryResolve'
-import type {
-  BlockEntry,
-  BlockRegistryData,
-  MaterialRegistryData,
-  ModelDocument,
-  ModelRegistryData,
-  RenderBundle,
-  StructureData,
-  World,
-} from '../schema/types'
+import { collectPaletteShellMaterialIdsUnion, sliceMaterialRegistryForBlocks } from './registrySlice'
+import type { BlockEntry, BlockRegistryData, ModelRegistryData, RenderBundle, StructureData, World } from '../schema/types'
 
 function isWorldDocument(doc: unknown): doc is World {
   return (
@@ -66,63 +58,6 @@ function sliceBlockRegistry(global: BlockRegistryData, neededKeys: Set<string>):
   return { blocks }
 }
 
-function collectMaterialIdsFromBlockEntry(entry: BlockEntry): Set<string> {
-  const ids = new Set<string>()
-  const faces = entry.faces ?? {}
-  for (const def of Object.values(faces)) {
-    if (!def?.layers) continue
-    for (const layer of def.layers) {
-      ids.add(layer.materialId)
-    }
-  }
-  return ids
-}
-
-function stripTextureHash(ref: string): string {
-  return ref.startsWith('#') ? ref.slice(1) : ref
-}
-
-function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<string> {
-  const ids = new Set<string>()
-  if (!doc?.elements) return ids
-  for (const el of doc.elements) {
-    const fm = el.faces ?? {}
-    for (const f of Object.values(fm)) {
-      if (!f) continue
-      // 须与 modelMesh.modelFaceToLayerDefs 一致：`[]` 为假长度，回退 `texture`
-      if (f.layers && f.layers.length > 0) {
-        for (const L of f.layers) {
-          if (L.texture) ids.add(stripTextureHash(L.texture))
-        }
-      } else if (f.texture) {
-        ids.add(stripTextureHash(f.texture))
-      }
-    }
-  }
-  return ids
-}
-
-function sliceMaterialRegistryForBlocks(
-  blocks: Record<string, BlockEntry>,
-  global: MaterialRegistryData,
-  fullModelRegistry?: ModelRegistryData,
-): MaterialRegistryData {
-  const ids = new Set<string>()
-  for (const entry of Object.values(blocks)) {
-    collectMaterialIdsFromBlockEntry(entry).forEach((id) => ids.add(id))
-    if (entry.meshKind === 'Model' && entry.modelId && fullModelRegistry) {
-      const doc = fullModelRegistry.models[entry.modelId]
-      collectMaterialIdsFromModelDoc(doc).forEach((id) => ids.add(id))
-    }
-  }
-  const materials: MaterialRegistryData['materials'] = {}
-  for (const id of ids) {
-    const m = global.materials[id]
-    if (m !== undefined) materials[id] = m
-  }
-  return { materials }
-}
-
 function sliceModelRegistry(
   blocks: Record<string, BlockEntry>,
   fullModelRegistry: ModelRegistryData,
@@ -148,10 +83,12 @@ export function sliceRenderBundleForHttp(bundle: RenderBundle): RenderBundle {
   }
   const needed = collectPaletteBlockKeysUnion(structures)
   const blockRegistry = sliceBlockRegistry(bundle.blockRegistry, needed)
+  const shellMaterialIds = collectPaletteShellMaterialIdsUnion(structures)
   const materialRegistry = sliceMaterialRegistryForBlocks(
     blockRegistry.blocks,
     bundle.materialRegistry,
     bundle.modelRegistry,
+    shellMaterialIds,
   )
   const modelRegistry = sliceModelRegistry(blockRegistry.blocks, bundle.modelRegistry)
   return {

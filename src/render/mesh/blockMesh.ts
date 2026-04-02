@@ -19,6 +19,7 @@ import { quadGeometryForFace } from './quadGeometry'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
 import { collectModelVoxelMeshes, type ModelMeshCollectContext } from './modelMesh'
 import { registryFaceForWorldFace } from './facingMap'
+import { resolveFaceLayerMaterialId } from './layerMaterialResolve'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
@@ -151,8 +152,18 @@ export async function buildBlockMesh(
           const n = FACE_NORMAL[face]
           const voxelY = structureRowToWorldY(row, sizeRow)
           layerDefs.forEach((layer, layerIdx) => {
+            const resolvedMaterialId = resolveFaceLayerMaterialId(layer, {
+              volume,
+              col,
+              row,
+              zSlice,
+              sizeRow,
+              layerPreview,
+              blocks: def.blocks,
+              voxelShellMaterialId: state.shellMaterialId,
+            })
             const descriptor: BatchDescriptor = {
-              materialId: layer.materialId,
+              materialId: resolvedMaterialId,
               tint: parseTint(layer.tint),
               layerIdx,
               role: effectiveLayerRole(layer, layerIdx),

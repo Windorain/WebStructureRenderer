@@ -14,6 +14,7 @@ import type {
   ModelRegistryData,
   StructureData,
 } from '../schema/types'
+import { collectMaterialIdsFromBlockEntry } from '../mesh/layerMaterialResolve'
 
 /** palette 解析所需的 block 键（含 `registryId@meta` 与裸 `registryId` 回退） */
 export function collectPaletteBlockKeys(structure: StructureData): Set<string> {
@@ -23,6 +24,18 @@ export function collectPaletteBlockKeys(structure: StructureData): Set<string> {
     keys.add(v.registryId)
   }
   return keys
+}
+
+/** 结构 palette 中 `shellMaterialId`（GT 仓室壳层）的 union，用于材质表裁剪 */
+export function collectPaletteShellMaterialIdsUnion(structures: StructureData[]): Set<string> {
+  const ids = new Set<string>()
+  for (const structure of structures) {
+    for (const v of structure.palette) {
+      const s = v.shellMaterialId
+      if (typeof s === 'string' && s.length > 0) ids.add(s)
+    }
+  }
+  return ids
 }
 
 /** 从全局 block 表中只保留 palette 可能用到的键（服务端组最小包） */
@@ -36,18 +49,6 @@ export function sliceBlockRegistryByPalette(
     if (global.blocks[k] !== undefined) blocks[k] = global.blocks[k]
   }
   return { blocks }
-}
-
-function collectMaterialIdsFromBlockEntry(entry: BlockEntry): Set<string> {
-  const ids = new Set<string>()
-  const faces = entry.faces ?? {}
-  for (const def of Object.values(faces)) {
-    if (!def?.layers) continue
-    for (const layer of def.layers) {
-      ids.add(layer.materialId)
-    }
-  }
-  return ids
 }
 
 function stripTextureHash(ref: string): string {
@@ -73,11 +74,12 @@ function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<str
   return ids
 }
 
-/** 根据已切片的方块表，从全局材质表中只保留被引用的 materialId */
+/** 根据已切片的方块表，从全局材质表中只保留被引用的 materialId；可选并入 palette 采样的壳层 locator */
 export function sliceMaterialRegistryForBlocks(
   blocks: Record<string, BlockEntry>,
   global: MaterialRegistryData,
   modelRegistry?: ModelRegistryData,
+  extraMaterialIds?: Iterable<string>,
 ): MaterialRegistryData {
   const ids = new Set<string>()
   for (const entry of Object.values(blocks)) {
@@ -85,6 +87,11 @@ export function sliceMaterialRegistryForBlocks(
     if (entry.meshKind === 'Model' && entry.modelId && modelRegistry) {
       const doc = modelRegistry.models[entry.modelId]
       collectMaterialIdsFromModelDoc(doc).forEach((id) => ids.add(id))
+    }
+  }
+  if (extraMaterialIds) {
+    for (const id of extraMaterialIds) {
+      ids.add(id)
     }
   }
   const materials: Record<string, MaterialEntry> = {}

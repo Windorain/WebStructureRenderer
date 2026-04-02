@@ -40,6 +40,7 @@ function createMcItemSlotViewRoot(): { root: THREE.Group; meshParent: THREE.Grou
 import { collectSingleBlockModelMeshes } from '../mesh/modelMesh'
 import { quadGeometryForFace } from '../mesh/quadGeometry'
 import type { BlockEntry, LayerRole, ModelRegistryData, StructureDefinition } from '../schema/types'
+import { resolveFaceLayerMaterialId } from '../mesh/layerMaterialResolve'
 
 function parseTint(hex?: string): THREE.Color {
   if (!hex) return new THREE.Color(0xffffff)
@@ -89,7 +90,7 @@ export async function buildSingleBlockPreviewGroup(
       const n = FACE_NORMAL[face]
       layerDefs.forEach((layer, layerIdx) => {
         const descriptor: BatchDescriptor = {
-          materialId: layer.materialId,
+          materialId: resolveFaceLayerMaterialId(layer, null),
           tint: parseTint(layer.tint),
           layerIdx,
           role: effectiveLayerRole(layer, layerIdx),

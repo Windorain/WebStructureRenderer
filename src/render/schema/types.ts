@@ -58,10 +58,34 @@ export type FaceName = '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
 /** 多层贴花时：底层不透明，上层可透明镂空；`glass` 与 `cutout` 在材质上同义（alpha 镂空） */
 export type LayerRole = 'base' | 'cutout' | 'glass'
 
+/**
+ * 构建时按体素邻接解析最终材质；无邻接上下文（如物品栏单块预览）时回退到 `fallbackMaterialId` 或 `materialId`。
+ */
+export interface MaterialResolveNeighborShell {
+  type: 'neighborShell'
+  /** palette 键（`registryId@meta` 或 `blockRegistryKeyForPalette` 形式）→ material_registry 键 */
+  casingToMaterialId: Record<string, string>
+  /** 无邻格命中时使用；缺省为同层 `materialId` */
+  fallbackMaterialId?: string
+}
+
+/**
+ * 标记仓室壳层需用结构 `palette[].shellMaterialId`（SDE 世界采样）作为唯一可信 locator；与 `neighborShell` 二选一。
+ * 渲染端不再推断邻格；无 `shellMaterialId` 时用 `fallbackMaterialId` 或同层 `materialId`。
+ */
+export interface MaterialResolveNeighborShellBlock {
+  type: 'neighborShellBlock'
+  fallbackMaterialId?: string
+}
+
+export type MaterialResolveRule = MaterialResolveNeighborShell | MaterialResolveNeighborShellBlock
+
 export interface FaceLayerDef {
   materialId: string
   tint?: string
   layerRole?: LayerRole
+  /** 若存在，SimpleCube 网格构建时解析为最终 `materialId`（`neighborShell` 邻格映射；`neighborShellBlock` 用 palette.shellMaterialId） */
+  materialResolve?: MaterialResolveRule
 }
 
 export interface FaceLayersDef {
@@ -162,6 +186,8 @@ export interface VoxelState {
   meta: number
   /** 正面外法线；省略时与旧数据一致，等价于朝北 `-z` */
   facing?: FaceName
+  /** GT 仓室壳层材质（与 material_registry 键一致）；由 SDE 扫描写入，供 `neighborShellBlock` 解析 */
+  shellMaterialId?: string
   nbt?: JsonNbt
 }
 

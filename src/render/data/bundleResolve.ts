@@ -81,6 +81,11 @@ function validatePalette(data: StructureData): void {
         throw new Error(`palette[${i}].facing 须为 FaceName（+x/-x/+y/-y/+z/-z），当前: ${String(p.facing)}`)
       }
     }
+    if (p.shellMaterialId !== undefined) {
+      if (typeof p.shellMaterialId !== 'string' || p.shellMaterialId.length === 0) {
+        throw new Error(`palette[${i}].shellMaterialId 须为非空字符串`)
+      }
+    }
   }
   for (let zi = 0; zi < cellGrid.length; zi++) {
     const slice = cellGrid[zi]
