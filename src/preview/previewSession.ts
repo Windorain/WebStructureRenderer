@@ -10,7 +10,8 @@ import { SimpleMaterialLibrary, type MaterialLibraryApi } from '@/render/materia
 import type { RenderBundle } from '@/render/schema/types'
 import { formatUnknownError } from '@/util/formatUnknownError'
 
-export const DEFAULT_PREVIEW_SCENE_ID = 'industrial_electrolyzer.simple'
+/** 默认场景：`data/scenes/<id>.json`，palette 使用 MC/registryId@meta 键 */
+export const DEFAULT_PREVIEW_SCENE_ID = 'export'
 
 const DEFAULT_API_PREFIX = '/preview-api'
 

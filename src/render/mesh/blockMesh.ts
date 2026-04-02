@@ -33,9 +33,17 @@ function effectiveLayerRole(layer: { layerRole?: LayerRole }, layerIdx: number):
   return layer.layerRole ?? (layerIdx === 0 ? 'base' : 'cutout')
 }
 
+/** 与体素循环一致：分层预览下的「非空气」计数 */
+export interface BlockMeshBuildStats {
+  nonAirVoxelCount: number
+  /** 无 block 条目或 meshKind=Unknown，网格阶段跳过 */
+  skippedUnmappedCount: number
+}
+
 export interface BlockMeshResult {
   group: THREE.Group
   dispose: () => void
+  stats: BlockMeshBuildStats
 }
 
 export async function buildBlockMesh(
@@ -60,17 +68,27 @@ export async function buildBlockMesh(
     sizeZSlice,
   }
 
+  let nonAirVoxelCount = 0
+  let skippedUnmappedCount = 0
+
   for (let zSlice = 0; zSlice < sizeZSlice; zSlice++) {
     for (let row = 0; row < sizeRow; row++) {
       for (let col = 0; col < sizeColumn; col++) {
         const state = effectiveVoxelState(volume, col, row, zSlice, sizeRow, layerPreview)
         if (isAirState(state)) continue
 
+        nonAirVoxelCount++
         const block = getBlockEntry(def.blocks, state.registryId, state.meta)
-        if (!block) continue
+        if (!block) {
+          skippedUnmappedCount++
+          continue
+        }
 
         const meshKind = block.meshKind
-        if (meshKind === 'Unknown') continue
+        if (meshKind === 'Unknown') {
+          skippedUnmappedCount++
+          continue
+        }
 
         if (meshKind === 'Model') {
           collectModelVoxelMeshes(modelCtx, col, row, zSlice)
@@ -152,5 +170,9 @@ export async function buildBlockMesh(
     }
   }
 
-  return { group, dispose }
+  return {
+    group,
+    dispose,
+    stats: { nonAirVoxelCount, skippedUnmappedCount },
+  }
 }

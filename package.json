@@ -11,8 +11,7 @@
     "serve:http": "node server/wiki-mock/preview-http.mjs --static dist",
     "local:http": "npm run build && npm run serve:http",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "test": "vitest run"
+    "preview": "vite preview"
   },
   "dependencies": {
     "three": "^0.174.0",
@@ -26,7 +25,6 @@
     "tsx": "^4.21.0",
     "typescript": "~5.7.2",
     "vite": "^6.0.7",
-    "vitest": "^4.1.2",
     "vue-tsc": "^2.2.0"
   }
 }

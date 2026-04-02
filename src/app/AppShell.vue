@@ -27,6 +27,7 @@ const { hover, setHover, clearHover } = usePreviewTooltip()
 const {
   showBlockStatsSidebar,
   loadStatus,
+  statusBarTone,
   statusMessage,
   structureDefinition,
   materialLibrary,
@@ -47,9 +48,10 @@ const tooltipDisplayText = computed(() => {
 })
 
 const statusBarClass = computed(() => {
-  if (loadStatus.value === 'ok') return 'wm-status-bar wm-status-bar--ok'
   if (loadStatus.value === 'error') return 'wm-status-bar wm-status-bar--err'
-  return 'wm-status-bar wm-status-bar--loading'
+  if (loadStatus.value === 'loading') return 'wm-status-bar wm-status-bar--loading'
+  if (statusBarTone.value === 'warn') return 'wm-status-bar wm-status-bar--warn'
+  return 'wm-status-bar wm-status-bar--ok'
 })
 
 async function onViewportReady(scene: Scene): Promise<void> {
@@ -58,11 +60,6 @@ async function onViewportReady(scene: Scene): Promise<void> {
     await store.rebuildContentMesh()
   } catch (e) {
     console.error('[WikiMultiStructureRender] onViewportReady', e)
-    return
-  }
-  const def = store.structureDefinition.value
-  if (def && store.loadStatus.value === 'ok' && store.contentGroupRef.value) {
-    store.statusMessage.value = props.mergedConfig.okMessage(def.id)
   }
 }
 
@@ -201,6 +198,9 @@ onBeforeUnmount(() => {
 }
 .wm-status-bar--ok {
   color: #86efac;
+}
+.wm-status-bar--warn {
+  color: #fde047;
 }
 .wm-status-bar--err {
   color: #fecaca;

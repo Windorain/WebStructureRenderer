@@ -13,6 +13,6 @@
 
 ## 入口
 
-- `adapter/index.ts`：可扩展 CLI 占位；实现时读取上游 JSON/Java 导出，写出符合契约的 `*.simple.json`。
+- `adapter/index.ts`：可扩展 CLI 占位；实现时读取上游 JSON/Java 导出，写出 `data/scenes/<id>.json`（`voxelPalette`）。
 
 应用本体不依赖此处；`npm run build` 不包含本目录。

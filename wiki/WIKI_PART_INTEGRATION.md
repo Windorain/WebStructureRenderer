@@ -22,4 +22,4 @@ const { definition, materialRegistry } = resolveRenderBundle(bundle)
 
 若构建为 IIFE 全局，可使用 `WikiMultiStructureRender.resolveRenderBundle`（见 `src/main.ts` 导出）。
 
-**不要**在客户端再维护多份注册表再与结构合并；切片与拼表由服务端完成。本地开发：结构为 `data/scenes/<id>.json`（单文件），注册表为 `data/registries/` 下三表，由 wiki-mock 与开发者面板加载，仅用于预览，不替代线上契约。
+**不要**在客户端再维护多份注册表再与结构合并；切片与拼表由服务端完成。本地开发：结构为 `data/scenes/<id>.json`（单文件），palette 使用 **registryId@meta**（与 `block_registry` 键一致）；注册表为 `data/registries/` 下三表，由 wiki-mock 与开发者面板加载，仅用于预览，不替代线上契约。

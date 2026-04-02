@@ -202,7 +202,7 @@ function downloadCurrentBundle(): void {
 
       <div class="wm-dev-panel-grid">
         <label class="wm-dev-field wm-dev-field--full">
-          <span>场景 id（对应 data/scenes/&lt;id&gt;.json，注册表来自 data/registries）</span>
+          <span>场景 id（data/scenes/&lt;id&gt;.json；palette 为 registryId@meta）</span>
           <select v-model="sceneId">
             <option value="">
               默认（{{ DEFAULT_PREVIEW_SCENE_ID }}）

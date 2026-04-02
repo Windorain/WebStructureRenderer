@@ -208,7 +208,7 @@ export interface StructureDefinition {
   palette: VoxelState[]
   cellGrid: number[][][]
   blocks: Record<string, BlockEntry>
-  /** 与 Wiki 包合并后的模型表，供 Model 网格使用 */
+  /** 与 bundle 合并后的模型表，供 Model 网格使用 */
   modelRegistry: ModelRegistryData
   initialCamera?: InitialCameraDef
 }

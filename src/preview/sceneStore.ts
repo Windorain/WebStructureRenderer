@@ -33,9 +33,13 @@ import type { PreviewConfig } from './previewConfig'
 
 export type LoadStatus = 'loading' | 'ok' | 'error'
 
+/** 状态条色调：空场景但本应有几何时为 warn */
+export type StatusBarTone = 'loading' | 'ok' | 'warn' | 'error'
+
 export interface PreviewSceneStore {
   showBlockStatsSidebar: boolean
   loadStatus: Ref<LoadStatus>
+  statusBarTone: Ref<StatusBarTone>
   statusMessage: Ref<string>
   layerWorldY: Ref<number>
   meshBusy: Ref<boolean>
@@ -64,6 +68,7 @@ function formatError(err: unknown): string {
 
 export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStore {
   const loadStatus = ref<LoadStatus>('loading')
+  const statusBarTone = ref<StatusBarTone>('loading')
   const statusMessage = ref(config.loadingMessage)
   const layerWorldY = ref(config.initialLayerWorldY)
   const meshBusy = ref(false)
@@ -116,6 +121,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
 
   async function loadStructureAndResources(): Promise<void> {
     loadStatus.value = 'loading'
+    statusBarTone.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
       const resolved = resolveRenderBundle(config.renderBundle)
@@ -132,9 +138,11 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
+      statusBarTone.value = 'ok'
       statusMessage.value = '正在构建网格…'
     } catch (e) {
       loadStatus.value = 'error'
+      statusBarTone.value = 'error'
       statusMessage.value = formatError(e)
       console.error('[WikiMultiStructureRender]', e)
     }
@@ -164,7 +172,22 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       contentGroupRef.value = result.group
       disposeContent = result.dispose
       scene.add(result.group)
+
+      const { stats } = result
+      const hasMesh = result.group.children.length > 0
+      if (hasMesh) {
+        statusBarTone.value = 'ok'
+        statusMessage.value = config.okMessage(def.id)
+      } else if (stats.nonAirVoxelCount === 0) {
+        statusBarTone.value = 'ok'
+        statusMessage.value =
+          '无可视方块：当前分层下无体素或结构全为空气（可调整分层预览或检查 palette）'
+      } else {
+        statusBarTone.value = 'warn'
+        statusMessage.value = `无可见几何：${stats.nonAirVoxelCount} 个非空气体素未在 block_registry 中映射（palette 的 registryId@meta 须与注册表键一致）`
+      }
     } catch (e) {
+      statusBarTone.value = 'error'
       statusMessage.value = `网格构建失败: ${formatError(e)}`
       console.error('[WikiMultiStructureRender] buildBlockMesh', e)
     } finally {
@@ -199,6 +222,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   return {
     showBlockStatsSidebar: config.features.blockStatsSidebar,
     loadStatus,
+    statusBarTone,
     statusMessage,
     layerWorldY,
     meshBusy,
