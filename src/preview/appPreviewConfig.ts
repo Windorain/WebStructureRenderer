@@ -1,19 +1,23 @@
 /**
- * 运行时预览/嵌入配置。功能开关集中在 `features`（无旧版顶栏 boolean 兼容字段）。
+ * 预览与嵌入运行时配置：场景数据、预加载材质库与 UI 默认值。
  */
 
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
+import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import type { WikiRenderBundle } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
-import type { WikiRendererFeatures } from '@/embed/wikiRendererContract'
-
-export type { WikiRendererFeatures }
+/** 功能块开关 */
+export interface WikiRendererFeatures {
+  blockStatsSidebar: boolean
+  layerBar: boolean
+  developerPanel: boolean
+}
 
 export interface AppPreviewConfig {
+  sceneId: string
   wikiRenderBundle: WikiRenderBundle
-  /** fetch 模式解析场景 id；内联 bundle 时可为空 */
-  sceneId?: string
+  materialLibrary: MaterialLibraryApi
   features: WikiRendererFeatures
   blockIconCacheOptions: BlockIconCacheOptions
   initialLayerWorldY: number
@@ -23,8 +27,10 @@ export interface AppPreviewConfig {
   okMessage: (modelId: string) => string
 }
 
-/** Wiki 嵌入默认 UI（不含 bundle）；与 mountWikiRenderer 默认一致 */
-export const defaultWikiEmbedUi: Omit<AppPreviewConfig, 'wikiRenderBundle' | 'sceneId'> = {
+export const defaultWikiEmbedUi: Omit<
+  AppPreviewConfig,
+  'wikiRenderBundle' | 'materialLibrary' | 'sceneId'
+> = {
   features: {
     blockStatsSidebar: false,
     layerBar: false,

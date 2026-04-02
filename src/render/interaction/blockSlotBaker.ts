@@ -9,7 +9,7 @@ import { batchMaterialCacheKey, type BatchDescriptor } from '../mesh/batchDescri
 import { layersForFace, listFaceNames } from '../mesh/faceResolve'
 import { FACE_NORMAL } from '../mesh/faceConstants'
 import { createMcItemSlotViewRoot } from './mcItemViewMatrix'
-import type { SimpleMaterialLibrary } from '../materials/simpleMaterialLibrary'
+import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from '../data/structureCoords'
 import { collectSingleBlockModelMeshes } from '../mesh/modelMesh'
 import { quadGeometryForFace } from '../mesh/quadGeometry'
@@ -34,7 +34,7 @@ export interface SingleBlockBakeResult {
  */
 export async function buildSingleBlockPreviewGroup(
   block: BlockEntry,
-  library: SimpleMaterialLibrary,
+  library: MaterialLibraryApi,
   modelRegistry: ModelRegistryData,
 ): Promise<SingleBlockBakeResult> {
   const meshKind = block.meshKind

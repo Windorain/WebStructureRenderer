@@ -7,6 +7,7 @@ import { onMounted, ref } from 'vue'
 import AppShell from '@/AppShell.vue'
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
 import { resolveDevPreviewConfigAsync } from '@/dev/previewBootstrap'
+import { formatUnknownError } from '@/util/formatUnknownError'
 
 const mergedConfig = ref<AppPreviewConfig | null>(null)
 const loadError = ref<string | null>(null)
@@ -15,7 +16,7 @@ onMounted(async () => {
   try {
     mergedConfig.value = await resolveDevPreviewConfigAsync()
   } catch (e) {
-    loadError.value = e instanceof Error ? e.message : String(e)
+    loadError.value = formatUnknownError(e)
     console.error('[WikiMultiStructureRender] resolveDevPreviewConfigAsync', e)
   }
 })

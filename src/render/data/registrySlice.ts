@@ -1,6 +1,6 @@
 /**
  * 按 palette 从全局注册表切片、多段 block 表合并、按方块条目收集材质。
- * Wiki / Mock HTTP 应在返回 WikiRenderBundle 前做等价裁剪（见 `server/wiki-mock/bundleSliceServer.mjs`），避免嵌入页下载并解析全量注册表。
+ * HTTP 返回 bundle 前的裁剪见 `sliceWikiRenderBundleForHttp`。
  */
 
 import { blockRegistryKeyForPalette } from './blockRegistryResolve'

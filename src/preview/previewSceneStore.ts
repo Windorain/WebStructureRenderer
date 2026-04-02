@@ -1,5 +1,5 @@
 /**
- * 预览场景：结构、分层、网格、图标缓存与统计的单一编排点。
+ * 预览场景：结构、分层、网格、图标缓存与统计的编排。
  */
 
 import {
@@ -22,18 +22,19 @@ import { buildBlockStatsEntries, type BlockStatRow } from '@/render/interaction/
 import { summarizeBlocksForCache } from '@/render/interaction/blockSlotBaker'
 import { MC_ITEM_SLOT_BAKE_REVISION } from '@/render/interaction/mcItemViewMatrix'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
-import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
+import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import { resolveWikiRenderBundle } from '@/render/data/pipeline'
 import { buildBlockMesh } from '@/render/mesh/blockMesh'
 import type { StructureDefinition } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
+
+import { formatUnknownError } from '@/util/formatUnknownError'
 
 import type { AppPreviewConfig } from './appPreviewConfig'
 
 export type LoadStatus = 'loading' | 'ok' | 'error'
 
 export interface PreviewSceneStore {
-  /** 来自 AppPreviewConfig.features */
   showBlockStatsSidebar: boolean
   loadStatus: Ref<LoadStatus>
   statusMessage: Ref<string>
@@ -41,7 +42,7 @@ export interface PreviewSceneStore {
   meshBusy: Ref<boolean>
   projectionMode: Ref<ProjectionMode>
   structureDefinition: ShallowRef<StructureDefinition | null>
-  materialLibrary: ShallowRef<SimpleMaterialLibrary | null>
+  materialLibrary: ShallowRef<MaterialLibraryApi | null>
   blockIconCache: ShallowRef<BlockIconCache | null>
   sizeRow: ComputedRef<number>
   layerPreviewMode: ComputedRef<LayerPreviewMode>
@@ -51,17 +52,13 @@ export interface PreviewSceneStore {
   registerScene(scene: THREE.Scene): void
   loadStructureAndResources(): Promise<void>
   rebuildContentMesh(): Promise<void>
-  /** 视口卸载前：移除 mesh 并释放几何体；不释放材质库与图标缓存 */
   detachAndDisposeMesh(): void
-  /** 根组件 beforeUnmount：释放图标缓存、材质库与结构引用 */
   disposeCachesAndLibrary(): void
-  /** 当前结构 mesh 组，供视口射线拾取等 */
   contentGroupRef: ShallowRef<THREE.Group | null>
 }
 
 function formatError(err: unknown): string {
-  if (err instanceof Error) return err.message
-  return String(err)
+  return formatUnknownError(err)
 }
 
 export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneStore {
@@ -72,7 +69,7 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
   const projectionMode = ref<ProjectionMode>(config.initialProjectionMode)
 
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
-  const materialLibrary = shallowRef<SimpleMaterialLibrary | null>(null)
+  const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
   const sceneRef = shallowRef<THREE.Scene | null>(null)
   const contentGroupRef = shallowRef<THREE.Group | null>(null)
@@ -122,10 +119,9 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
     try {
       const resolved = resolveWikiRenderBundle(config.wikiRenderBundle)
       structureDefinition.value = resolved.definition
-      const lib = new SimpleMaterialLibrary(resolved.materialRegistry)
-      materialLibrary.value = lib
+      materialLibrary.value = config.materialLibrary
       const iconCache = new BlockIconCache(
-        lib,
+        config.materialLibrary,
         resolved.definition.blocks,
         resolved.modelRegistry,
         config.blockIconCacheOptions,
@@ -135,7 +131,6 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
-      // 数据已就绪；完整「渲染正常」文案在视口 mesh 构建完成后由 App 写入
       statusMessage.value = '正在构建网格…'
     } catch (e) {
       loadStatus.value = 'error'
@@ -169,7 +164,6 @@ export function createPreviewSceneStore(config: AppPreviewConfig): PreviewSceneS
       disposeContent = result.dispose
       scene.add(result.group)
     } catch (e) {
-      // 数据已加载成功，仅标记网格构建失败，避免卸载视口
       statusMessage.value = `网格构建失败: ${formatError(e)}`
       console.error('[WikiMultiStructureRender] buildBlockMesh', e)
     } finally {

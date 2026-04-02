@@ -7,6 +7,7 @@ import { ref, watch } from 'vue'
 import AppShell from '@/AppShell.vue'
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
 import { resolveBootstrapToAppConfig } from '@/embed/resolveBootstrapToAppConfig'
+import { formatUnknownError } from '@/util/formatUnknownError'
 import type { WikiRendererBootstrapOptions } from '@/embed/wikiRendererContract'
 
 const props = defineProps<{
@@ -22,7 +23,7 @@ async function load() {
   try {
     mergedConfig.value = await resolveBootstrapToAppConfig(props.bootstrap)
   } catch (e) {
-    loadError.value = e instanceof Error ? e.message : String(e)
+    loadError.value = formatUnknownError(e)
     console.error('[WikiMultiStructureRender] resolveBootstrapToAppConfig', e)
   }
 }

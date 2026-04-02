@@ -4,7 +4,7 @@
 
 import * as THREE from 'three'
 
-import type { SimpleMaterialLibrary } from '../materials/simpleMaterialLibrary'
+import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { buildSingleBlockPreviewGroup } from './blockSlotBaker'
 import type { BlockEntry, ModelRegistryData } from '../schema/types'
 
@@ -50,7 +50,7 @@ export function blockIconBakeLayoutKey(options?: BlockIconCacheOptions): string 
  * 失效键由调用方提供：结构 id + blocks 摘要变化时整表清空。
  */
 export class BlockIconCache {
-  private readonly library: SimpleMaterialLibrary
+  private readonly library: MaterialLibraryApi
 
   private readonly blocks: Record<string, BlockEntry>
 
@@ -73,7 +73,7 @@ export class BlockIconCache {
   private readonly listeners = new Set<() => void>()
 
   constructor(
-    library: SimpleMaterialLibrary,
+    library: MaterialLibraryApi,
     blocks: Record<string, BlockEntry>,
     modelRegistry: ModelRegistryData,
     options?: BlockIconCacheOptions,

@@ -1,5 +1,5 @@
 /**
- * 灰机 Wiki Namespace/Data API 响应解析（与 server/wiki-mock 的 HTTP 层成对；不 import 服务端代码）。
+ * Namespace/Data API 客户端；响应形状与 wiki-mock 一致。
  */
 
 const DEFAULT_PREFIX = '/namespace'
@@ -37,7 +37,6 @@ function parseHuijiBody<T>(text: string, httpStatus: number): T {
   return (body as HuijiNamespaceOk<T>).data
 }
 
-/** URL 安全 Base64（与 wiki-mock decodeBase64Url 对应） */
 export function encodeNamespaceAggrSegment(pipeline: unknown[]): string {
   const json = JSON.stringify(pipeline)
   const b64 = btoa(unescape(encodeURIComponent(json)))
@@ -64,7 +63,6 @@ export async function fetchNamespaceDataByTitle(
   return parseHuijiBody<NamespaceDataDoc>(text, res.status)
 }
 
-/** 聚合结果：文档数组或 `$count` 等产生的行 */
 export async function fetchNamespaceDataAggregate(
   pipeline: unknown[],
   apiPrefix: string = DEFAULT_PREFIX,

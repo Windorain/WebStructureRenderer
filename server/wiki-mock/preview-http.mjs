@@ -1,7 +1,7 @@
 /**
- * Mock Wiki 数据服务：仅实现与渲染器约定的 /preview-api 契约；不依赖 src/。
- * 设 PREVIEW_BUNDLE_NO_SLICE=1 可关闭注册表裁剪。
- * 可选：--static dist 托管构建产物。
+ * Mock Wiki 数据服务：`/preview-api`、`/namespace`、静态资源。
+ * 注册表裁剪实现见 `src/render/data/sliceWikiRenderBundleForHttp.ts`（经 tsx 加载）。
+ * `PREVIEW_BUNDLE_NO_SLICE=1` 可关闭裁剪；`--static dist` 托管构建产物。
  */
 import http from 'node:http'
 import fs from 'node:fs'
@@ -9,12 +9,13 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { sliceWikiRenderBundleForHttp } from './bundleSliceServer.mjs'
+import { sliceWikiRenderBundleForHttp } from '../../src/render/data/sliceWikiRenderBundleForHttp.ts'
 import { loadNamespaceDataFromDisk, runInMemoryAggregate } from './namespaceMemory.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
 const DEFAULT_DATA_SCENES = path.join(REPO_ROOT, 'data', 'server', 'scenes')
+const DEFAULT_DATA_RESOURCES = path.join(REPO_ROOT, 'data', 'resources')
 const PORT_FILE = path.join(REPO_ROOT, '.wmr-preview-port')
 
 const PORT_CANDIDATES = process.env.PREVIEW_HTTP_PORT
@@ -119,7 +120,7 @@ async function tryStaticFile(staticRoot, urlPath, res) {
   }
 }
 
-/** 灰机风格 JSON 外层（Mock；与 src/preview/huijiNamespace.ts 成对） */
+/** 灰机风格 JSON 外层（Mock；与 src/preview/wikiNamespaceHttp.ts 成对） */
 function jsonHuijiOk(res, data) {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify({ success: true, data }))
@@ -137,10 +138,94 @@ function decodeBase64Url(s) {
   return Buffer.from(b64, 'base64').toString('utf8')
 }
 
-function createServer(scenesRoot, staticRoot, namespaceStore) {
+/** 不依赖 Host；兼容 `GET /path` 与 `GET http://host/path`（部分代理会发绝对 URL） */
+function pathnameOnly(req) {
+  const raw = req.url || '/'
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    try {
+      return new URL(raw).pathname
+    } catch {
+      return '/'
+    }
+  }
+  const q = raw.indexOf('?')
+  return q >= 0 ? raw.slice(0, q) : raw
+}
+
+/** 折叠 `//`、`/preview-api//resources/` 等，避免正则不命中 */
+function normalizePathnameSlashes(p) {
+  if (!p || p === '/') return '/'
+  return '/' + p.split('/').filter(Boolean).join('/')
+}
+
+function fileIsUnderDir(dir, file) {
+  const d = path.resolve(dir)
+  const f = path.resolve(file)
+  if (f === d) return true
+  const rel = path.relative(d, f)
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)
+}
+
+async function serveResourcesFile(res, resourcesRoot, relEncoded, sendBody) {
+  let relRaw
+  try {
+    relRaw = decodeURIComponent(relEncoded)
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Bad path encoding')
+    return
+  }
+  const normalized = path.normalize(relRaw).replace(/^(\.\.(\/|\\|$))+/, '')
+  if (normalized.includes('..')) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Forbidden')
+    return
+  }
+  const filePath = path.join(resourcesRoot, normalized)
+  if (!fileIsUnderDir(resourcesRoot, filePath)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Forbidden')
+    return
+  }
+  try {
+    const body = await fsp.readFile(filePath)
+    const ext = path.extname(filePath).toLowerCase()
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' })
+    if (sendBody) res.end(body)
+    else res.end()
+  } catch {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Not found')
+  }
+}
+
+function createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot) {
   return http.createServer(async (req, res) => {
-    const url = new URL(req.url || '/', `http://${req.headers.host}`)
-    const pathname = url.pathname
+    const pathname = normalizePathnameSlashes(pathnameOnly(req))
+
+    if (
+      req.method === 'OPTIONS' &&
+      (pathname.startsWith('/preview-api') || pathname.startsWith('/namespace'))
+    ) {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Headers': req.headers['access-control-request-headers'] || '*',
+      })
+      res.end()
+      return
+    }
+
+    const resPrefix = '/preview-api/resources/'
+    const altPrefix = '/resources/'
+    let resourceRel = null
+    if (pathname.startsWith(resPrefix)) resourceRel = pathname.slice(resPrefix.length)
+    else if (pathname.startsWith(altPrefix)) resourceRel = pathname.slice(altPrefix.length)
+
+    if (resourceRel != null && resourceRel.length > 0 && (req.method === 'GET' || req.method === 'HEAD')) {
+      await serveResourcesFile(res, resourcesRoot, resourceRel, req.method === 'GET')
+      return
+    }
 
     if (req.method === 'GET' && pathname === '/namespace/data') {
       try {
@@ -243,6 +328,9 @@ const { staticRoot } = parseArgs(process.argv)
 const scenesRoot = process.env.PREVIEW_DATA_SCENES
   ? path.resolve(process.env.PREVIEW_DATA_SCENES)
   : DEFAULT_DATA_SCENES
+const resourcesRoot = process.env.PREVIEW_DATA_RESOURCES
+  ? path.resolve(process.env.PREVIEW_DATA_RESOURCES)
+  : DEFAULT_DATA_RESOURCES
 
 function writePortFile(port) {
   try {
@@ -292,7 +380,7 @@ async function main() {
       console.error('[wiki-mock] Invalid PREVIEW_HTTP_PORT')
       process.exit(1)
     }
-    server = createServer(scenesRoot, staticRoot, namespaceStore)
+    server = createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot)
     const r = await listenServer(server, port, '127.0.0.1')
     if (r.ok) {
       boundPort = port
@@ -324,10 +412,12 @@ async function main() {
   })
 
   console.log(`[wiki-mock] scenes root: ${scenesRoot}`)
+  console.log(`[wiki-mock] resources root: ${resourcesRoot}`)
   console.log(`[wiki-mock] listening http://127.0.0.1:${boundPort}`)
   if (staticRoot) console.log(`[wiki-mock] static root: ${staticRoot}`)
   console.log(`[wiki-mock] GET /preview-api/scenes`)
   console.log(`[wiki-mock] GET /preview-api/scenes/:id/bundle`)
+  console.log(`[wiki-mock] GET /preview-api/resources/*`)
   console.log(`[wiki-mock] GET /namespace/data`)
   console.log(`[wiki-mock] GET /namespace/data/:title`)
   console.log(`[wiki-mock] GET /namespace/data_aggr/:base64url_pipeline`)

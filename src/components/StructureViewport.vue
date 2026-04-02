@@ -8,7 +8,7 @@ import * as THREE from 'three'
 import { PreviewSceneContextKey } from '@/preview/context'
 import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/interaction/initialCamera'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
-import { SimpleMaterialLibrary } from '@/render/materials/simpleMaterialLibrary'
+import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import { pickBlockIdFromPointer } from '@/render/interaction/voxelPick'
 import type { StructureDefinition } from '@/render/schema/types'
 import {
@@ -19,7 +19,7 @@ import {
 const props = withDefaults(
   defineProps<{
     definition: StructureDefinition
-    materialLibrary: SimpleMaterialLibrary
+    materialLibrary: MaterialLibraryApi
     projectionMode: ProjectionMode
     contentGroup: THREE.Group | null
     layerPreviewMode: LayerPreviewMode

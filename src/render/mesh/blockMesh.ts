@@ -13,7 +13,7 @@ import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelVolume } from '../data/grid'
 import { layersForFace, listFaceNames } from './faceResolve'
 import { FACE_NORMAL, NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
-import type { SimpleMaterialLibrary } from '../materials/simpleMaterialLibrary'
+import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from '../data/structureCoords'
 import { quadGeometryForFace } from './quadGeometry'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
@@ -39,7 +39,7 @@ export interface BlockMeshResult {
 
 export async function buildBlockMesh(
   def: StructureDefinition,
-  library: SimpleMaterialLibrary,
+  library: MaterialLibraryApi,
   options?: BuildBlockMeshOptions,
 ): Promise<BlockMeshResult> {
   const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'

@@ -5,7 +5,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
-import { DEFAULT_PREVIEW_SCENE_ID, listSelectableSceneIds } from '@/preview/previewDevServer'
+import { DEFAULT_PREVIEW_SCENE_ID, fetchSceneIdList } from '@/preview/wikiSession'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 import pkg from '../../package.json'
@@ -89,9 +89,9 @@ function syncFromMerged(): void {
 
 onMounted(async () => {
   try {
-    selectableSceneIds.value = await listSelectableSceneIds()
+    selectableSceneIds.value = await fetchSceneIdList()
   } catch (e) {
-    console.error('[DeveloperConfigPanel] listSelectableSceneIds', e)
+    console.error('[DeveloperConfigPanel] fetchSceneIdList', e)
     selectableSceneIds.value = []
   }
   syncFromMerged()

@@ -1,11 +1,10 @@
 /**
- * 将 WikiRendererBootstrapOptions 转为运行时 AppPreviewConfig。
+ * 将 WikiRendererBootstrapOptions 转为 AppPreviewConfig（含 HTTP 加载阶段）。
  */
 
-import { validateWikiRenderBundle } from '@/render/data/pipeline'
 import type { AppPreviewConfig } from '@/preview/appPreviewConfig'
 import { defaultWikiEmbedUi } from '@/preview/appPreviewConfig'
-import { fetchWikiRenderBundle } from '@/preview/fetchWikiBundle'
+import { loadWikiPreviewSession } from '@/preview/wikiSession'
 import type { WikiRendererBootstrapOptions } from './wikiRendererContract'
 
 export async function resolveBootstrapToAppConfig(
@@ -17,22 +16,16 @@ export async function resolveBootstrapToAppConfig(
   }
   const ui = options.ui ?? {}
 
-  let wikiRenderBundle: AppPreviewConfig['wikiRenderBundle']
-  let sceneId: string | undefined
-
-  if (options.data.mode === 'inline') {
-    validateWikiRenderBundle(options.data.bundle)
-    wikiRenderBundle = options.data.bundle
-    sceneId = undefined
-  } else {
-    const sid = options.data.sceneId
-    wikiRenderBundle = await fetchWikiRenderBundle(sid, options.data.apiPrefix)
-    sceneId = sid
-  }
-
-  return {
-    wikiRenderBundle,
+  const { sceneId, apiPrefix } = options.data
+  const { wikiRenderBundle, materialLibrary } = await loadWikiPreviewSession({
     sceneId,
+    apiPrefix,
+  })
+
+  const out: AppPreviewConfig = {
+    sceneId,
+    wikiRenderBundle,
+    materialLibrary,
     features,
     blockIconCacheOptions: {
       ...defaultWikiEmbedUi.blockIconCacheOptions,
@@ -44,4 +37,5 @@ export async function resolveBootstrapToAppConfig(
     loadingMessage: ui.loadingMessage ?? defaultWikiEmbedUi.loadingMessage,
     okMessage: ui.okMessage ?? defaultWikiEmbedUi.okMessage,
   }
+  return out
 }

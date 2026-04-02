@@ -47,5 +47,3 @@ export function buildVoxelVolume(def: StructureDefinition): VoxelVolume {
   }
 }
 
-/** @deprecated 使用 {@link buildVoxelVolume} */
-export const buildVoxelGrid = buildVoxelVolume

@@ -2,7 +2,7 @@
  * 本地 dev 入口 URL 查询参数（白名单）。与 dev/previewBootstrap 合并（覆盖默认值）；不含 wikiRenderBundle。
  */
 
-import type { WikiRendererFeatures } from '@/embed/wikiRendererContract'
+import type { WikiRendererFeatures } from '@/preview/appPreviewConfig'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 import type { AppPreviewConfig } from './appPreviewConfig'

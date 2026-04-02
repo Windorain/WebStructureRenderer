@@ -1,40 +1,53 @@
 /**
- * 与 src/render/data/registrySlice.ts 对齐：按 document 内 palette 从全局注册表切最小子集。
- * 供 wiki-mock（及 Wiki 侧同源实现）在返回 WikiRenderBundle 前调用，避免把全量 block/material/model 表交给嵌入页解析。
+ * 按 document 内 palette 裁剪 WikiRenderBundle，减小 HTTP 传输体积。
+ * 与 wiki-mock 在返回 bundle 前调用同一实现。
  */
 
-function blockRegistryKeyForPalette(registryId, meta) {
-  return meta === 0 ? registryId : `${registryId}@${meta}`
+import { blockRegistryKeyForPalette } from './blockRegistryResolve'
+import type {
+  BlockEntry,
+  BlockRegistryData,
+  MaterialRegistryData,
+  ModelDocument,
+  ModelRegistryData,
+  StructureData,
+  WikiRenderBundle,
+  World,
+} from '../schema/types'
+
+function isWorldDocument(doc: unknown): doc is World {
+  return (
+    doc !== null &&
+    typeof doc === 'object' &&
+    Array.isArray((doc as World).frames) &&
+    typeof (doc as World).id === 'string'
+  )
 }
 
-function isWorldDocument(doc) {
-  return doc && typeof doc === 'object' && Array.isArray(doc.frames) && typeof doc.id === 'string'
-}
-
-/** 从 StructureData 或 World 内嵌帧收集用于切片的 StructureData 列表 */
-function extractStructuresForPalette(document) {
+function extractStructuresForPalette(document: unknown): StructureData[] {
   if (isWorldDocument(document)) {
-    const out = []
+    const out: StructureData[] = []
     for (const f of document.frames) {
-      if (f && f.structure && typeof f.structure === 'object') {
-        out.push(f.structure)
+      if (f?.structure && typeof f.structure === 'object') {
+        out.push(f.structure as StructureData)
       }
     }
     return out
   }
+  const d = document as StructureData | null
   if (
-    document &&
-    document.mode === 'voxelPalette' &&
-    Array.isArray(document.palette) &&
-    Array.isArray(document.cellGrid)
+    d &&
+    d.mode === 'voxelPalette' &&
+    Array.isArray(d.palette) &&
+    Array.isArray(d.cellGrid)
   ) {
-    return [document]
+    return [d]
   }
   return []
 }
 
-function collectPaletteBlockKeysUnion(structures) {
-  const keys = new Set()
+function collectPaletteBlockKeysUnion(structures: StructureData[]): Set<string> {
+  const keys = new Set<string>()
   for (const structure of structures) {
     if (!structure?.palette) continue
     for (const v of structure.palette) {
@@ -45,16 +58,16 @@ function collectPaletteBlockKeysUnion(structures) {
   return keys
 }
 
-function sliceBlockRegistry(global, neededKeys) {
-  const blocks = {}
+function sliceBlockRegistry(global: BlockRegistryData, neededKeys: Set<string>): BlockRegistryData {
+  const blocks: Record<string, BlockEntry> = {}
   for (const k of neededKeys) {
     if (global.blocks[k] !== undefined) blocks[k] = global.blocks[k]
   }
   return { schemaVersion: global.schemaVersion, blocks }
 }
 
-function collectMaterialIdsFromBlockEntry(entry) {
-  const ids = new Set()
+function collectMaterialIdsFromBlockEntry(entry: BlockEntry): Set<string> {
+  const ids = new Set<string>()
   const faces = entry.faces ?? {}
   for (const def of Object.values(faces)) {
     if (!def?.layers) continue
@@ -65,12 +78,12 @@ function collectMaterialIdsFromBlockEntry(entry) {
   return ids
 }
 
-function stripTextureHash(ref) {
+function stripTextureHash(ref: string): string {
   return ref.startsWith('#') ? ref.slice(1) : ref
 }
 
-function collectMaterialIdsFromModelDoc(doc) {
-  const ids = new Set()
+function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<string> {
+  const ids = new Set<string>()
   if (!doc?.elements) return ids
   for (const el of doc.elements) {
     const fm = el.faces ?? {}
@@ -86,8 +99,12 @@ function collectMaterialIdsFromModelDoc(doc) {
   return ids
 }
 
-function sliceMaterialRegistryForBlocks(blocks, global, fullModelRegistry) {
-  const ids = new Set()
+function sliceMaterialRegistryForBlocks(
+  blocks: Record<string, BlockEntry>,
+  global: MaterialRegistryData,
+  fullModelRegistry?: ModelRegistryData,
+): MaterialRegistryData {
+  const ids = new Set<string>()
   for (const entry of Object.values(blocks)) {
     collectMaterialIdsFromBlockEntry(entry).forEach((id) => ids.add(id))
     if (entry.meshKind === 'Model' && entry.modelId && fullModelRegistry) {
@@ -95,7 +112,7 @@ function sliceMaterialRegistryForBlocks(blocks, global, fullModelRegistry) {
       collectMaterialIdsFromModelDoc(doc).forEach((id) => ids.add(id))
     }
   }
-  const materials = {}
+  const materials: MaterialRegistryData['materials'] = {}
   for (const id of ids) {
     const m = global.materials[id]
     if (m !== undefined) materials[id] = m
@@ -103,12 +120,15 @@ function sliceMaterialRegistryForBlocks(blocks, global, fullModelRegistry) {
   return { schemaVersion: global.schemaVersion, materials }
 }
 
-function sliceModelRegistry(blocks, fullModelRegistry) {
-  const modelIds = new Set()
+function sliceModelRegistry(
+  blocks: Record<string, BlockEntry>,
+  fullModelRegistry: ModelRegistryData,
+): ModelRegistryData {
+  const modelIds = new Set<string>()
   for (const e of Object.values(blocks)) {
-    if (e && e.meshKind === 'Model' && e.modelId) modelIds.add(e.modelId)
+    if (e?.meshKind === 'Model' && e.modelId) modelIds.add(e.modelId)
   }
-  const models = {}
+  const models: ModelRegistryData['models'] = {}
   for (const id of modelIds) {
     if (fullModelRegistry.models[id] !== undefined) models[id] = fullModelRegistry.models[id]
   }
@@ -116,10 +136,9 @@ function sliceModelRegistry(blocks, fullModelRegistry) {
 }
 
 /**
- * 若可从 document 解析出结构，则裁剪注册表；否则原样返回（无法识别或仅 structureRef 时）。
- * @param {{ document: unknown, blockRegistry: object, materialRegistry: object, modelRegistry: object }} bundle
+ * 若可从 document 解析出结构，则裁剪注册表；否则原样返回。
  */
-export function sliceWikiRenderBundleForHttp(bundle) {
+export function sliceWikiRenderBundleForHttp(bundle: WikiRenderBundle): WikiRenderBundle {
   const structures = extractStructuresForPalette(bundle.document)
   if (structures.length === 0) {
     return bundle

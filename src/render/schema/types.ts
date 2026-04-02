@@ -1,16 +1,10 @@
 /**
  * Simple / voxelPalette 模式下的类型定义。
  *
- * **结构 JSON schemaVersion**：`6` 起形状为 `palette` + `cellGrid`（Wiki 体素轴不变）。
+ * 结构 JSON schemaVersion 6：`palette` + `cellGrid`。
  *
- * 数据流概览：
- *   磁盘 JSON（StructureData）或 World → 与本请求 `blockRegistry` 组装为 StructureDefinition（`blocks` 为注册表拷贝）
- *   Wiki：`WikiRenderBundle`（document + blockRegistry + materialRegistry + modelRegistry）一次装配；本地 dev 用 `previewDevServer` + `data/server/scenes`。
- *   材质：直接使用 bundle.materialRegistry → SimpleMaterialLibrary
- *   StructureDefinition → VoxelVolume（get(column,row,zSlice) → VoxelState）
- *   assets/resolveAssets：locator → PNG URL / mcmeta 原文
- *   SimpleMaterialLibrary：注册表 + 纹理 / mcmeta → MeshStandardMaterial
- *   simpleMesh：体素 → BatchDescriptor；**WebGLRenderer** 在 viewport 中绘制
+ * 数据流：HTTP 拉取 `WikiRenderBundle` → 校验 → `resolveWikiRenderBundle` → StructureDefinition；
+ * 纹理经 `/preview-api/resources/...` 预取后注入 SimpleMaterialLibrary；材质动画参数以 `material_registry` 为准。
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
@@ -18,10 +12,15 @@ export type ResourceLocator = string
 
 export type MaterialKind = 'static16' | 'animated'
 
-/**
- * kind 为提示；运行时是否播放动画以「存在 `.png.mcmeta` 且含 `animation`、且 PNG 为竖直多帧条」为准。
- */
 export type MaterialBlendMode = 'opaque' | 'cutout' | 'translucent'
+
+/** 与 mcmeta `animation` 对齐；缺省时 `kind === 'animated'` 且多帧 PNG 按顺序 1 tick/帧播放 */
+export interface MaterialAnimationSpec {
+  /** 默认每帧持续 tick 数（1 tick = 50ms）；缺省 1 */
+  defaultFrametimeTicks?: number
+  frameSequence?: Array<{ index: number; timeTicks?: number }>
+  interpolate?: boolean
+}
 
 export interface MaterialEntry {
   locator: ResourceLocator
@@ -30,7 +29,8 @@ export interface MaterialEntry {
   blend?: MaterialBlendMode
   /** 发光提示（0–1 或 bool 语义由渲染侧解释） */
   emissive?: number
-  emi?: number
+  /** 竖直帧条动画；静态材质可省略 */
+  animation?: MaterialAnimationSpec
 }
 
 /** material_registry.json 根结构 */
