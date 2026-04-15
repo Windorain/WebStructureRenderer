@@ -20,6 +20,7 @@ import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview
 import { collectModelVoxelMeshes, type ModelMeshCollectContext } from './modelMesh'
 import { registryFaceForWorldFace } from './facingMap'
 import { resolveFaceLayerMaterialId } from './layerMaterialResolve'
+import { buildCapturedMesh } from './capturedMesh'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
@@ -68,6 +69,9 @@ export async function buildBlockMesh(
   library: MaterialLibraryApi,
   options?: BuildBlockMeshOptions,
 ): Promise<BlockMeshResult> {
+  if (def.capture?.instances?.length) {
+    return buildCapturedMesh(def, library, options)
+  }
   const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'
   const volume = buildVoxelVolume(def)
   const { sizeColumn, sizeRow, sizeZSlice } = volume

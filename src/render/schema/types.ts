@@ -37,18 +37,63 @@ export interface MaterialRegistryData {
   materials: Record<string, MaterialEntry>
 }
 
+/** SDE Tessellator 捕获：与 `structure.capture` 对齐 */
+export interface MeshCaptureVertex {
+  x: number
+  y: number
+  z: number
+  u: number
+  v: number
+  brightness?: number
+  color?: number
+}
+
+export interface MeshCaptureQuad {
+  materialKey: string
+  samplerIndex: number
+  vertices: MeshCaptureVertex[]
+}
+
+export interface MeshCaptureInstance {
+  x: number
+  y: number
+  z: number
+  label?: string
+  quads: MeshCaptureQuad[]
+}
+
+export interface MeshCaptureSampler {
+  texture: string
+  atlas?: string
+  linear?: boolean
+  useMipmaps?: boolean
+}
+
+export interface MeshCapturePayload {
+  schemaVersion?: number
+  /**
+   * SDE schemaVersion>=2：顶点 u,v 为对应 sprite 在 PNG 上的归一化坐标（与 materialKey 单图一致）。
+   * 缺省且 schemaVersion<2：旧版为整块 blocks 图集归一化 UV，与单图材质不匹配。
+   */
+  uvSpace?: 'atlasNormalized' | 'spriteLocal'
+  samplers: MeshCaptureSampler[]
+  instances: MeshCaptureInstance[]
+}
+
 /**
  * 一次下发的渲染包：`document` 为 **StructureData** 或 **World**（JSON 顶层）；注册表由服务端/Mock 预先定稿。
+ * 若结构含 {@link MeshCapturePayload}，Wiki 可仅依赖 `capture` + `material_registry` 渲染，方块/模型注册表可省略或为空。
  */
 export interface RenderBundle {
   /** 可选；契约版本 */
   payloadSchemaVersion?: number
   /** 单结构 JSON 或 World 多帧文档（内嵌帧须含 `structure`） */
   document: unknown
-  blockRegistry: BlockRegistryData
+  /** 可选；无则等价于 `{ blocks: {} }`（捕获驱动场景） */
+  blockRegistry?: BlockRegistryData
   materialRegistry: MaterialRegistryData
-  /** 方块模型注册表；无 Model 方块时可 `models: {}` */
-  modelRegistry: ModelRegistryData
+  /** 可选；无则等价于 `{ models: {} }` */
+  modelRegistry?: ModelRegistryData
   bundleId?: string
   assetsBaseUrl?: string
 }
@@ -221,6 +266,8 @@ export interface StructureData {
    * 值为 `palette` 下标。
    */
   cellGrid: number[][][]
+  /** 客户端捕获的 Block→Quad 几何；存在时渲染优先走捕获网格 */
+  capture?: MeshCapturePayload
   initialCamera?: InitialCameraDef
 }
 
@@ -236,6 +283,7 @@ export interface StructureDefinition {
   blocks: Record<string, BlockEntry>
   /** 与 bundle 合并后的模型表，供 Model 网格使用 */
   modelRegistry: ModelRegistryData
+  capture?: MeshCapturePayload
   initialCamera?: InitialCameraDef
 }
 

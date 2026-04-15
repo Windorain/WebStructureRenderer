@@ -156,9 +156,9 @@ function downloadCurrentBundle(): void {
     URL.revokeObjectURL(a.href)
   }
   trigger('document.json', JSON.stringify(b.document, null, 2))
-  trigger('block_registry.json', JSON.stringify(b.blockRegistry, null, 2))
+  trigger('block_registry.json', JSON.stringify(b.blockRegistry ?? { blocks: {} }, null, 2))
   trigger('material_registry.json', JSON.stringify(b.materialRegistry, null, 2))
-  trigger('model_registry.json', JSON.stringify(b.modelRegistry, null, 2))
+  trigger('model_registry.json', JSON.stringify(b.modelRegistry ?? { models: {} }, null, 2))
 }
 </script>
 

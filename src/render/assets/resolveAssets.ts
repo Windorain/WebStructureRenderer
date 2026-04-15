@@ -4,13 +4,32 @@
  */
 
 /**
+ * 与 SDE {@code ExportTextureLocator.normalizeLocatorForBundle} 对齐：方块图集路径在 {@code textures/} 下缺省时补 {@code blocks/}，
+ * 以便 {@code miscutils:TileEntities/FOO} → 磁盘 {@code assets/miscutils/textures/blocks/TileEntities/FOO.png}。
+ */
+export function normalizeLocatorForBundle(locator: string): string {
+  const colon = locator.indexOf(':')
+  if (colon < 0) return locator
+  const ns = locator.slice(0, colon)
+  let path = locator.slice(colon + 1)
+  while (path.startsWith('textures/')) {
+    path = path.slice('textures/'.length)
+  }
+  if (!path.startsWith('blocks/') && !path.startsWith('items/')) {
+    path = `blocks/${path}`
+  }
+  return `${ns}:${path}`
+}
+
+/**
  * Minecraft 风格 ResourceLocator → `assets/.../textures/.../*.png`
  */
 export function locatorToRelativePngPath(locator: string): string {
-  const colon = locator.indexOf(':')
+  const normalized = normalizeLocatorForBundle(locator)
+  const colon = normalized.indexOf(':')
   if (colon < 0) throw new Error(`非法 locator（缺少命名空间）: ${locator}`)
-  const ns = locator.slice(0, colon)
-  const pathAfterNs = locator.slice(colon + 1)
+  const ns = normalized.slice(0, colon)
+  const pathAfterNs = normalized.slice(colon + 1)
   // 部分导出写成 `ns:textures/blocks/...`，避免拼成 `.../textures/textures/...`
   if (pathAfterNs.startsWith('textures/')) {
     return `assets/${ns}/${pathAfterNs}.png`

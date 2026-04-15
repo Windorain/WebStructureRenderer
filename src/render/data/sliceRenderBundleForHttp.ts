@@ -4,8 +4,16 @@
  */
 
 import { blockRegistryKeyForPalette } from './blockRegistryResolve'
-import { collectPaletteShellMaterialIdsUnion, sliceMaterialRegistryForBlocks } from './registrySlice'
+import {
+  collectCaptureMaterialKeys,
+  collectPaletteShellMaterialIdsUnion,
+  mergeCaptureMaterialsIntoSlice,
+  sliceMaterialRegistryForBlocks,
+} from './registrySlice'
 import type { BlockEntry, BlockRegistryData, ModelRegistryData, RenderBundle, StructureData, World } from '../schema/types'
+
+const EMPTY_BLOCKS: BlockRegistryData = { blocks: {} }
+const EMPTY_MODELS: ModelRegistryData = { models: {} }
 
 function isWorldDocument(doc: unknown): doc is World {
   return (
@@ -50,6 +58,14 @@ function collectPaletteBlockKeysUnion(structures: StructureData[]): Set<string> 
   return keys
 }
 
+function collectCaptureMaterialKeysUnion(structures: StructureData[]): Set<string> {
+  const keys = new Set<string>()
+  for (const s of structures) {
+    for (const k of collectCaptureMaterialKeys(s)) keys.add(k)
+  }
+  return keys
+}
+
 function sliceBlockRegistry(global: BlockRegistryData, neededKeys: Set<string>): BlockRegistryData {
   const blocks: Record<string, BlockEntry> = {}
   for (const k of neededKeys) {
@@ -82,15 +98,23 @@ export function sliceRenderBundleForHttp(bundle: RenderBundle): RenderBundle {
     return bundle
   }
   const needed = collectPaletteBlockKeysUnion(structures)
-  const blockRegistry = sliceBlockRegistry(bundle.blockRegistry, needed)
+  const globalBlocks = bundle.blockRegistry ?? EMPTY_BLOCKS
+  const globalModels = bundle.modelRegistry ?? EMPTY_MODELS
+  const blockRegistry = sliceBlockRegistry(globalBlocks, needed)
   const shellMaterialIds = collectPaletteShellMaterialIdsUnion(structures)
-  const materialRegistry = sliceMaterialRegistryForBlocks(
+  let materialRegistry = sliceMaterialRegistryForBlocks(
     blockRegistry.blocks,
     bundle.materialRegistry,
-    bundle.modelRegistry,
+    globalModels,
     shellMaterialIds,
   )
-  const modelRegistry = sliceModelRegistry(blockRegistry.blocks, bundle.modelRegistry)
+  const captureKeys = collectCaptureMaterialKeysUnion(structures)
+  materialRegistry = mergeCaptureMaterialsIntoSlice(
+    materialRegistry,
+    bundle.materialRegistry,
+    captureKeys,
+  )
+  const modelRegistry = sliceModelRegistry(blockRegistry.blocks, globalModels)
   return {
     document: bundle.document,
     blockRegistry,

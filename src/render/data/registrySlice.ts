@@ -3,6 +3,7 @@
  * HTTP 返回 bundle 前的裁剪见 `sliceRenderBundleForHttp`。
  */
 
+import { normalizeLocatorForBundle } from '../assets/resolveAssets'
 import { blockRegistryKeyForPalette } from './blockRegistryResolve'
 import { mergeBlockRegistries } from './mergeScene'
 import type {
@@ -14,6 +15,7 @@ import type {
   ModelRegistryData,
   StructureData,
 } from '../schema/types'
+import { mergeMaterialRegistries } from './mergeScene'
 import { collectMaterialIdsFromBlockEntry } from '../mesh/layerMaterialResolve'
 
 /** palette 解析所需的 block 键（含 `registryId@meta` 与裸 `registryId` 回退） */
@@ -110,4 +112,65 @@ export function mergeManyBlockRegistryLayers(layers: BlockRegistryData[]): Block
     blocks = mergeBlockRegistries(blocks, layers[i].blocks)
   }
   return { blocks }
+}
+
+/** `structure.capture` 中出现的 materialKey / sampler.texture，用于裁剪或补全材质表 */
+export function collectCaptureMaterialKeys(structure: StructureData): Set<string> {
+  const keys = new Set<string>()
+  const cap = structure.capture
+  if (!cap) return keys
+  for (const s of cap.samplers ?? []) {
+    if (typeof s.texture === 'string' && s.texture.length > 0) keys.add(s.texture)
+  }
+  for (const inst of cap.instances ?? []) {
+    for (const q of inst.quads ?? []) {
+      if (typeof q.materialKey === 'string' && q.materialKey.length > 0) keys.add(q.materialKey)
+    }
+  }
+  return keys
+}
+
+/**
+ * SDE UV 反查常得 {@code gregtech:iconsets/...}，资源包路径一般为 {@code textures/blocks/iconsets/...}。
+ */
+function inferLocatorFromMaterialKey(materialKey: string): string {
+  if (!materialKey.includes(':')) {
+    return normalizeLocatorForBundle(`minecraft:${materialKey}`)
+  }
+  const colon = materialKey.indexOf(':')
+  const ns = materialKey.slice(0, colon)
+  const pathAfterNs = materialKey.slice(colon + 1)
+  if (pathAfterNs.startsWith('iconsets/') || pathAfterNs === 'iconsets') {
+    return normalizeLocatorForBundle(`${ns}:blocks/${pathAfterNs}`)
+  }
+  return normalizeLocatorForBundle(materialKey)
+}
+
+/**
+ * 为捕获中出现的键提供材质条目：优先用全局注册表，否则按 MC 图标名推断 locator（无命名空间前缀则假定 minecraft）。
+ */
+export function ensureMaterialsForCaptureKeys(
+  global: MaterialRegistryData,
+  keys: Set<string>,
+): MaterialRegistryData {
+  const materials: Record<string, MaterialEntry> = {}
+  for (const id of keys) {
+    const existing = global.materials[id]
+    if (existing) {
+      materials[id] = existing
+    } else {
+      materials[id] = { locator: inferLocatorFromMaterialKey(id), kind: 'static16' }
+    }
+  }
+  return { materials }
+}
+
+/** 将捕获所需材质合并进已切片材质表（overlay 覆盖同名键） */
+export function mergeCaptureMaterialsIntoSlice(
+  sliced: MaterialRegistryData,
+  global: MaterialRegistryData,
+  captureKeys: Set<string>,
+): MaterialRegistryData {
+  if (captureKeys.size === 0) return sliced
+  return mergeMaterialRegistries(sliced, ensureMaterialsForCaptureKeys(global, captureKeys))
 }

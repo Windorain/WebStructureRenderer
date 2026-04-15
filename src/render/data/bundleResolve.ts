@@ -7,6 +7,7 @@ import type {
   BlockRegistryData,
   FaceName,
   MaterialRegistryData,
+  MeshCapturePayload,
   ModelRegistryData,
   RenderBundle,
   StructureData,
@@ -240,16 +241,49 @@ function validateBlockRegistryBlocksHaveMeshKind(r: BlockRegistryData, label: st
   }
 }
 
+function isCapturePayload(x: unknown): x is MeshCapturePayload {
+  if (!x || typeof x !== 'object') return false
+  const o = x as Record<string, unknown>
+  return Array.isArray(o.instances) && Array.isArray(o.samplers)
+}
+
+function documentHasRenderableCapture(document: unknown): boolean {
+  if (!document || typeof document !== 'object') return false
+  const d = document as Record<string, unknown>
+  if (d.mode === 'voxelPalette' && isCapturePayload(d.capture)) {
+    return (d.capture as MeshCapturePayload).instances.length > 0
+  }
+  if (Array.isArray(d.frames)) {
+    for (const f of d.frames as unknown[]) {
+      if (!f || typeof f !== 'object') continue
+      const st = (f as Record<string, unknown>).structure
+      if (st && typeof st === 'object') {
+        const cap = (st as Record<string, unknown>).capture
+        if (isCapturePayload(cap) && cap.instances.length > 0) return true
+      }
+    }
+  }
+  return false
+}
+
+const EMPTY_BLOCK_REGISTRY: BlockRegistryData = { blocks: {} }
+const EMPTY_MODEL_REGISTRY: ModelRegistryData = { models: {} }
+
 /** 校验渲染包形状（document 的语义校验在 loadStructureData / validateWorldDocument 中） */
 export function validateRenderBundle(b: RenderBundle): void {
   if (!b || typeof b !== 'object') throw new Error('RenderBundle 无效')
   if (b.document === undefined || b.document === null) {
     throw new Error('RenderBundle.document 必填')
   }
-  validateBlockRegistryData(b.blockRegistry, 'RenderBundle.blockRegistry')
+  const blockRegistry = b.blockRegistry ?? EMPTY_BLOCK_REGISTRY
+  const modelRegistry = b.modelRegistry ?? EMPTY_MODEL_REGISTRY
+  validateBlockRegistryData(blockRegistry, 'RenderBundle.blockRegistry')
   validateMaterialRegistryData(b.materialRegistry, 'RenderBundle.materialRegistry')
-  validateModelRegistryData(b.modelRegistry, 'RenderBundle.modelRegistry')
-  validateBlockRegistryBlocksHaveMeshKind(b.blockRegistry, 'RenderBundle')
+  validateModelRegistryData(modelRegistry, 'RenderBundle.modelRegistry')
+  const captureOk = documentHasRenderableCapture(b.document)
+  if (!captureOk) {
+    validateBlockRegistryBlocksHaveMeshKind(blockRegistry, 'RenderBundle')
+  }
 }
 
 export interface RenderBundleResolveResult {
@@ -263,9 +297,16 @@ export interface RenderBundleResolveResult {
  */
 export function resolveRenderBundle(bundle: RenderBundle, frameIndex?: number): RenderBundleResolveResult {
   validateRenderBundle(bundle)
-  const input: MergeStructureDataInput = { blockRegistry: bundle.blockRegistry, modelRegistry: bundle.modelRegistry }
+  const input: MergeStructureDataInput = {
+    blockRegistry: bundle.blockRegistry ?? EMPTY_BLOCK_REGISTRY,
+    modelRegistry: bundle.modelRegistry ?? EMPTY_MODEL_REGISTRY,
+  }
   const definition = loadStructureOrWorld(bundle.document, frameIndex, input)
-  return { definition, materialRegistry: bundle.materialRegistry, modelRegistry: bundle.modelRegistry }
+  return {
+    definition,
+    materialRegistry: bundle.materialRegistry,
+    modelRegistry: bundle.modelRegistry ?? EMPTY_MODEL_REGISTRY,
+  }
 }
 
 export type { MergeStructureDataInput } from './mergeScene'

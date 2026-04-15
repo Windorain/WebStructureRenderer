@@ -188,6 +188,11 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
         statusBarTone.value = 'ok'
         statusMessage.value =
           '无可视方块：当前分层下无体素或结构全为空气（可调整分层预览或检查 palette）'
+      } else if (def.capture?.instances?.length) {
+        statusBarTone.value = 'warn'
+        statusMessage.value =
+          `无可见几何：capture 中 ${def.capture.instances.length} 个实例未产生有效三角面（检查四边形顶点或材质预取）` +
+          undefinedAppend
       } else {
         statusBarTone.value = 'warn'
         statusMessage.value =

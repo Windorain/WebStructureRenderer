@@ -133,6 +133,7 @@ export function mergeStructureData(model: StructureData, input: MergeStructureDa
     cellGrid: model.cellGrid,
     blocks,
     modelRegistry,
+    capture: model.capture,
     initialCamera: model.initialCamera,
   }
 }
