@@ -3,6 +3,7 @@
  *
  * 数据流：HTTP 拉取 `RenderBundle` → 校验 → `resolveRenderBundle` → StructureDefinition；
  * 纹理经 `/preview-api/resources/...` 预取后注入 SimpleMaterialLibrary；材质动画参数以 `material_registry` 为准。
+ * 含 `capture` 时顶点 UV 已在 SDE 侧定型为 sprite 局部空间，本文件不重复图集语义说明。
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
@@ -70,12 +71,13 @@ export interface MeshCaptureSampler {
 }
 
 export interface MeshCapturePayload {
-  schemaVersion?: number
   /**
-   * SDE schemaVersion>=2：顶点 u,v 为对应 sprite 在 PNG 上的归一化坐标（与 materialKey 单图一致）。
-   * 缺省且 schemaVersion<2：旧版为整块 blocks 图集归一化 UV，与单图材质不匹配。
+   * 存在可渲染 instances 时须为 2。顶点 u,v 在 SDE 写入 capture 前已由客户端完成 sprite 局部化；
+   * Wiki 仅消费 [0,1]² sprite 空间坐标。
    */
-  uvSpace?: 'atlasNormalized' | 'spriteLocal'
+  schemaVersion?: number
+  /** 存在可渲染 instances 时须为 spriteLocal（见 bundleResolve.validateStructureData） */
+  uvSpace?: 'spriteLocal'
   samplers: MeshCaptureSampler[]
   instances: MeshCaptureInstance[]
 }
@@ -246,7 +248,7 @@ export function isAirState(v: VoxelState): boolean {
 
 /**
  * 磁盘结构数据：调色板 + 三维整数网格（palette 下标）。
- * `cellGrid[zSlice][row][column]`，轴约定与旧版 zSlices 相同。
+ * `cellGrid[zSlice][row][column]`（与下方 cellGrid 字段同形）。
  */
 export interface StructureData {
   schemaVersion?: number
@@ -262,7 +264,7 @@ export interface StructureData {
   /** 去重后的体素状态；须含空气项（registryId `air`） */
   palette: VoxelState[]
   /**
-   * 与 zSlices 同形：外层 Z 切片 → 行（顶行先）→ 列（世界 X）。
+   * 与 cellGrid 轴约定一致：外层 Z 切片 → 行（顶行先）→ 列（世界 X）。
    * 值为 `palette` 下标。
    */
   cellGrid: number[][][]

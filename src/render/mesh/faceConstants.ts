@@ -32,7 +32,7 @@ export const FACE_NORMAL: Record<FaceName, THREE.Vector3> = {
 
 /**
  * 邻格在 (column, row, zSlice) 索引空间中的增量；
- * 顺序为 [dColumn, dRow, dZSlice]；row 与 `zSlices[zSlice][row]` 一致（0=顶行）。
+ * 顺序为 [dColumn, dRow, dZSlice]；row 与 `cellGrid[zSlice][row]` 一致（0=顶行）。
  * 世界 +Y 对应更小 row（行轴向下标增大 → 世界 Y 减小）。
  */
 export const NEIGHBOR_STRUCTURE_DELTA: Record<FaceName, [number, number, number]> = {

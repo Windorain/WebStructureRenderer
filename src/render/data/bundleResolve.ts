@@ -102,6 +102,20 @@ function validatePalette(data: StructureData): void {
   }
 }
 
+/** 存在可渲染 capture 实例时的契约（与 SDE {@code MeshCaptureService#toJsonCapture} 一致） */
+function validateCaptureWhenRenderable(cap: MeshCapturePayload): void {
+  if (!cap.instances?.length) return
+  if (cap.schemaVersion !== 2) {
+    throw new Error(`structure.capture：存在实例时 schemaVersion 须为 2，当前: ${String(cap.schemaVersion)}`)
+  }
+  if (cap.uvSpace !== 'spriteLocal') {
+    throw new Error(`structure.capture：存在实例时 uvSpace 须为 "spriteLocal"，当前: ${String(cap.uvSpace)}`)
+  }
+  if (!Array.isArray(cap.samplers) || cap.samplers.length === 0) {
+    throw new Error('structure.capture：存在实例时 samplers 须为非空数组')
+  }
+}
+
 /** 磁盘 StructureData 形状与语义校验 */
 export function validateStructureData(m: StructureData): void {
   if (m.mode !== 'voxelPalette') {
@@ -110,6 +124,12 @@ export function validateStructureData(m: StructureData): void {
 
   validatePalette(m)
   validateCellGridUniform(m)
+  if (m.capture !== undefined && m.capture !== null) {
+    if (typeof m.capture !== 'object') {
+      throw new Error('structure.capture 必须为对象或省略')
+    }
+    validateCaptureWhenRenderable(m.capture as MeshCapturePayload)
+  }
 
   const ic = m.initialCamera
   if (ic === undefined) return
@@ -280,6 +300,7 @@ export function validateRenderBundle(b: RenderBundle): void {
   validateBlockRegistryData(blockRegistry, 'RenderBundle.blockRegistry')
   validateMaterialRegistryData(b.materialRegistry, 'RenderBundle.materialRegistry')
   validateModelRegistryData(modelRegistry, 'RenderBundle.modelRegistry')
+  /** 捕获驱动：几何来自 capture，不要求 block_registry 含 meshKind（非旧 JSON 放宽，乃正式契约） */
   const captureOk = documentHasRenderableCapture(b.document)
   if (!captureOk) {
     validateBlockRegistryBlocksHaveMeshKind(blockRegistry, 'RenderBundle')

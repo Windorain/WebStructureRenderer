@@ -1,5 +1,6 @@
 /**
  * 使用 SDE `structure.capture`（Block→Quad→顶点）构建网格，不依赖 block/model 注册表。
+ * 与 {@link ./blockMesh buildBlockMesh} 体素路径互斥：仅当存在 `capture.instances` 时进入本路径。
  */
 
 import * as THREE from 'three'
@@ -7,8 +8,23 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import type { MeshCaptureInstance, MeshCaptureQuad, StructureDefinition } from '../schema/types'
+import { isAirState } from '../schema/types'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import type { BlockMeshBuildStats, BlockMeshResult, BuildBlockMeshOptions, UndefinedBlockDetail } from './blockMesh'
+
+function countCellGridNonAir(def: StructureDefinition): number {
+  const { cellGrid, palette } = def
+  let n = 0
+  for (const slice of cellGrid) {
+    for (const row of slice) {
+      for (const idx of row) {
+        const v = palette[idx]
+        if (v && !isAirState(v)) n++
+      }
+    }
+  }
+  return n
+}
 
 function parseTintFromArgb(argb: number | undefined): THREE.Color {
   if (argb === undefined || !Number.isFinite(argb)) return new THREE.Color(0xffffff)
@@ -71,12 +87,9 @@ export async function buildCapturedMesh(
   if (!cap?.instances?.length) {
     throw new Error('buildCapturedMesh: 缺少 capture.instances')
   }
-  const uvSpace =
-    cap.uvSpace ??
-    (typeof cap.schemaVersion === 'number' && cap.schemaVersion >= 2 ? 'spriteLocal' : 'atlasNormalized')
-  if (uvSpace === 'atlasNormalized') {
-    console.warn(
-      '[buildCapturedMesh] capture 为图集空间 UV（旧导出）；贴图易错位。请用当前 SDE 重新导出（schemaVersion>=2, uvSpace=spriteLocal）。',
+  if (cap.schemaVersion !== 2 || cap.uvSpace !== 'spriteLocal') {
+    throw new Error(
+      'buildCapturedMesh: 仅支持 capture.schemaVersion===2 且 uvSpace==="spriteLocal"（须先通过 validateStructureData）',
     )
   }
 
@@ -130,10 +143,12 @@ export async function buildCapturedMesh(
     }
   }
 
-  const instanceCount = cap.instances.length
+  const capturedInstanceCount = cap.instances.length
+  const cellGridNonAirCount = countCellGridNonAir(def)
   const undefinedBlockDetails: UndefinedBlockDetail[] = []
   const stats: BlockMeshBuildStats = {
-    nonAirVoxelCount: instanceCount,
+    nonAirVoxelCount: cellGridNonAirCount,
+    capturedInstanceCount,
     skippedUnmappedCount: 0,
     unknownVoxelCount: 0,
     undefinedBlockDetails,

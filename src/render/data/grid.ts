@@ -49,7 +49,7 @@ export function buildVoxelVolume(def: StructureDefinition): VoxelVolume {
 
 /**
  * 结构行下标 row（0=顶行）→ 包围盒内体素 Y 索引（0=底）。
- * `zSlices[zSlice][row]` 中 row 0 = 结构顶部（最高世界 Y）；包围盒内体素 Y = sizeRow - 1 - row。
+ * `cellGrid[zSlice][row]` 中 row 0 = 结构顶部（最高世界 Y）；包围盒内体素 Y = sizeRow - 1 - row。
  */
 export function structureRowToWorldY(row: number, sizeRow: number): number {
   return sizeRow - 1 - row

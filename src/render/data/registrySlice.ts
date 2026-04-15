@@ -131,23 +131,7 @@ export function collectCaptureMaterialKeys(structure: StructureData): Set<string
 }
 
 /**
- * SDE UV 反查常得 {@code gregtech:iconsets/...}，资源包路径一般为 {@code textures/blocks/iconsets/...}。
- */
-function inferLocatorFromMaterialKey(materialKey: string): string {
-  if (!materialKey.includes(':')) {
-    return normalizeLocatorForBundle(`minecraft:${materialKey}`)
-  }
-  const colon = materialKey.indexOf(':')
-  const ns = materialKey.slice(0, colon)
-  const pathAfterNs = materialKey.slice(colon + 1)
-  if (pathAfterNs.startsWith('iconsets/') || pathAfterNs === 'iconsets') {
-    return normalizeLocatorForBundle(`${ns}:blocks/${pathAfterNs}`)
-  }
-  return normalizeLocatorForBundle(materialKey)
-}
-
-/**
- * 为捕获中出现的键提供材质条目：优先用全局注册表，否则按 MC 图标名推断 locator（无命名空间前缀则假定 minecraft）。
+ * 为捕获中出现的键提供材质条目：优先用全局注册表，否则用与 SDE `samplers.texture` 相同的键经 {@link normalizeLocatorForBundle} 得 locator。
  */
 export function ensureMaterialsForCaptureKeys(
   global: MaterialRegistryData,
@@ -159,7 +143,8 @@ export function ensureMaterialsForCaptureKeys(
     if (existing) {
       materials[id] = existing
     } else {
-      materials[id] = { locator: inferLocatorFromMaterialKey(id), kind: 'static16' }
+      const loc = id.includes(':') ? id : `minecraft:${id}`
+      materials[id] = { locator: normalizeLocatorForBundle(loc), kind: 'static16' }
     }
   }
   return { materials }

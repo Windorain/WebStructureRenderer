@@ -1,5 +1,6 @@
 /**
  * 按 BlockMeshKind 分发：SimpleCube 与 Model 共用批次合并与材质库。
+ * 与 {@link ./capturedMesh buildCapturedMesh} 互斥：存在 `capture.instances` 时只走捕获网格，否则走体素路径。
  */
 
 import * as THREE from 'three'
@@ -49,7 +50,12 @@ export interface UndefinedBlockDetail {
 
 /** 与体素循环一致：分层预览下的「非空气」计数 */
 export interface BlockMeshBuildStats {
+  /**
+   * cellGrid 中非空气体素数（捕获路径与体素路径语义一致）。
+   */
   nonAirVoxelCount: number
+  /** 仅捕获路径：SDE 写入的 capture实例条数（可与 nonAirVoxelCount 不同） */
+  capturedInstanceCount?: number
   /** 无 block 条目或 meshKind=Unknown，网格阶段跳过 */
   skippedUnmappedCount: number
   /** meshKind=Unknown（block_registry 无有效几何），用于 Status 提示 */
