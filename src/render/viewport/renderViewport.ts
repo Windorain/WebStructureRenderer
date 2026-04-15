@@ -74,7 +74,7 @@ class WorldAxesGizmo extends THREE.Object3D {
     const axes = this.children[0] as THREE.AxesHelper | undefined
     if (axes) {
       axes.geometry.dispose()
-      ;(axes.material as THREE.Material).dispose()
+        ; (axes.material as THREE.Material).dispose()
     }
   }
 }

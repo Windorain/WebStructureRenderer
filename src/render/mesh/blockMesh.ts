@@ -17,6 +17,8 @@ import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
+  /** World 当前帧前缀，如 `"2:"`，与 mergeMaterialRegistryFromDocument 的 materialId 一致 */
+  materialKeyPrefix?: string
 }
 
 function parseTintFromArgb(argb: number | undefined): THREE.Color {
@@ -133,6 +135,7 @@ export async function buildBlockMesh(
   options?: BuildBlockMeshOptions,
 ): Promise<BlockMeshResult> {
   const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'
+  const matPrefix = options?.materialKeyPrefix
   const volume = buildVoxelVolume(def)
   const { sizeColumn, sizeRow, sizeZSlice } = volume
   const { blockPalette, materialPalette } = def
@@ -210,7 +213,8 @@ export async function buildBlockMesh(
   const batches = new Map<string, { descriptor: BatchDescriptor; units: QuadWorkUnit[] }>()
   for (const w of workUnits) {
     const descriptor: BatchDescriptor = {
-      materialId: String(w.materialIndex),
+      materialId:
+        matPrefix !== undefined ? `${matPrefix}${w.materialIndex}` : String(w.materialIndex),
       tint: w.tint,
       layerIdx: 0,
       role: inferLayerRole(w.matPalette, 0),

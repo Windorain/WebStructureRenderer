@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 本地 dev：URL 带参链接、下载当前 bundle（数据来自 HTTP，非 localStorage）。
+ * 本地 dev：URL 带参链接、下载当前场景 document（数据来自 HTTP，非 localStorage）。
  */
 import { computed, onMounted, ref, watch } from 'vue'
 
@@ -33,7 +33,7 @@ const devInfoLines = computed(() => {
   return [
     `场景 id（解析用）: ${resolved}`,
     `URL sceneId: ${sid || '（空=默认）'}`,
-    `bundle 来源: GET /preview-api/scenes/:id/bundle（场景=data/scenes/<id>.json，注册表=data/registries；按 palette 裁剪）`,
+    `场景 JSON: GET /preview-api/scenes/:id（data/scenes/<id>.json 原文，StructureData 或 World）`,
     `import.meta.env.MODE: ${import.meta.env.MODE}`,
     `应用版本: ${'version' in pkg && typeof pkg.version === 'string' ? pkg.version : '—'}`,
   ]
@@ -98,7 +98,7 @@ onMounted(async () => {
 
 watch(() => props.mergedConfig, syncFromMerged, { deep: true })
 
-/** sceneId 仅随 URL/父级传入的 scene 变化同步；勿放进 syncFromMerged，否则 mergedConfig 深层更新（如 bundle）会把下拉里刚选的值冲掉 */
+/** sceneId 仅随 URL/父级传入的 scene 变化同步；勿放进 syncFromMerged，否则 mergedConfig 深层更新会把下拉里刚选的值冲掉 */
 watch(
   () => props.mergedConfig.sceneId,
   (sid) => {
@@ -148,17 +148,13 @@ function downloadCurrentBundle(): void {
   const b = props.mergedConfig.renderBundle
   const sid = props.mergedConfig.sceneId ?? DEFAULT_PREVIEW_SCENE_ID
   const prefix = sid.replace(/[/\\:]/g, '_')
-  const trigger = (filename: string, text: string) => {
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
-    a.download = `${prefix}.${filename}`
-    a.click()
-    URL.revokeObjectURL(a.href)
-  }
-  trigger('document.json', JSON.stringify(b.document, null, 2))
-  trigger('block_registry.json', JSON.stringify(b.blockRegistry ?? { blocks: {} }, null, 2))
-  trigger('material_registry.json', JSON.stringify(b.materialRegistry, null, 2))
-  trigger('model_registry.json', JSON.stringify(b.modelRegistry ?? { models: {} }, null, 2))
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(
+    new Blob([JSON.stringify(b.document, null, 2)], { type: 'application/json' }),
+  )
+  a.download = `${prefix}.document.json`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 </script>
 
@@ -172,7 +168,7 @@ function downloadCurrentBundle(): void {
         开发者配置（URL 参数）
       </h2>
       <p class="wm-dev-panel-hint">
-        场景与 bundle 仅通过 HTTP（<code>/preview-api</code>、<code>/namespace</code> 经 Vite 代理到
+        场景 JSON 仅通过 HTTP（<code>/preview-api</code>、<code>/namespace</code> 经 Vite 代理到
         <code>server/wiki-mock</code> 拉取）。本面板用查询参数表达「应用并跳转」，不写入 localStorage。开发请使用
         <code>npm run dev</code>。
       </p>
@@ -219,7 +215,7 @@ function downloadCurrentBundle(): void {
 
         <div class="wm-dev-field wm-dev-field--full wm-dev-upload-row">
           <button type="button" class="wm-dev-btn" @click="downloadCurrentBundle">
-            下载当前 bundle（四 JSON）
+            下载当前 document.json
           </button>
         </div>
 

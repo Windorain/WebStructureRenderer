@@ -26,7 +26,14 @@ export function usePreviewTooltip(): UsePreviewTooltip {
   const hover = ref<PreviewTooltipHover | null>(null)
 
   function setHover(payload: PreviewTooltipHover): void {
-    hover.value = payload
+    const h = hover.value
+    // 同方块、同源时只改坐标，避免每帧新对象导致依赖 hover 的计算/子树无谓失效
+    if (h && h.blockId === payload.blockId && h.source === payload.source) {
+      h.clientX = payload.clientX
+      h.clientY = payload.clientY
+      return
+    }
+    hover.value = { ...payload }
   }
 
   function clearHover(source?: TooltipHoverSource): void {

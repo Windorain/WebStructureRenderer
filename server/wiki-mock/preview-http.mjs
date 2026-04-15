@@ -1,7 +1,7 @@
 /**
  * Mock Wiki 数据服务：`/preview-api`、`/namespace`、静态资源。
- * 注册表裁剪实现见 `src/render/data/sliceRenderBundleForHttp.ts`（经 tsx 加载）。
- * `PREVIEW_BUNDLE_NO_SLICE=1` 可关闭裁剪；`--static dist` 托管构建产物。
+ * 场景 JSON 为 `data/scenes/<id>.json` 原文（StructureData 或 World），不拼注册表、不裁剪。
+ * `--static dist` 托管构建产物。
  */
 import http from 'node:http'
 import fs from 'node:fs'
@@ -9,13 +9,11 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { sliceRenderBundleForHttp } from '../../src/render/data/sliceRenderBundleForHttp.ts'
 import { loadNamespaceDataFromDisk, runInMemoryAggregate } from './namespaceMemory.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
 const DEFAULT_DATA_SCENES = path.join(REPO_ROOT, 'data', 'scenes')
-const DEFAULT_DATA_REGISTRIES = path.join(REPO_ROOT, 'data', 'registries')
 const DEFAULT_DATA_RESOURCES = path.join(REPO_ROOT, 'data', 'resources')
 const PORT_FILE = path.join(REPO_ROOT, '.wmr-preview-port')
 
@@ -81,37 +79,13 @@ async function readFirstExistingUtf8(paths) {
   throw last
 }
 
-async function readBundleJson(scenesRoot, registriesRoot, sceneId) {
-  const readRegistry = async (name) => {
-    const primary = path.join(registriesRoot, name)
-    try {
-      const raw = await fsp.readFile(primary, 'utf8')
-      return JSON.parse(raw)
-    } catch (e) {
-      if (e.code !== 'ENOENT') throw e
-      const fb = path.join(DEFAULT_DATA_REGISTRIES, name)
-      const raw = await fsp.readFile(fb, 'utf8')
-      return JSON.parse(raw)
-    }
-  }
-  const readRegistryOrDefault = async (name, defaultValue) => {
-    try {
-      return await readRegistry(name)
-    } catch (e) {
-      if (e.code === 'ENOENT') return defaultValue
-      throw e
-    }
-  }
-  const docRaw = await readFirstExistingUtf8([
+/** 场景文件 UTF-8 原文（合法 JSON） */
+async function readSceneFileUtf8(scenesRoot, sceneId) {
+  return readFirstExistingUtf8([
     path.join(scenesRoot, `${sceneId}.json`),
     path.join(scenesRoot, sceneId, 'document.json'),
     path.join(DEFAULT_DATA_SCENES, `${sceneId}.json`),
   ])
-  const document = JSON.parse(docRaw)
-  const blockRegistry = await readRegistryOrDefault('block_registry.json', { blocks: {} })
-  const materialRegistry = await readRegistryOrDefault('material_registry.json', { materials: {} })
-  const modelRegistry = await readRegistryOrDefault('model_registry.json', { models: {} })
-  return { document, blockRegistry, materialRegistry, modelRegistry }
 }
 
 const MIME = {
@@ -234,7 +208,7 @@ async function serveResourcesFile(res, resourcesRoot, relEncoded, sendBody) {
   }
 }
 
-function createServer(scenesRoot, registriesRoot, staticRoot, namespaceStore, resourcesRoot) {
+function createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot) {
   return http.createServer(async (req, res) => {
     const pathname = normalizePathnameSlashes(pathnameOnly(req))
 
@@ -318,21 +292,18 @@ function createServer(scenesRoot, registriesRoot, staticRoot, namespaceStore, re
       return
     }
 
-    const m = /^\/preview-api\/scenes\/([^/]+)\/bundle$/.exec(pathname)
-    if (m && req.method === 'GET') {
-      const id = safeSceneId(decodeURIComponent(m[1]))
+    const mScene = /^\/preview-api\/scenes\/([^/]+)(?:\/bundle)?$/.exec(pathname)
+    if (mScene && req.method === 'GET') {
+      const id = safeSceneId(decodeURIComponent(mScene[1]))
       if (!id) {
         res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' })
         res.end('Invalid scene id')
         return
       }
       try {
-        let bundle = await readBundleJson(scenesRoot, registriesRoot, id)
-        if (!process.env.PREVIEW_BUNDLE_NO_SLICE) {
-          bundle = sliceRenderBundleForHttp(bundle)
-        }
+        const body = await readSceneFileUtf8(scenesRoot, id)
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(bundle))
+        res.end(body)
       } catch (e) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
         res.end(e instanceof Error ? e.message : String(e))
@@ -363,9 +334,6 @@ const { staticRoot } = parseArgs(process.argv)
 const scenesRoot = process.env.PREVIEW_DATA_SCENES
   ? path.resolve(process.env.PREVIEW_DATA_SCENES)
   : DEFAULT_DATA_SCENES
-const registriesRoot = process.env.PREVIEW_DATA_REGISTRIES
-  ? path.resolve(process.env.PREVIEW_DATA_REGISTRIES)
-  : DEFAULT_DATA_REGISTRIES
 const resourcesRoot = process.env.PREVIEW_DATA_RESOURCES
   ? path.resolve(process.env.PREVIEW_DATA_RESOURCES)
   : DEFAULT_DATA_RESOURCES
@@ -418,7 +386,7 @@ async function main() {
       console.error('[wiki-mock] Invalid PREVIEW_HTTP_PORT')
       process.exit(1)
     }
-    server = createServer(scenesRoot, registriesRoot, staticRoot, namespaceStore, resourcesRoot)
+    server = createServer(scenesRoot, staticRoot, namespaceStore, resourcesRoot)
     const r = await listenServer(server, port, '127.0.0.1')
     if (r.ok) {
       boundPort = port
@@ -450,12 +418,11 @@ async function main() {
   })
 
   console.log(`[wiki-mock] scenes root (single .json per id): ${scenesRoot}`)
-  console.log(`[wiki-mock] registries root: ${registriesRoot}`)
   console.log(`[wiki-mock] resources root: ${resourcesRoot}`)
   console.log(`[wiki-mock] listening http://127.0.0.1:${boundPort}`)
   if (staticRoot) console.log(`[wiki-mock] static root: ${staticRoot}`)
   console.log(`[wiki-mock] GET /preview-api/scenes`)
-  console.log(`[wiki-mock] GET /preview-api/scenes/:id/bundle`)
+  console.log(`[wiki-mock] GET /preview-api/scenes/:id（兼容 :id/bundle）`)
   console.log(`[wiki-mock] GET /preview-api/resources/*`)
   console.log(`[wiki-mock] GET /namespace/data`)
   console.log(`[wiki-mock] GET /namespace/data/:title`)

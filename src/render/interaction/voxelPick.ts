@@ -68,7 +68,7 @@ export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null
   let id = effectiveBlockId(volume, column, row, zSlice, sizeRow, layerPreview)
   if (id === AIR) {
     const p2 = hit.point.clone().addScaledVector(normalWorld, -NUDGE * 4)
-    ;({ column, voxelY, zSlice } = worldPointToVoxelIndices(p2, sizeColumn, sizeRow, sizeZSlice))
+      ; ({ column, voxelY, zSlice } = worldPointToVoxelIndices(p2, sizeColumn, sizeRow, sizeZSlice))
     id = effectiveBlockId(volume, column, sizeRow - 1 - voxelY, zSlice, sizeRow, layerPreview)
   }
 

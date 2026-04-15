@@ -10,7 +10,7 @@ export type MaterialKind = 'static16' | 'animated'
 
 export type MaterialBlendMode = 'opaque' | 'cutout' | 'translucent'
 
-/** 与 mcmeta `animation` 对齐；缺省时 `kind === 'animated'` 且多帧 PNG 按顺序 1 tick/帧播放 */
+/** 与 mcmeta `animation` 对齐；`kind === 'animated'` 且 PNG 为竖条多帧时按顺序 1 tick/帧播放（见 simpleMaterialLibrary） */
 export interface MaterialAnimationSpec {
   defaultFrametimeTicks?: number
   frameSequence?: Array<{ index: number; timeTicks?: number }>
@@ -32,7 +32,7 @@ export type MaterialPaletteEntry = MaterialEntry & {
   useMipmaps?: boolean
 }
 
-/** material_registry.json 根结构（仅遗留 bundle；主路径用 StructureData.materialPalette） */
+/** materialId → 条目；键由 StructureData.materialPalette 或 World 多帧 `frameIndex:localIndex` 派生 */
 export interface MaterialRegistryData {
   schemaVersion?: number
   materials: Record<string, MaterialEntry>
@@ -82,19 +82,12 @@ export interface MeshCapturePayload {
 }
 
 /**
- * 渲染包：document 为 StructureData 或 World。
- * blockRegistry / modelRegistry / 独立 material_registry 已废弃，不得作为主路径输入。
+ * 渲染包：仅 `document` 为可信源（StructureData 或 World）；纹理由客户端按各帧 materialPalette 预取。
  */
 export interface RenderBundle {
   /** 与 BakedQuads 终态契约对齐时可 bump */
   payloadSchemaVersion?: number
   document: unknown
-  /** @deprecated Wiki 主路径不读取 */
-  blockRegistry?: BlockRegistryData
-  /** 无结构内 materialPalette 时的回退；可与 resolveBundleMaterialRegistry 合并 */
-  materialRegistry?: MaterialRegistryData
-  /** @deprecated */
-  modelRegistry?: ModelRegistryData
   bundleId?: string
   assetsBaseUrl?: string
 }

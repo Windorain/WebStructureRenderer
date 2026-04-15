@@ -1,5 +1,5 @@
 /**
- * 材质库：使用已预取的纹理与 material_registry 中的动画描述，创建 MeshStandardMaterial。
+ * 材质库：使用已预取的纹理与 MaterialRegistryData（由 StructureData / World 各帧 materialPalette 汇总）中的动画描述，创建 MeshStandardMaterial。
  * 不在此模块内发起网络请求。
  */
 
@@ -58,6 +58,7 @@ function materialEntryToParsedMcmeta(entry: MaterialEntry, frameCount: number): 
       },
     }
   }
+  // 仅 kind === animated 时启用竖条帧动画，避免把大量 static16 误判为动画导致每材质每帧 tick（卡顿）
   if (entry.kind === 'animated' && frameCount >= 2) {
     return {
       animation: {
@@ -98,16 +99,19 @@ function applyAnimatedStrip(
 
   applyFrameAtIndex(0)
 
+  const MAX_ADVANCES_PER_TICK = 48
   registerTick((dtMs) => {
     accMs += dtMs
     const len = frames.length
     if (len === 0) return
+    let advances = 0
     let dur = durationMsPerFrame[frameSeq % len]
     if (dur <= 0) dur = 1
-    while (accMs >= dur) {
+    while (accMs >= dur && advances < MAX_ADVANCES_PER_TICK) {
       accMs -= dur
       frameSeq = (frameSeq + 1) % len
       applyFrameAtIndex(frameSeq)
+      advances++
       dur = durationMsPerFrame[frameSeq % len]
       if (dur <= 0) dur = 1
     }
@@ -156,7 +160,7 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
   private disposed = false
 
   /**
-   * @param preloaded 须已含 material_registry 中全部 materialId；纹理由 previewSession 预取并传入
+   * @param preloaded 须已含 registry 中全部 materialId；纹理由 previewSession 按 palette 预取并传入
    */
   constructor(registry: MaterialRegistryData, preloaded: Map<string, THREE.Texture>) {
     for (const [materialId, tex] of preloaded) {
@@ -169,8 +173,10 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
 
   tick(deltaMs: number): void {
     if (this.disposed) return
+    // 避免切回标签页等导致单帧 delta 极大，在数百个动画回调里把主线程卡死
+    const dt = Math.min(256, Math.max(0, deltaMs))
     for (const fn of this.tickFns) {
-      fn(deltaMs)
+      fn(dt)
     }
   }
 

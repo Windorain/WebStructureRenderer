@@ -80,6 +80,8 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
   const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
+  /** World 多帧时与 mergeMaterialRegistryFromDocument / buildBlockMesh 一致 */
+  const materialKeyPrefixRef = ref<string | undefined>(undefined)
   const sceneRef = shallowRef<THREE.Scene | null>(null)
   const contentGroupRef = shallowRef<THREE.Group | null>(null)
 
@@ -129,16 +131,17 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     try {
       const resolved = resolveRenderBundle(config.renderBundle)
       structureDefinition.value = resolved.definition
+      materialKeyPrefixRef.value = resolved.materialKeyPrefix
       materialLibrary.value = config.materialLibrary
-      const iconCache = new BlockIconCache(
-        config.materialLibrary,
-        {},
-        resolved.modelRegistry,
-        config.blockIconCacheOptions,
-        resolved.definition,
-      )
+      const iconCache = new BlockIconCache(config.materialLibrary, {
+        ...config.blockIconCacheOptions,
+        materialKeyPrefix: resolved.materialKeyPrefix,
+      }, resolved.definition)
       iconCache.setRevisionKey(
-        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey({
+          ...config.blockIconCacheOptions,
+          materialKeyPrefix: resolved.materialKeyPrefix,
+        })}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
@@ -168,7 +171,10 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
         contentGroupRef.value = null
         disposeContent = null
       }
-      const result = await buildBlockMesh(def, lib, { layerPreview: layerPreviewMode.value })
+      const result = await buildBlockMesh(def, lib, {
+        layerPreview: layerPreviewMode.value,
+        materialKeyPrefix: materialKeyPrefixRef.value,
+      })
       if (seq !== meshBuildSeq) {
         result.dispose()
         return
@@ -220,6 +226,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     materialLibrary.value?.dispose()
     materialLibrary.value = null
     structureDefinition.value = null
+    materialKeyPrefixRef.value = undefined
     sceneRef.value = null
   }
 

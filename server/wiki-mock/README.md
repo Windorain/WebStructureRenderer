@@ -1,17 +1,17 @@
 # Mock Wiki HTTP（wiki-mock）
 
-本地/CI 模拟 Wiki 后端；通过 `tsx` 加载 `src/render/data/sliceRenderBundleForHttp.ts` 做 bundle 裁剪。
+本地/CI 模拟 Wiki 后端：直接托管场景 JSON 与静态资源，**不**拼接注册表、**不**裁剪 bundle。
 
 ## REST（`/preview-api`）
 
 | 方法 | 路径 | 响应 |
 |------|------|------|
 | GET | `/preview-api/scenes` | `string[]` 场景 id 列表 |
-| GET | `/preview-api/scenes/:sceneId/bundle` | `RenderBundle` JSON（可按 palette 裁剪注册表） |
+| GET | `/preview-api/scenes/:sceneId` | 场景 JSON 原文（`StructureData` 或 `World`） |
+| GET | `/preview-api/scenes/:sceneId/bundle` | 与上相同（兼容旧路径） |
 | GET | `/preview-api/resources/*` | 资源文件（相对 `data/resources` 根）；如 `.../assets/<ns>/textures/...png` |
 
-- **场景**：仓库 `data/scenes/<id>.json`（单文件，即 StructureData `document`）。
-- **注册表**：仓库 `data/registries/` 下 `block_registry.json`、`material_registry.json`、`model_registry.json`（全场景共用）。
+- **场景**：仓库 `data/scenes/<id>.json`（或 `data/scenes/<id>/document.json`）。
 
 ## Namespace / Data（与 `src/preview/namespaceHttp.ts` 一致）
 
@@ -28,9 +28,7 @@
 
 - `PREVIEW_HTTP_PORT`：固定监听端口；未设置时在 8787–8791 间尝试。
 - `PREVIEW_DATA_SCENES`：覆盖场景目录（默认 `data/scenes`，内含 `*.json`）。
-- `PREVIEW_DATA_REGISTRIES`：覆盖注册表目录（默认 `data/registries`）。
 - `PREVIEW_DATA_RESOURCES`：覆盖资源根目录（默认 `data/resources`）。
-- `PREVIEW_BUNDLE_NO_SLICE=1`：关闭按 palette 裁剪（调试用）。
 
 ## 启动
 

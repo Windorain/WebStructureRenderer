@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { BlockIconCache } from '@/render/interaction/blockIconCache'
 
@@ -9,19 +9,19 @@ const props = defineProps<{
   cache: BlockIconCache
 }>()
 
-/** 订阅缓存更新，驱动 computed 重算 */
+/** 仅订阅本槽位 blockId，避免全局 notify 导致侧栏每一行都 flush */
 const bump = ref(0)
-let unsub: (() => void) | undefined
 
-onMounted(() => {
-  unsub = props.cache.subscribe(() => {
-    bump.value++
-  })
-})
-
-onBeforeUnmount(() => {
-  unsub?.()
-})
+watch(
+  () => [props.blockId, props.cache] as const,
+  ([id, cache], _prev, onCleanup) => {
+    const unsub = cache.subscribe(id, () => {
+      bump.value++
+    })
+    onCleanup(() => unsub())
+  },
+  { immediate: true },
+)
 
 const entry = computed(() => {
   void bump.value

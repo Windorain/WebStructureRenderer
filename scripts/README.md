@@ -7,7 +7,7 @@
 - **`mode`**：`voxelPalette`
 - **`cellGrid`**：数字立方体 `cellGrid[zSlice][row][column]`，值为 `palette` 下标（与 SDE / Wiki 渲染一致）
 - **`axis`**（可选）：文档用，键名建议为 `zSlice` / `row` / `column` / `spaceChar`
-- **`symbolMap`**、`initialCamera`、`blocks`（经 `block_registry` 合并）等见 `src/render/schema/types.ts`
+- **`symbolMap`**、`initialCamera` 等见 `src/render/schema/types.ts`（终态仅 `blockPalette` + `materialPalette`）
 
 体素索引与渲染一致：**`VoxelVolume.get(column, row, zSlice)`**，`row === 0` 为结构顶部（最高世界 Y）。
 

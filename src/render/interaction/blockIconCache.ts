@@ -6,8 +6,8 @@ import * as THREE from 'three'
 
 import { findBlockPaletteEntryByBlockId } from '../data/blockRegistryResolve'
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
-import { buildSingleBlockPreviewFromBakedPalette, buildSingleBlockPreviewGroup } from './blockSlotBaker'
-import type { BlockEntry, ModelRegistryData, StructureDefinition } from '../schema/types'
+import { buildSingleBlockPreviewFromBakedPalette } from './blockSlotBaker'
+import type { StructureDefinition } from '../schema/types'
 
 export type BlockIconCacheStatus = 'idle' | 'pending' | 'ready' | 'error'
 
@@ -26,25 +26,29 @@ export interface BlockIconCacheOptions {
   /** 背景色（与侧栏协调）；alpha 0 可透 */
   clearColor?: number
   clearAlpha?: number
+  /** World 当前帧材质键前缀，如 `"0:"` */
+  materialKeyPrefix?: string
 }
 
 /** 变更 ortho/size 等布局时递增，供 `setRevisionKey` 拼接以重烘 */
 export const BLOCK_ICON_LAYOUT_REVISION = '1'
 
-type ResolvedIconOpts = Required<BlockIconCacheOptions>
+type ResolvedIconOpts = Required<Omit<BlockIconCacheOptions, 'materialKeyPrefix'>> & {
+  materialKeyPrefix?: string
+}
 
 const defaultOpts: ResolvedIconOpts = {
   sizePx: 64,
   orthoHalf: 1.22,
-  /** 与 clearAlpha=0 搭配；清屏后仅几何/贴图覆盖处不透明，其余为透明「虚空」 */
   clearColor: 0x000000,
   clearAlpha: 0,
+  materialKeyPrefix: undefined,
 }
 
 /** 供 `setRevisionKey` 拼接：烘焙参数变化时需重烘 */
 export function blockIconBakeLayoutKey(options?: BlockIconCacheOptions): string {
   const o = { ...defaultOpts, ...options } as ResolvedIconOpts
-  return `${o.sizePx}:${o.orthoHalf}:${o.clearColor}:${o.clearAlpha}`
+  return `${o.sizePx}:${o.orthoHalf}:${o.clearColor}:${o.clearAlpha}:${o.materialKeyPrefix ?? ''}`
 }
 
 /**
@@ -53,13 +57,9 @@ export function blockIconBakeLayoutKey(options?: BlockIconCacheOptions): string 
 export class BlockIconCache {
   private readonly library: MaterialLibraryApi
 
-  private readonly blocks: Record<string, BlockEntry>
-
-  private readonly modelRegistry: ModelRegistryData
-
   private readonly structure: StructureDefinition | null
 
-  private readonly opts: Required<BlockIconCacheOptions>
+  private readonly opts: ResolvedIconOpts
 
   private renderer: THREE.WebGLRenderer | null = null
 
@@ -73,18 +73,15 @@ export class BlockIconCache {
 
   private disposed = false
 
-  private readonly listeners = new Set<() => void>()
+  /** 按 blockId 通知，避免一图就绪时侧栏所有行一起 flush（O(行数×完成次数)） */
+  private readonly listenersById = new Map<string, Set<() => void>>()
 
   constructor(
     library: MaterialLibraryApi,
-    blocks: Record<string, BlockEntry>,
-    modelRegistry: ModelRegistryData,
     options?: BlockIconCacheOptions,
     structure?: StructureDefinition | null,
   ) {
     this.library = library
-    this.blocks = blocks
-    this.modelRegistry = modelRegistry
     this.structure = structure ?? null
     this.opts = { ...defaultOpts, ...options } as ResolvedIconOpts
   }
@@ -100,18 +97,41 @@ export class BlockIconCache {
     return this.map.get(blockId) ?? { status: 'idle' }
   }
 
-  /** 任一 id 烘焙完成或失败时触发，供 Vue 刷新 */
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+  /** 指定 id 烘焙完成或失败时触发，供 Vue 仅刷新对应槽位 */
+  subscribe(blockId: string, listener: () => void): () => void {
+    let set = this.listenersById.get(blockId)
+    if (!set) {
+      set = new Set()
+      this.listenersById.set(blockId, set)
+    }
+    set.add(listener)
+    return () => {
+      set!.delete(listener)
+      if (set!.size === 0) this.listenersById.delete(blockId)
+    }
   }
 
-  private notify(): void {
-    for (const fn of this.listeners) {
+  private notifyBlock(blockId: string): void {
+    const set = this.listenersById.get(blockId)
+    if (!set) return
+    for (const fn of set) {
       try {
         fn()
       } catch {
         /* ignore */
+      }
+    }
+  }
+
+  /** 整表清空后通知仍订阅的组件（如 revision 变更） */
+  private notifyAllSubscribers(): void {
+    for (const set of this.listenersById.values()) {
+      for (const fn of set) {
+        try {
+          fn()
+        } catch {
+          /* ignore */
+        }
       }
     }
   }
@@ -164,16 +184,14 @@ export class BlockIconCache {
 
   private async bakeOne(blockId: string): Promise<void> {
     if (this.disposed) return
-    const block = this.blocks[blockId]
-    const paletteEntry =
-      !block && this.structure ? findBlockPaletteEntryByBlockId(this.structure, blockId) : undefined
+    const paletteEntry = this.structure ? findBlockPaletteEntryByBlockId(this.structure, blockId) : undefined
 
-    if (!block && !paletteEntry) {
+    if (!paletteEntry) {
       this.map.set(blockId, {
         status: 'error',
         error: new Error(`方块未注册: ${blockId}`),
       })
-      this.notify()
+      this.notifyBlock(blockId)
       return
     }
 
@@ -181,14 +199,12 @@ export class BlockIconCache {
     let disposeMesh: (() => void) | null = null
 
     try {
-      const built =
-        block != null
-          ? await buildSingleBlockPreviewGroup(block, this.library, this.modelRegistry)
-          : await buildSingleBlockPreviewFromBakedPalette(
-              paletteEntry!,
-              this.structure!.materialPalette,
-              this.library,
-            )
+      const built = await buildSingleBlockPreviewFromBakedPalette(
+        paletteEntry,
+        this.structure!.materialPalette,
+        this.library,
+        this.opts.materialKeyPrefix,
+      )
       group = built.group
       disposeMesh = built.dispose
 
@@ -197,7 +213,6 @@ export class BlockIconCache {
       const scene = new THREE.Scene()
       scene.add(group)
 
-      // 从世界 **-Z**（北）侧观察：`-z` 面法线朝外为 -Z，与相机视线（+Z）相对，控制器贴图可见
       const ambient = new THREE.AmbientLight(0xffffff, 0.72)
       const dirKey = new THREE.DirectionalLight(0xffffff, 0.88)
       dirKey.position.set(0, 0, -6)
@@ -205,10 +220,8 @@ export class BlockIconCache {
       dirFill.position.set(5, 8, 4)
       scene.add(ambient, dirKey, dirFill)
 
-      // 正交半宽/半高 orthoHalf：越小方块在图内越大（见 BlockIconCacheOptions）
       const half = this.opts.orthoHalf
       const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 80)
-      // 正交相机沿 +Z 看向原点；「拉近」只调 orthoHalf，不依赖 z
       cam.position.set(0, 0, -4.2)
       cam.lookAt(0, 0, 0)
       cam.updateProjectionMatrix()
@@ -227,11 +240,11 @@ export class BlockIconCache {
       ctx.drawImage(src, 0, 0)
 
       this.map.set(blockId, { status: 'ready', canvas })
-      this.notify()
+      this.notifyBlock(blockId)
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e))
       this.map.set(blockId, { status: 'error', error: err })
-      this.notify()
+      this.notifyBlock(blockId)
     } finally {
       disposeMesh?.()
     }
@@ -246,6 +259,7 @@ export class BlockIconCache {
     }
     this.map.clear()
     this.pendingQueue.length = 0
+    this.notifyAllSubscribers()
   }
 
   dispose(): void {
@@ -255,6 +269,6 @@ export class BlockIconCache {
     this.renderer?.dispose()
     this.renderer?.forceContextLoss?.()
     this.renderer = null
-    this.listeners.clear()
+    this.listenersById.clear()
   }
 }

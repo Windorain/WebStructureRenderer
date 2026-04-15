@@ -1,11 +1,11 @@
 /**
- * 单一加载阶段：HTTP 拉取 RenderBundle，并行预取 PNG，构造 SimpleMaterialLibrary。
+ * 单一加载阶段：HTTP 拉取场景 JSON（StructureData | World），并行预取 PNG，构造 SimpleMaterialLibrary。
  */
 
 import * as THREE from 'three'
 
 import { locatorToResourceUrl } from '@/render/assets/resolveAssets'
-import { resolveRenderBundle, validateRenderBundle } from '@/render/data/bundleResolve'
+import { mergeMaterialRegistryFromDocument, validateRenderBundle } from '@/render/data/bundleResolve'
 import { SimpleMaterialLibrary, type MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import type { RenderBundle } from '@/render/schema/types'
 import { formatUnknownError } from '@/util/formatUnknownError'
@@ -53,9 +53,10 @@ function resourcesBaseFromApiPrefix(apiPrefix: string): string {
   return `${apiPrefix.replace(/\/$/, '')}/resources`
 }
 
-async function fetchBundleJson(sceneId: string, apiPrefix: string): Promise<RenderBundle> {
+/** GET /preview-api/scenes/:id — 响应体为 StructureData 或 World JSON */
+async function fetchSceneDocument(sceneId: string, apiPrefix: string): Promise<unknown> {
   const enc = encodeURIComponent(sceneId)
-  const path = `${apiPrefix.replace(/\/$/, '')}/scenes/${enc}/bundle`
+  const path = `${apiPrefix.replace(/\/$/, '')}/scenes/${enc}`
   let res: Response
   try {
     res = await fetch(path)
@@ -64,11 +65,9 @@ async function fetchBundleJson(sceneId: string, apiPrefix: string): Promise<Rend
   }
   const text = await res.text()
   if (!res.ok) {
-    throw new Error(`拉取 bundle 失败: ${res.status} ${text}`)
+    throw new Error(`拉取场景失败: ${res.status} ${text}`)
   }
-  const raw = JSON.parse(text) as RenderBundle
-  validateRenderBundle(raw)
-  return raw
+  return JSON.parse(text) as unknown
 }
 
 function loadTextureDataUrl(loader: THREE.TextureLoader, dataUrl: string): Promise<THREE.Texture> {
@@ -118,18 +117,21 @@ async function loadPngTexture(loader: THREE.TextureLoader, url: string): Promise
 }
 
 /**
- * 拉取 bundle、按 material_registry 并行预取全部 PNG，构造材质库。
+ * 拉取场景 JSON、按结构内（及 World 全帧）materialPalette 并行预取 PNG，构造材质库。
  */
 export async function loadPreviewSession(options: {
   sceneId: string
   apiPrefix?: string
 }): Promise<PreviewSessionResult> {
   const apiPrefix = options.apiPrefix ?? DEFAULT_API_PREFIX
-  const renderBundle = await fetchBundleJson(options.sceneId, apiPrefix)
+  const document = await fetchSceneDocument(options.sceneId, apiPrefix)
+  const renderBundle: RenderBundle = { document }
+  validateRenderBundle(renderBundle)
+
   const resourcesBase = resourcesBaseFromApiPrefix(apiPrefix)
   const loader = new THREE.TextureLoader()
-  const resolved = resolveRenderBundle(renderBundle)
-  const materials = resolved.materialRegistry.materials
+  const mergedRegistry = mergeMaterialRegistryFromDocument(document)
+  const materials = mergedRegistry.materials
 
   const entries = Object.entries(materials)
   const textures = await Promise.all(
@@ -141,7 +143,7 @@ export async function loadPreviewSession(options: {
   )
 
   const preloaded = new Map<string, THREE.Texture>(textures)
-  const materialLibrary = new SimpleMaterialLibrary(resolved.materialRegistry, preloaded)
+  const materialLibrary = new SimpleMaterialLibrary(mergedRegistry, preloaded)
 
   return { renderBundle, materialLibrary }
 }

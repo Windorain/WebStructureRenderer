@@ -1,25 +1,23 @@
 # 灰机零件集成：Wiki 渲染包
 
-服务端一次响应提供 `RenderBundle` 形状（见 `src/render/schema/types.ts`）：
+服务端响应为 **场景 JSON 原文**（`StructureData` 或 **World** 多帧；World 当前需至少一帧含内嵌 `structure`）。客户端用其构造 `RenderBundle`：`{ document: <该 JSON> }`（见 `src/render/schema/types.ts`）。
 
-- `document`：顶层 JSON，为 **StructureData**（与导出 `export.json` 同形）或 **World**（多帧；当前需至少一帧含内嵌 `structure`）
-- `blockRegistry`：本次渲染所需的 `block_registry` 切片（调用方已定稿，库内不再叠「全局底稿 / overlay」）
-- `materialRegistry`：本次渲染所需的 `material_registry` 切片
-- 可选：`bundleId`、`assetsBaseUrl`、`payloadSchemaVersion`
+- **可信源**：仅 `document` 内各帧的 `blockPalette`、`materialPalette`、`cellGrid`。纹理由客户端按 palette（及 World 全帧汇总）预取，**不**使用独立 `block_registry` / `material_registry` / `model_registry`拼表。
+- 可选元数据：`bundleId`、`assetsBaseUrl`、`payloadSchemaVersion`
 
-零件侧流程：**请求接口（例如按场景名）→ 将 JSON 交给渲染库**：
+零件侧流程：**请求场景 JSON → 交给 `loadPreviewSession` 或自管预取**：
 
 ```ts
-import { resolveRenderBundle, validateRenderBundle } from '@/render/data/bundleResolve'
+import { loadPreviewSession } from '@/preview/previewSession'
+import { resolveRenderBundle } from '@/render/data/bundleResolve'
 
-const bundle = await fetch('/api/...').then((r) => r.json())
-validateRenderBundle(bundle)
-const { definition, materialRegistry } = resolveRenderBundle(bundle)
-// definition → 网格；materialRegistry → SimpleMaterialLibrary
+const { renderBundle, materialLibrary } = await loadPreviewSession({ sceneId: 'myScene' })
+const { definition, materialKeyPrefix } = resolveRenderBundle(renderBundle)
+// buildBlockMesh(definition, materialLibrary, { materialKeyPrefix })
 ```
 
-`document` 为 World 且需指定帧时，可传第二参 `frameIndex`：`resolveRenderBundle(bundle, frameIndex)`。
+`document` 为 World 且需指定帧时：`resolveRenderBundle(bundle, frameIndex)`；**World 加载时会预取全帧所需材质**，切帧不再次拉贴图。
 
-若构建为 IIFE 全局，可使用 `WikiMultiStructureRender.resolveRenderBundle`（见 `src/main.ts` 导出）。
+若构建为 IIFE 全局，可使用 `WikiMultiStructureRender.resolveRenderBundle`（见 `src/main.ts`导出）。
 
-**不要**在客户端再维护多份注册表再与结构合并；切片与拼表由服务端完成。本地开发：结构为 `data/scenes/<id>.json`（单文件），palette 使用 **registryId@meta**（与 `block_registry` 键一致）；注册表为 `data/registries/` 下三表，由 wiki-mock 与开发者面板加载，仅用于预览，不替代线上契约。
+本地开发：`GET /preview-api/scenes/:id` 返回 `data/scenes/<id>.json`；palette 侧栏键为 **registryId@meta**（与导出约定一致）。
