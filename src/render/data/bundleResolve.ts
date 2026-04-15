@@ -71,7 +71,7 @@ export function loadStructureOrWorld(raw: unknown, frameIndex: number | undefine
   return loadStructureData(raw)
 }
 
-/** 按 plan：不校验 schema、不拒绝旧字段 */
+/** 不校验根级 schemaVersion；终态 StructureData 以 mode=voxelPalette 与字段形态为准 */
 export function validateRenderBundle(_b: RenderBundle): void {}
 
 export interface RenderBundleResolveResult {

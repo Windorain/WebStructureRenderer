@@ -226,15 +226,11 @@ export interface BlockPaletteEntry {
   geometry: BakedQuadsGeometry
 }
 
-/** Wiki 仅接受此版本及以上的终态 StructureData（含 blockPalette 烘焙几何 + materialPalette） */
-export const STRUCTURE_DATA_SCHEMA_FINAL = 8
-
 /**
- * 磁盘 / 运行时结构根（schemaVersion 8 = BakedQuads 终态）。
- * cellGrid[z][row][col] 为 blockPalette 下标。
+ * 磁盘 / 运行时结构根（终态 BakedQuads：{@code blockPalette} + {@code materialPalette}）。
+ * cellGrid[z][row][col] 为 blockPalette 下标。根级可不写 {@code schemaVersion}。
  */
 export interface StructureData {
-  /** 须为 {@link STRUCTURE_DATA_SCHEMA_FINAL}；更小版本为 SDE 未完成扫描，Wiki 拒绝 */
   schemaVersion?: number
   mode: 'voxelPalette'
   id: string

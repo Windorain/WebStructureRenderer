@@ -281,6 +281,7 @@ export async function buildBlockMesh(
           )
           if (
             worldFace !== null &&
+            entry.occludesAdjacentFaces === true &&
             shouldCullQuadFacingOpaqueNeighbor(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
           ) {
             continue

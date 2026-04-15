@@ -8,7 +8,6 @@ import * as THREE from 'three'
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { buildBlockMesh } from '../mesh/blockMesh'
 import type { BlockPaletteEntry, MaterialPaletteEntry, StructureDefinition } from '../schema/types'
-import { STRUCTURE_DATA_SCHEMA_FINAL } from '../schema/types'
 
 /** 矩阵或光照变更时递增，用于缓存失效 */
 export const MC_ITEM_SLOT_BAKE_REVISION = '11'
@@ -66,7 +65,6 @@ export async function buildSingleBlockPreviewFromBakedPalette(
     { ...entry, geometry: { ...entry.geometry, quads: [...entry.geometry.quads] } },
   ]
   const miniDef: StructureDefinition = {
-    schemaVersion: STRUCTURE_DATA_SCHEMA_FINAL,
     mode: 'voxelPalette',
     id: 'icon-bake',
     blockPalette,
