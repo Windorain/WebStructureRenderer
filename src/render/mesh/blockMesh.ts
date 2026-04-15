@@ -126,6 +126,35 @@ function shouldCullQuadFacingOpaqueNeighbor(
   return def.blockPalette[idx].occludesAdjacentFaces === true
 }
 
+/**
+ * 与 MC 中非实体方块（玻璃、冰等）同类相邻时共面不可见类似：邻格同 palette 且两侧均不遮挡时剔除。
+ * 单侧为 `occludesAdjacentFaces` 的体素仍走上方 opaque 邻格规则，此处不处理实心块以免重复逻辑。
+ */
+function shouldCullQuadFacingSamePaletteNeighbor(
+  def: StructureDefinition,
+  volume: VoxelVolume,
+  layerPreview: LayerPreviewMode,
+  col: number,
+  row: number,
+  zSlice: number,
+  sizeRow: number,
+  worldFace: FaceName,
+  paletteIndex: number,
+): boolean {
+  const selfEntry = def.blockPalette[paletteIndex]
+  if (selfEntry.occludesAdjacentFaces === true) return false
+  const { dc, dr, dz } = gridStepForOutwardWorldFace(worldFace)
+  const ncol = col + dc
+  const nrow = row + dr
+  const nz = zSlice + dz
+  const nState = effectiveVoxelState(volume, ncol, nrow, nz, sizeRow, layerPreview)
+  if (isAirState(nState)) return false
+  const nidx = def.cellGrid[nz]?.[nrow]?.[ncol]
+  if (nidx === undefined || nidx < 0 || nidx !== paletteIndex) return false
+  if (def.blockPalette[nidx].occludesAdjacentFaces === true) return false
+  return true
+}
+
 function bufferGeometryFromBakedQuad(
   quad: BakedQuad,
   col: number,
@@ -261,12 +290,28 @@ export async function buildBlockMesh(
             sizeRow,
             sizeZSlice,
           )
-          if (
-            worldFace !== null &&
-            entry.occludesAdjacentFaces === true &&
-            shouldCullQuadFacingOpaqueNeighbor(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
-          ) {
-            continue
+          if (worldFace !== null) {
+            if (
+              entry.occludesAdjacentFaces === true &&
+              shouldCullQuadFacingOpaqueNeighbor(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
+            ) {
+              continue
+            }
+            if (
+              shouldCullQuadFacingSamePaletteNeighbor(
+                def,
+                volume,
+                layerPreview,
+                col,
+                row,
+                zSlice,
+                sizeRow,
+                worldFace,
+                idx,
+              )
+            ) {
+              continue
+            }
           }
           const mi = q.materialIndex
           const matPal = materialPalette[mi]

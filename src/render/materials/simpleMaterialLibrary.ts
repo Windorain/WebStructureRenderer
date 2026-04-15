@@ -26,17 +26,21 @@ function createFaceMaterial(
   blend: MaterialBlendMode,
 ): THREE.MeshStandardMaterial {
   if (blend === 'cutout' || blend === 'translucent') {
+    const cutout = blend === 'cutout'
     return new THREE.MeshStandardMaterial({
       map: tex,
       color: tint,
       transparent: true,
-      alphaTest: 0.5,
-      depthWrite: false,
+      alphaTest: cutout ? 0.5 : 0,
+      /**
+       * 体素结构以 batch mesh 为单位排序，无法按像素排序半透明；不写深度会导致透明与不透明邻接处错乱。
+       * 与邻面剔除配合，多层纯玻璃重叠已减少；真流体等若需可后续单独材质策略。
+       */
+      depthWrite: true,
       roughness: 0.85,
       metalness: 0.05,
-      polygonOffset: true,
-      polygonOffsetFactor: 1,
-      polygonOffsetUnits: 1,
+      /** 透明批次与不透明均开 offset 时共面处易错乱；透明单独关闭 */
+      polygonOffset: false,
     })
   }
   return new THREE.MeshStandardMaterial({
