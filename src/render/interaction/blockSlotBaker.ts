@@ -47,6 +47,7 @@ export interface SingleBlockBakeResult {
 const AIR_ICON_PALETTE: BlockPaletteEntry = {
   registryId: 'air',
   meta: 0,
+  occludesAdjacentFaces: false,
   renderMode: 'BakedQuads',
   geometry: { encoding: 'bakedQuadsJsonV1', quads: [] },
 }

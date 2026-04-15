@@ -5,19 +5,26 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import type { BakedQuad, LayerRole, MaterialPaletteEntry, StructureDefinition } from '../schema/types'
+import type {
+  BakedQuad,
+  FaceName,
+  MaterialBlendMode,
+  MaterialPaletteEntry,
+  StructureDefinition,
+  VoxelVolume,
+} from '../schema/types'
 import { isAirState } from '../schema/types'
 import { buildVoxelVolume } from '../data/grid'
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from '../data/grid'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
-import { machineFrontQuaternion } from './facingMap'
+import { machineFrontQuaternion, vec3ToFaceName } from './facingMap'
 import { decodeBakedGeometry } from './bakedGeometryDecode'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
-  /** World 当前帧前缀，如 `"2:"`，与 mergeMaterialRegistryFromDocument 的 materialId 一致 */
+  /** World 当前帧前缀，如 `"2:"`，与 materialRegistryFromDocument 的 materialId 一致 */
   materialKeyPrefix?: string
 }
 
@@ -31,10 +38,8 @@ function parseTintFromArgb(argb: number | undefined): THREE.Color {
   return new THREE.Color(r / 255, g / 255, b / 255)
 }
 
-function inferLayerRole(entry: MaterialPaletteEntry, _quadIdx: number): LayerRole {
-  const b = entry.blend
-  if (b === 'cutout' || b === 'translucent') return 'cutout'
-  return 'base'
+function blendForMaterialEntry(entry: MaterialPaletteEntry): MaterialBlendMode {
+  return entry.blend ?? 'opaque'
 }
 
 /** 局部 [0,1]³ 顶点绕块中心按 facing 旋转 */
@@ -55,6 +60,83 @@ function transformLocalPoint(
   out.x += c
   out.y += c
   out.z += c
+}
+
+function neighborDeltaForWorldFace(f: FaceName): { dc: number; dr: number; dz: number } {
+  switch (f) {
+    case '+x':
+      return { dc: 1, dr: 0, dz: 0 }
+    case '-x':
+      return { dc: -1, dr: 0, dz: 0 }
+    case '+y':
+      return { dc: 0, dr: -1, dz: 0 }
+    case '-y':
+      return { dc: 0, dr: 1, dz: 0 }
+    case '+z':
+      return { dc: 0, dr: 0, dz: 1 }
+    case '-z':
+      return { dc: 0, dr: 0, dz: -1 }
+  }
+}
+
+function quadOutwardWorldFace(
+  quad: BakedQuad,
+  col: number,
+  row: number,
+  zSlice: number,
+  sizeColumn: number,
+  sizeRow: number,
+  sizeZSlice: number,
+  facing: FaceName | undefined,
+): FaceName | null {
+  const v = quad.vertices
+  if (!v || v.length !== 4) return null
+  const voxelY = structureRowToWorldY(row, sizeRow)
+  const ox = col - sizeColumn / 2
+  const oy = voxelY - sizeRow / 2
+  const oz = zSlice - sizeZSlice / 2
+  const blockCenter = new THREE.Vector3(ox + 0.5, oy + 0.5, oz + 0.5)
+  const corners = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]
+  for (let i = 0; i < 4; i++) {
+    transformLocalPoint(v[i].x, v[i].y, v[i].z, facing, corners[i])
+    corners[i].x += ox
+    corners[i].y += oy
+    corners[i].z += oz
+  }
+  const e1 = corners[1].clone().sub(corners[0])
+  const e2 = corners[2].clone().sub(corners[0])
+  const n = e1.cross(e2)
+  if (n.lengthSq() < 1e-12) return null
+  n.normalize()
+  const quadCenter = corners[0]
+    .clone()
+    .add(corners[1])
+    .add(corners[2])
+    .add(corners[3])
+    .multiplyScalar(0.25)
+  if (n.dot(quadCenter.clone().sub(blockCenter)) < 0) n.negate()
+  return vec3ToFaceName(n)
+}
+
+function neighborOccludesAdjacentFace(
+  def: StructureDefinition,
+  volume: VoxelVolume,
+  layerPreview: LayerPreviewMode,
+  col: number,
+  row: number,
+  zSlice: number,
+  sizeRow: number,
+  worldFace: FaceName,
+): boolean {
+  const { dc, dr, dz } = neighborDeltaForWorldFace(worldFace)
+  const ncol = col + dc
+  const nrow = row + dr
+  const nz = zSlice + dz
+  const nState = effectiveVoxelState(volume, ncol, nrow, nz, sizeRow, layerPreview)
+  if (isAirState(nState)) return false
+  const idx = def.cellGrid[nz]?.[nrow]?.[ncol]
+  if (idx === undefined || idx < 0 || idx >= def.blockPalette.length) return false
+  return def.blockPalette[idx].occludesAdjacentFaces === true
 }
 
 function bufferGeometryFromBakedQuad(
@@ -184,6 +266,22 @@ export async function buildBlockMesh(
 
         for (let qi = 0; qi < quads.length; qi++) {
           const q = quads[qi]
+          const worldFace = quadOutwardWorldFace(
+            q,
+            col,
+            row,
+            zSlice,
+            sizeColumn,
+            sizeRow,
+            sizeZSlice,
+            entry.facing ?? state.facing,
+          )
+          if (
+            worldFace !== null &&
+            neighborOccludesAdjacentFace(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
+          ) {
+            continue
+          }
           const mi = q.materialIndex
           const matPal = materialPalette[mi]
           const g = bufferGeometryFromBakedQuad(
@@ -216,8 +314,7 @@ export async function buildBlockMesh(
       materialId:
         matPrefix !== undefined ? `${matPrefix}${w.materialIndex}` : String(w.materialIndex),
       tint: w.tint,
-      layerIdx: 0,
-      role: inferLayerRole(w.matPalette, 0),
+      blend: blendForMaterialEntry(w.matPalette),
     }
     const key = batchMaterialCacheKey(descriptor)
     let b = batches.get(key)

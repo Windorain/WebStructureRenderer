@@ -9,9 +9,9 @@ import {
   frameCountFromImageSize,
   resolveAnimationTimeline,
   type ParsedMcmeta,
-} from '../assets/mcmeta'
+} from '../assets/textureStripAnimation'
 import { batchMaterialCacheKey, type BatchDescriptor } from '../mesh/batchDescriptor'
-import type { LayerRole, MaterialEntry, MaterialRegistryData } from '../schema/types'
+import type { MaterialBlendMode, MaterialEntry, MaterialRegistryData } from '../schema/types'
 
 /** 嵌入/预览配置中使用的材质库公开接口（避免 Vue 模板对 class 私有字段的推断问题） */
 export interface MaterialLibraryApi {
@@ -23,9 +23,9 @@ export interface MaterialLibraryApi {
 function createFaceMaterial(
   tex: THREE.Texture,
   tint: THREE.Color,
-  layerRole: LayerRole,
+  blend: MaterialBlendMode,
 ): THREE.MeshStandardMaterial {
-  if (layerRole === 'cutout' || layerRole === 'glass') {
+  if (blend === 'cutout' || blend === 'translucent') {
     return new THREE.MeshStandardMaterial({
       map: tex,
       color: tint,
@@ -34,6 +34,9 @@ function createFaceMaterial(
       depthWrite: false,
       roughness: 0.85,
       metalness: 0.05,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     })
   }
   return new THREE.MeshStandardMaterial({
@@ -41,6 +44,9 @@ function createFaceMaterial(
     color: tint,
     roughness: 0.85,
     metalness: 0.05,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
   })
 }
 
@@ -189,11 +195,11 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
     const hit = this.materialByBatchKey.get(key)
     if (hit) return hit
 
-    const { materialId, tint, role } = descriptor
+    const { materialId, tint, blend } = descriptor
     const tex = this.textureByMaterialId.get(materialId)
     if (!tex) throw new Error(`纹理未预取: ${materialId}`)
 
-    const mat = createFaceMaterial(tex, tint, role)
+    const mat = createFaceMaterial(tex, tint, blend)
     this.materialByBatchKey.set(key, mat)
     return mat
   }

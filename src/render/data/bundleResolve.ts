@@ -14,8 +14,8 @@ import { materialPaletteEntryToMaterialEntry, materialPaletteToMaterialRegistry 
 import { mergeStructureData } from './mergeScene'
 import { embeddedStructure, frameAt, getDefaultFrameIndex } from './worldPlayback'
 
-/** 自场景 document 汇总材质（World 为每帧 `frameIndex:materialIndex`，单结构为 `0`..`n-1`） */
-export function mergeMaterialRegistryFromDocument(document: unknown): MaterialRegistryData {
+/** 自场景 document 汇总材质（World 为每帧 `frameIndex:materialIndex`，单结构为 `0`..`n-1`）。须在 prepareMaterialPaletteBlends 之后调用。 */
+export function materialRegistryFromDocument(document: unknown): MaterialRegistryData {
   if (!document || typeof document !== 'object') return { materials: {} }
   if (isWorldDocument(document)) {
     const materials: Record<string, MaterialEntry> = {}
@@ -35,6 +35,9 @@ export function mergeMaterialRegistryFromDocument(document: unknown): MaterialRe
   }
   return { materials: {} }
 }
+
+/** @deprecated 请使用 {@link materialRegistryFromDocument} */
+export const mergeMaterialRegistryFromDocument = materialRegistryFromDocument
 
 export function loadStructureData(raw: unknown): StructureDefinition {
   if (!raw || typeof raw !== 'object') throw new Error('StructureData 无效')
@@ -72,7 +75,7 @@ export function validateRenderBundle(_b: RenderBundle): void {}
 
 export interface RenderBundleResolveResult {
   definition: StructureDefinition
-  /** World 时为 `frameIndex:`，与 mergeMaterialRegistryFromDocument 的键一致；单结构为 undefined */
+  /** World 时为 `frameIndex:`，与 materialRegistryFromDocument 的键一致；单结构为 undefined */
   materialKeyPrefix: string | undefined
 }
 

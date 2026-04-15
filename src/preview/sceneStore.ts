@@ -80,7 +80,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
   const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
-  /** World 多帧时与 mergeMaterialRegistryFromDocument / buildBlockMesh 一致 */
+  /** World 多帧时与 materialRegistryFromDocument / buildBlockMesh 一致 */
   const materialKeyPrefixRef = ref<string | undefined>(undefined)
   const sceneRef = shallowRef<THREE.Scene | null>(null)
   const contentGroupRef = shallowRef<THREE.Group | null>(null)

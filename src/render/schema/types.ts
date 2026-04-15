@@ -10,7 +10,7 @@ export type MaterialKind = 'static16' | 'animated'
 
 export type MaterialBlendMode = 'opaque' | 'cutout' | 'translucent'
 
-/** 与 mcmeta `animation` 对齐；`kind === 'animated'` 且 PNG 为竖条多帧时按顺序 1 tick/帧播放（见 simpleMaterialLibrary） */
+/** 字段形状对齐 Java 版纹理 `.mcmeta` 的 `animation`；数据来自 JSON 非独立 mcmeta 文件。`kind === 'animated'` 且 PNG 为竖条多帧时按顺序 1 tick/帧播放（见 simpleMaterialLibrary） */
 export interface MaterialAnimationSpec {
   defaultFrametimeTicks?: number
   frameSequence?: Array<{ index: number; timeTicks?: number }>
@@ -94,8 +94,6 @@ export interface RenderBundle {
 
 export type FaceName = '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
 
-export type LayerRole = 'base' | 'cutout' | 'glass'
-
 export interface MaterialResolveNeighborShell {
   type: 'neighborShell'
   casingToMaterialId: Record<string, string>
@@ -112,7 +110,7 @@ export type MaterialResolveRule = MaterialResolveNeighborShell | MaterialResolve
 export interface FaceLayerDef {
   materialId: string
   tint?: string
-  layerRole?: LayerRole
+  blend?: MaterialBlendMode
   materialResolve?: MaterialResolveRule
 }
 
@@ -139,7 +137,7 @@ export type ModelFaceName = 'north' | 'south' | 'east' | 'west' | 'up' | 'down'
 
 export interface ModelFaceLayerDef {
   texture: string
-  layerRole?: LayerRole
+  blend?: MaterialBlendMode
   tint?: string
 }
 
@@ -222,6 +220,8 @@ export interface BlockPaletteEntry {
   meta: number
   facing?: FaceName
   nbt?: JsonNbt
+  /** 完整不透明立方体时邻面可剔除；缺省/非 true 视为不遮挡（旧 JSON 兼容） */
+  occludesAdjacentFaces?: boolean
   renderMode: BlockRenderMode
   geometry: BakedQuadsGeometry
 }

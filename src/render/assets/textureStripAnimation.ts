@@ -1,6 +1,7 @@
 /**
- * Minecraft `.png.mcmeta` 解析（无 Three 依赖）。
- * 行为参考 Java 版：竖直帧条、frametime 以 tick 计（1 tick = 1/20 s）。
+ * 竖条多帧纹理动画：与 Java 版 `.png.mcmeta` 中 `animation` 字段**形状**对齐的配置解析与时间轴。
+ * 实际数据来自 StructureData `materialPalette[].animation` 与 PNG 尺寸；**不**通过 HTTP 加载独立 `.mcmeta` 文件。
+ * 行为参考 Java版：竖直帧条、frametime 以 tick 计（1 tick = 1/20 s）。
  */
 
 /** Java 版：1 tick = 50 ms */
@@ -83,7 +84,7 @@ export function parseMcmetaJson(text: string): ParsedMcmeta {
 
 /**
  * 在已知帧条帧数下，得到完整帧序与每帧持续毫秒（循环播放）。
- * 若 mcmeta 未指定 frames，则顺序播放 0..frameCount-1。
+ * 若配置未指定 frames，则顺序播放 0..frameCount-1。
  */
 export function resolveAnimationTimeline(
   parsed: ParsedMcmeta,
