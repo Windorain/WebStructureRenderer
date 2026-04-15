@@ -2,7 +2,7 @@ import http from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
-import type { Plugin } from 'vite'
+import type { Connect, Plugin } from 'vite'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -36,46 +36,55 @@ function readPreviewHttpProxyTarget(): string {
   return 'http://127.0.0.1:8787'
 }
 
+/** dev 与 vite preview 共用：否则仅 dev 能访问 /preview-api，preview 会触发浏览器 Failed to fetch */
+function createWikiMockProxyMiddleware(): Connect.NextHandleFunction {
+  return (req, res, next) => {
+    const raw = req.url ?? ''
+    if (!raw.startsWith('/preview-api') && !raw.startsWith('/namespace')) {
+      return next()
+    }
+    const target = readPreviewHttpProxyTarget()
+    const u = new URL(target)
+    const port =
+      u.port !== ''
+        ? Number(u.port)
+        : u.protocol === 'https:'
+          ? 443
+          : 80
+    const headers = { ...req.headers, host: `${u.hostname}:${port}` }
+    const proxyReq = http.request(
+      {
+        hostname: u.hostname,
+        port,
+        path: raw,
+        method: req.method,
+        headers,
+      },
+      (proxyRes) => {
+        res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers)
+        proxyRes.pipe(res)
+      },
+    )
+    proxyReq.on('error', (err) => {
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' })
+      }
+      res.end(`[vite] 无法连接 wiki-mock ${target}: ${err.message}`)
+    })
+    req.pipe(proxyReq)
+  }
+}
+
 function previewWikiMockProxy(): Plugin {
+  const mw = createWikiMockProxyMiddleware()
   return {
     name: 'preview-wiki-mock-proxy',
     enforce: 'pre',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const raw = req.url ?? ''
-        if (!raw.startsWith('/preview-api') && !raw.startsWith('/namespace')) {
-          return next()
-        }
-        const target = readPreviewHttpProxyTarget()
-        const u = new URL(target)
-        const port =
-          u.port !== ''
-            ? Number(u.port)
-            : u.protocol === 'https:'
-              ? 443
-              : 80
-        const headers = { ...req.headers, host: `${u.hostname}:${port}` }
-        const proxyReq = http.request(
-          {
-            hostname: u.hostname,
-            port,
-            path: raw,
-            method: req.method,
-            headers,
-          },
-          (proxyRes) => {
-            res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers)
-            proxyRes.pipe(res)
-          },
-        )
-        proxyReq.on('error', (err) => {
-          if (!res.headersSent) {
-            res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' })
-          }
-          res.end(`[vite] 无法连接 wiki-mock ${target}: ${err.message}`)
-        })
-        req.pipe(proxyReq)
-      })
+      server.middlewares.use(mw)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(mw)
     },
   }
 }

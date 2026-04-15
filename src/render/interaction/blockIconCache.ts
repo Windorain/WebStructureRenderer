@@ -4,9 +4,10 @@
 
 import * as THREE from 'three'
 
+import { findBlockPaletteEntryByBlockId } from '../data/blockRegistryResolve'
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
-import { buildSingleBlockPreviewGroup } from './blockSlotBaker'
-import type { BlockEntry, ModelRegistryData } from '../schema/types'
+import { buildSingleBlockPreviewFromBakedPalette, buildSingleBlockPreviewGroup } from './blockSlotBaker'
+import type { BlockEntry, ModelRegistryData, StructureDefinition } from '../schema/types'
 
 export type BlockIconCacheStatus = 'idle' | 'pending' | 'ready' | 'error'
 
@@ -56,6 +57,8 @@ export class BlockIconCache {
 
   private readonly modelRegistry: ModelRegistryData
 
+  private readonly structure: StructureDefinition | null
+
   private readonly opts: Required<BlockIconCacheOptions>
 
   private renderer: THREE.WebGLRenderer | null = null
@@ -77,10 +80,12 @@ export class BlockIconCache {
     blocks: Record<string, BlockEntry>,
     modelRegistry: ModelRegistryData,
     options?: BlockIconCacheOptions,
+    structure?: StructureDefinition | null,
   ) {
     this.library = library
     this.blocks = blocks
     this.modelRegistry = modelRegistry
+    this.structure = structure ?? null
     this.opts = { ...defaultOpts, ...options } as ResolvedIconOpts
   }
 
@@ -160,7 +165,10 @@ export class BlockIconCache {
   private async bakeOne(blockId: string): Promise<void> {
     if (this.disposed) return
     const block = this.blocks[blockId]
-    if (!block) {
+    const paletteEntry =
+      !block && this.structure ? findBlockPaletteEntryByBlockId(this.structure, blockId) : undefined
+
+    if (!block && !paletteEntry) {
       this.map.set(blockId, {
         status: 'error',
         error: new Error(`方块未注册: ${blockId}`),
@@ -173,7 +181,14 @@ export class BlockIconCache {
     let disposeMesh: (() => void) | null = null
 
     try {
-      const built = await buildSingleBlockPreviewGroup(block, this.library, this.modelRegistry)
+      const built =
+        block != null
+          ? await buildSingleBlockPreviewGroup(block, this.library, this.modelRegistry)
+          : await buildSingleBlockPreviewFromBakedPalette(
+              paletteEntry!,
+              this.structure!.materialPalette,
+              this.library,
+            )
       group = built.group
       disposeMesh = built.dispose
 

@@ -4,7 +4,7 @@
  */
 
 import type { StructureDefinition, VoxelState, VoxelVolume } from '../schema/types'
-import { AIR_VOXEL } from '../schema/types'
+import { AIR_VOXEL, voxelStateFromBlockPaletteEntry } from '../schema/types'
 
 export interface VoxelCell {
   column: number
@@ -12,7 +12,6 @@ export interface VoxelCell {
   zSlice: number
 }
 
-/** 在已构建的体积上 O(n) 扫描，不重复 buildVoxelVolume */
 export function findFirstVoxelWithBlockId(volume: VoxelVolume, registryId: string): VoxelCell | null {
   const { sizeColumn, sizeRow, sizeZSlice } = volume
   for (let z = 0; z < sizeZSlice; z++) {
@@ -27,7 +26,7 @@ export function findFirstVoxelWithBlockId(volume: VoxelVolume, registryId: strin
 }
 
 export function buildVoxelVolume(def: StructureDefinition): VoxelVolume {
-  const { cellGrid, palette } = def
+  const { cellGrid, blockPalette } = def
   const sizeZSlice = cellGrid.length
   const sizeRow = cellGrid[0]?.length ?? 0
   const sizeColumn = cellGrid[0]?.[0]?.length ?? 0
@@ -41,16 +40,12 @@ export function buildVoxelVolume(def: StructureDefinition): VoxelVolume {
         return AIR_VOXEL
       }
       const idx = cellGrid[zSlice]?.[row]?.[column]
-      if (idx === undefined || idx < 0 || idx >= palette.length) return AIR_VOXEL
-      return palette[idx]
+      if (idx === undefined || idx < 0 || idx >= blockPalette.length) return AIR_VOXEL
+      return voxelStateFromBlockPaletteEntry(blockPalette[idx])
     },
   }
 }
 
-/**
- * 结构行下标 row（0=顶行）→ 包围盒内体素 Y 索引（0=底）。
- * `cellGrid[zSlice][row]` 中 row 0 = 结构顶部（最高世界 Y）；包围盒内体素 Y = sizeRow - 1 - row。
- */
 export function structureRowToWorldY(row: number, sizeRow: number): number {
   return sizeRow - 1 - row
 }

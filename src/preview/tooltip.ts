@@ -4,6 +4,7 @@
 
 import { ref, type Ref } from 'vue'
 
+import { findBlockPaletteEntryByBlockId } from '@/render/data/blockRegistryResolve'
 import type { StructureDefinition } from '@/render/schema/types'
 
 export type TooltipHoverSource = 'viewport' | 'sidebar'
@@ -37,14 +38,9 @@ export function usePreviewTooltip(): UsePreviewTooltip {
   return { hover, setHover, clearHover }
 }
 
-/** 方块说明文案：来自合并后的 StructureDefinition.blocks（block_registry 等）。 */
+/** 方块说明文案：来自 blockPalette 条目的 registryId/meta。 */
 export function resolveBlockTooltip(blockId: string, def: StructureDefinition): string {
-  const entry = def.blocks[blockId]
+  const entry = findBlockPaletteEntryByBlockId(def, blockId)
   if (!entry) return blockId
-  const title = entry.label?.trim()
-  const desc = entry.description?.trim()
-  if (title && desc) return `${title}\n${desc}`
-  if (title) return title
-  if (desc) return desc
-  return blockId
+  return `${entry.registryId} (meta ${entry.meta})`
 }

@@ -3,7 +3,7 @@
  * 见 StructureDataExporter 与 `.refs/DESIGN_MEMO` 约定。
  */
 
-import type { BlockEntry } from '../schema/types'
+import type { BlockEntry, BlockPaletteEntry, StructureDefinition } from '../schema/types'
 
 /**
  * Palette 体素在合并后 `blocks` 表中的键：`meta === 0` 用 `registryId`，否则 `registryId@meta`。
@@ -35,4 +35,15 @@ export function getBlockEntry(
 ): BlockEntry | undefined {
   const k = blockRegistryKeyForPalette(registryId, meta)
   return resolveBaseEntry(k, blocks)
+}
+
+export function findBlockPaletteEntryByBlockId(
+  def: StructureDefinition,
+  blockId: string,
+): BlockPaletteEntry | undefined {
+  for (const e of def.blockPalette) {
+    if (blockRegistryKeyForPalette(e.registryId, e.meta) === blockId) return e
+    if (e.registryId === blockId) return e
+  }
+  return undefined
 }

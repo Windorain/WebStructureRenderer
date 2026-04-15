@@ -82,7 +82,7 @@ async function readFirstExistingUtf8(paths) {
 }
 
 async function readBundleJson(scenesRoot, registriesRoot, sceneId) {
-   const readRegistry = async (name) => {
+  const readRegistry = async (name) => {
     const primary = path.join(registriesRoot, name)
     try {
       const raw = await fsp.readFile(primary, 'utf8')
@@ -109,7 +109,7 @@ async function readBundleJson(scenesRoot, registriesRoot, sceneId) {
   ])
   const document = JSON.parse(docRaw)
   const blockRegistry = await readRegistryOrDefault('block_registry.json', { blocks: {} })
-  const materialRegistry = await readRegistry('material_registry.json')
+  const materialRegistry = await readRegistryOrDefault('material_registry.json', { materials: {} })
   const modelRegistry = await readRegistryOrDefault('model_registry.json', { models: {} })
   return { document, blockRegistry, materialRegistry, modelRegistry }
 }

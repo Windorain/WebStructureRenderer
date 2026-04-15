@@ -1,66 +1,115 @@
 /**
- * 按 BlockMeshKind 分发：SimpleCube 与 Model 共用批次合并与材质库。
- * 与 {@link ./capturedMesh buildCapturedMesh} 互斥：存在 `capture.instances` 时只走捕获网格，否则走体素路径。
+ * 体素路径：cellGrid → blockPalette[i].geometry（有序 BakedQuads）+ materialPalette。
  */
 
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import type { LayerRole, StructureDefinition } from '../schema/types'
+import type { BakedQuad, LayerRole, MaterialPaletteEntry, StructureDefinition } from '../schema/types'
 import { isAirState } from '../schema/types'
-import { blockRegistryKeyForPalette, getBlockEntry } from '../data/blockRegistryResolve'
-import { shouldExposeFaceTowardNeighbor } from '../data/neighborCulling'
-import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 import { buildVoxelVolume } from '../data/grid'
-import { layersForFace, listFaceNames } from './faceResolve'
-import { FACE_NORMAL, NEIGHBOR_STRUCTURE_DELTA } from './faceConstants'
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from '../data/grid'
-import { quadGeometryForFace } from './quadGeometry'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
-import { collectModelVoxelMeshes, type ModelMeshCollectContext } from './modelMesh'
-import { registryFaceForWorldFace } from './facingMap'
-import { resolveFaceLayerMaterialId } from './layerMaterialResolve'
-import { buildCapturedMesh } from './capturedMesh'
+import { machineFrontQuaternion } from './facingMap'
+import { decodeBakedGeometry } from './bakedGeometryDecode'
+import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
 }
 
-function parseTint(hex?: string): THREE.Color {
-  if (!hex) return new THREE.Color(0xffffff)
-  return new THREE.Color(hex.startsWith('#') ? hex : `#${hex}`)
+function parseTintFromArgb(argb: number | undefined): THREE.Color {
+  if (argb === undefined || !Number.isFinite(argb)) return new THREE.Color(0xffffff)
+  const a = (argb >>> 24) & 0xff
+  const r = (argb >>> 16) & 0xff
+  const g = (argb >>> 8) & 0xff
+  const b = argb & 0xff
+  if (a < 8) return new THREE.Color(0xffffff)
+  return new THREE.Color(r / 255, g / 255, b / 255)
 }
 
-function effectiveLayerRole(layer: { layerRole?: LayerRole }, layerIdx: number): LayerRole {
-  return layer.layerRole ?? (layerIdx === 0 ? 'base' : 'cutout')
+function inferLayerRole(entry: MaterialPaletteEntry, _quadIdx: number): LayerRole {
+  const b = entry.blend
+  if (b === 'cutout' || b === 'translucent') return 'cutout'
+  return 'base'
 }
 
-/** 未映射 palette 或 meshKind=UNKNOWN 的体素汇总（按 registry 键聚合） */
+/** 局部 [0,1]³ 顶点绕块中心按 facing 旋转 */
+function transformLocalPoint(
+  x: number,
+  y: number,
+  z: number,
+  facing: import('../schema/types').FaceName | undefined,
+  out: THREE.Vector3,
+): void {
+  out.set(x, y, z)
+  if (!facing || facing === '-z') return
+  const c = 0.5
+  out.x -= c
+  out.y -= c
+  out.z -= c
+  out.applyQuaternion(machineFrontQuaternion(facing))
+  out.x += c
+  out.y += c
+  out.z += c
+}
+
+function bufferGeometryFromBakedQuad(
+  quad: BakedQuad,
+  col: number,
+  row: number,
+  zSlice: number,
+  sizeColumn: number,
+  sizeRow: number,
+  sizeZSlice: number,
+  facing: import('../schema/types').FaceName | undefined,
+  globalQuadIndex: number,
+): THREE.BufferGeometry | null {
+  const v = quad.vertices
+  if (!v || v.length !== 4) return null
+  const voxelY = structureRowToWorldY(row, sizeRow)
+  const ox = col - sizeColumn / 2
+  const oy = voxelY - sizeRow / 2
+  const oz = zSlice - sizeZSlice / 2
+  const tmp = new THREE.Vector3()
+  const positions = new Float32Array(18)
+  const uvs = new Float32Array(12)
+  const triCorners = [
+    [0, 1, 2],
+    [0, 2, 3],
+  ] as const
+  let pi = 0
+  let ui = 0
+  for (const [i0, i1, i2] of triCorners) {
+    for (const i of [i0, i1, i2]) {
+      const p = v[i]
+      transformLocalPoint(p.x, p.y, p.z, facing, tmp)
+      positions[pi++] = tmp.x + ox
+      positions[pi++] = tmp.y + oy
+      positions[pi++] = tmp.z + oz
+      uvs[ui++] = p.u
+      uvs[ui++] = p.v
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+  g.computeVertexNormals()
+  g.userData.globalQuadIndex = globalQuadIndex
+  return g
+}
+
 export interface UndefinedBlockDetail {
-  /** 与 `def.blocks` / palette 一致的键 */
   registryKey: string
-  reason: 'unknown' | 'missing_palette'
+  reason: 'special_no_geometry' | 'decode_error'
   voxelCount: number
-  /** reason=unknown 时来自 BlockEntry */
-  label?: string
-  description?: string
-  renderProfile?: string
 }
 
-/** 与体素循环一致：分层预览下的「非空气」计数 */
 export interface BlockMeshBuildStats {
-  /**
-   * cellGrid 中非空气体素数（捕获路径与体素路径语义一致）。
-   */
   nonAirVoxelCount: number
-  /** 仅捕获路径：SDE 写入的 capture实例条数（可与 nonAirVoxelCount 不同） */
-  capturedInstanceCount?: number
-  /** 无 block 条目或 meshKind=Unknown，网格阶段跳过 */
   skippedUnmappedCount: number
-  /** meshKind=Unknown（block_registry 无有效几何），用于 Status 提示 */
   unknownVoxelCount: number
-  /** 未定义方块的注册键与条目信息，供状态栏展示 */
   undefinedBlockDetails: UndefinedBlockDetail[]
 }
 
@@ -70,39 +119,29 @@ export interface BlockMeshResult {
   stats: BlockMeshBuildStats
 }
 
+interface QuadWorkUnit {
+  materialIndex: number
+  geom: THREE.BufferGeometry
+  quadOrder: number
+  matPalette: MaterialPaletteEntry
+  tint: THREE.Color
+}
+
 export async function buildBlockMesh(
   def: StructureDefinition,
   library: MaterialLibraryApi,
   options?: BuildBlockMeshOptions,
 ): Promise<BlockMeshResult> {
-  if (def.capture?.instances?.length) {
-    return buildCapturedMesh(def, library, options)
-  }
   const layerPreview: LayerPreviewMode = options?.layerPreview ?? 'all'
   const volume = buildVoxelVolume(def)
   const { sizeColumn, sizeRow, sizeZSlice } = volume
+  const { blockPalette, materialPalette } = def
 
-  const batches = new Map<string, { descriptor: BatchDescriptor; geometries: THREE.BufferGeometry[] }>()
-  const faces = listFaceNames()
-
-  const modelCtx: ModelMeshCollectContext = {
-    batches,
-    def,
-    volume,
-    layerPreview,
-    sizeColumn,
-    sizeRow,
-    sizeZSlice,
-  }
-
+  let quadSerial = 0
+  const workUnits: QuadWorkUnit[] = []
   let nonAirVoxelCount = 0
   let skippedUnmappedCount = 0
-  let unknownVoxelCount = 0
-  const unknownAgg = new Map<
-    string,
-    { count: number; label?: string; description?: string; renderProfile?: string }
-  >()
-  const missingAgg = new Map<string, number>()
+  const undefinedDetails = new Map<string, UndefinedBlockDetail>()
 
   for (let zSlice = 0; zSlice < sizeZSlice; zSlice++) {
     for (let row = 0; row < sizeRow; row++) {
@@ -111,110 +150,105 @@ export async function buildBlockMesh(
         if (isAirState(state)) continue
 
         nonAirVoxelCount++
-        const paletteKey = blockRegistryKeyForPalette(state.registryId, state.meta)
-        const block = getBlockEntry(def.blocks, state.registryId, state.meta)
-        if (!block) {
+        const idx = def.cellGrid[zSlice][row][col]
+        const entry = blockPalette[idx]
+        if (entry.renderMode === 'Special') {
           skippedUnmappedCount++
-          missingAgg.set(paletteKey, (missingAgg.get(paletteKey) ?? 0) + 1)
-          continue
-        }
-
-        const meshKind = block.meshKind
-        if (meshKind === 'Unknown') {
-          unknownVoxelCount++
-          skippedUnmappedCount++
-          const prev = unknownAgg.get(paletteKey)
-          unknownAgg.set(paletteKey, {
-            count: (prev?.count ?? 0) + 1,
-            label: block.label ?? prev?.label,
-            description: block.description ?? prev?.description,
-            renderProfile: block.renderProfile ?? prev?.renderProfile,
+          const k = `${entry.registryId}@${entry.meta}`
+          const prev = undefinedDetails.get(k)
+          undefinedDetails.set(k, {
+            registryKey: k,
+            reason: 'special_no_geometry',
+            voxelCount: (prev?.voxelCount ?? 0) + 1,
           })
           continue
         }
 
-        if (meshKind === 'Model') {
-          collectModelVoxelMeshes(modelCtx, col, row, zSlice)
+        let quads: BakedQuad[]
+        try {
+          quads = decodeBakedGeometry(entry.geometry)
+        } catch {
+          skippedUnmappedCount++
+          const k = `${entry.registryId}@${entry.meta}`
+          const prev = undefinedDetails.get(k)
+          undefinedDetails.set(k, {
+            registryKey: k,
+            reason: 'decode_error',
+            voxelCount: (prev?.voxelCount ?? 0) + 1,
+          })
           continue
         }
 
-        if (meshKind !== 'SimpleCube') {
-          throw new Error(`未实现的网格构建策略: ${String(meshKind)}`)
-        }
-
-        for (const face of faces) {
-          const [dCol, dRow, dZ] = NEIGHBOR_STRUCTURE_DELTA[face]
-          const neighborState = effectiveVoxelState(
-            volume,
-            col + dCol,
-            row + dRow,
-            zSlice + dZ,
+        for (let qi = 0; qi < quads.length; qi++) {
+          const q = quads[qi]
+          const mi = q.materialIndex
+          const matPal = materialPalette[mi]
+          const g = bufferGeometryFromBakedQuad(
+            q,
+            col,
+            row,
+            zSlice,
+            sizeColumn,
             sizeRow,
-            layerPreview,
+            sizeZSlice,
+            entry.facing ?? state.facing,
+            quadSerial++,
           )
-          if (!shouldExposeFaceTowardNeighbor(state, neighborState, def.blocks)) continue
-
-          const registryFace =
-            state.facing !== undefined ? registryFaceForWorldFace(face, state.facing) : face
-          const layerDefs = layersForFace(block, registryFace)
-          if (!layerDefs.length) continue
-
-          const n = FACE_NORMAL[face]
-          const voxelY = structureRowToWorldY(row, sizeRow)
-          layerDefs.forEach((layer, layerIdx) => {
-            const resolvedMaterialId = resolveFaceLayerMaterialId(layer, {
-              volume,
-              col,
-              row,
-              zSlice,
-              sizeRow,
-              layerPreview,
-              blocks: def.blocks,
-              voxelShellMaterialId: state.shellMaterialId,
-            })
-            const descriptor: BatchDescriptor = {
-              materialId: resolvedMaterialId,
-              tint: parseTint(layer.tint),
-              layerIdx,
-              role: effectiveLayerRole(layer, layerIdx),
-            }
-            const key = batchMaterialCacheKey(descriptor)
-            const geom = quadGeometryForFace(
-              face,
-              col,
-              voxelY,
-              zSlice,
-              sizeColumn,
-              sizeRow,
-              sizeZSlice,
-              n,
-              layerIdx,
-            )
-            let bucket = batches.get(key)
-            if (!bucket) {
-              bucket = { descriptor, geometries: [] }
-              batches.set(key, bucket)
-            }
-            bucket.geometries.push(geom)
+          if (!g) continue
+          workUnits.push({
+            materialIndex: mi,
+            geom: g,
+            quadOrder: (g.userData.globalQuadIndex as number) ?? 0,
+            matPalette: matPal,
+            tint: parseTintFromArgb(q.vertices[0]?.color),
           })
         }
       }
     }
   }
 
+  const batches = new Map<string, { descriptor: BatchDescriptor; units: QuadWorkUnit[] }>()
+  for (const w of workUnits) {
+    const descriptor: BatchDescriptor = {
+      materialId: String(w.materialIndex),
+      tint: w.tint,
+      layerIdx: 0,
+      role: inferLayerRole(w.matPalette, 0),
+    }
+    const key = batchMaterialCacheKey(descriptor)
+    let b = batches.get(key)
+    if (!b) {
+      b = { descriptor, units: [] }
+      batches.set(key, b)
+    }
+    b.units.push(w)
+  }
+
+  for (const b of batches.values()) {
+    b.units.sort((a, c) => a.quadOrder - c.quadOrder)
+  }
+
+  const sortedBatchEntries = [...batches.entries()].sort(([, a], [, c]) => {
+    const oa = a.units[0]?.quadOrder ?? 0
+    const oc = c.units[0]?.quadOrder ?? 0
+    return oa - oc
+  })
+
   const group = new THREE.Group()
   const meshes: THREE.Mesh[] = []
 
-  for (const { descriptor, geometries } of batches.values()) {
-    if (!geometries.length) continue
-
-    const merged = mergeGeometries(geometries, false)
+  let batchIdx = 0
+  for (const [, bucket] of sortedBatchEntries) {
+    const geoms = bucket.units.map((x) => x.geom)
+    const merged = mergeGeometries(geoms, false)
     if (!merged) continue
-    const mat = await library.getMaterialForBatch(descriptor)
+    const mat = await library.getMaterialForBatch(bucket.descriptor)
     const mesh = new THREE.Mesh(merged, mat)
-    mesh.renderOrder = descriptor.layerIdx
+    const minOrder = bucket.units.reduce((m, u) => Math.min(m, u.quadOrder), Number.POSITIVE_INFINITY)
+    mesh.renderOrder = Number.isFinite(minOrder) ? Math.floor(minOrder) : batchIdx
     group.add(mesh)
     meshes.push(mesh)
+    batchIdx++
   }
 
   const dispose = () => {
@@ -223,26 +257,9 @@ export async function buildBlockMesh(
     }
   }
 
-  const undefinedBlockDetails: UndefinedBlockDetail[] = []
-  for (const [registryKey, row] of unknownAgg) {
-    undefinedBlockDetails.push({
-      registryKey,
-      reason: 'unknown',
-      voxelCount: row.count,
-      label: row.label,
-      description: row.description,
-      renderProfile: row.renderProfile,
-    })
-  }
-  for (const [registryKey, count] of missingAgg) {
-    undefinedBlockDetails.push({ registryKey, reason: 'missing_palette', voxelCount: count })
-  }
-  undefinedBlockDetails.sort((a, b) => {
-    const ra = a.reason === 'unknown' ? 0 : 1
-    const rb = b.reason === 'unknown' ? 0 : 1
-    if (ra !== rb) return ra - rb
-    return a.registryKey.localeCompare(b.registryKey)
-  })
+  const undefinedBlockDetails = [...undefinedDetails.values()].sort((a, b) =>
+    a.registryKey.localeCompare(b.registryKey),
+  )
 
   return {
     group,
@@ -250,7 +267,7 @@ export async function buildBlockMesh(
     stats: {
       nonAirVoxelCount,
       skippedUnmappedCount,
-      unknownVoxelCount,
+      unknownVoxelCount: 0,
       undefinedBlockDetails,
     },
   }
@@ -258,20 +275,12 @@ export async function buildBlockMesh(
 
 const STATUS_DETAIL_MAX = 520
 
-/**
- * 状态栏用：列出未定义方块的注册键、原因与条目信息（过长截断）。
- */
 export function formatUndefinedBlockDetailsForStatus(details: UndefinedBlockDetail[]): string {
   if (!details.length) return ''
   const segments: string[] = []
   for (const d of details) {
-    const tag = d.reason === 'unknown' ? 'UNKNOWN' : 'palette 无条目'
-    const bits: string[] = []
-    if (d.label) bits.push(d.label)
-    if (d.renderProfile) bits.push(`profile:${d.renderProfile}`)
-    if (d.description && d.description.length <= 72) bits.push(d.description)
-    const info = bits.length ? `（${bits.join(' · ')}）` : ''
-    segments.push(`${tag} ${d.registryKey}${info}×${d.voxelCount}`)
+    const tag = d.reason === 'decode_error' ? 'DECODE' : 'SPECIAL'
+    segments.push(`${tag} ${d.registryKey}×${d.voxelCount}`)
   }
   let out = ` · ${segments.join('；')}`
   if (out.length > STATUS_DETAIL_MAX) {

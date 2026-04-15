@@ -132,12 +132,13 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       materialLibrary.value = config.materialLibrary
       const iconCache = new BlockIconCache(
         config.materialLibrary,
-        resolved.definition.blocks,
+        {},
         resolved.modelRegistry,
         config.blockIconCacheOptions,
+        resolved.definition,
       )
       iconCache.setRevisionKey(
-        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition.blocks)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
@@ -183,25 +184,15 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
 
       if (hasMesh) {
         statusBarTone.value = hasUndefined ? 'warn' : 'ok'
-        let captureStats = ''
-        if (stats.capturedInstanceCount != null) {
-          captureStats = ` · cellGrid 非空气 ${stats.nonAirVoxelCount}，捕获实例 ${stats.capturedInstanceCount}`
-        }
-        statusMessage.value = config.okMessage(def.id) + captureStats + undefinedAppend
+        statusMessage.value = config.okMessage(def.id) + ` · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
       } else if (stats.nonAirVoxelCount === 0) {
         statusBarTone.value = 'ok'
         statusMessage.value =
-          '无可视方块：当前分层下无体素或结构全为空气（可调整分层预览或检查 palette）'
-      } else if (def.capture?.instances?.length) {
-        statusBarTone.value = 'warn'
-        const ci = stats.capturedInstanceCount ?? def.capture.instances.length
-        statusMessage.value =
-          `无可见几何：cellGrid 非空气 ${stats.nonAirVoxelCount}，capture ${ci} 条实例未产生有效三角面（检查四边形顶点或材质预取）` +
-          undefinedAppend
+          '无可视方块：当前分层下无体素或结构全为空气（可调整分层预览或检查 blockPalette）'
       } else {
         statusBarTone.value = 'warn'
         statusMessage.value =
-          `无可见几何：${stats.nonAirVoxelCount} 个非空气体素未在 block_registry 中映射（palette 的 registryId@meta 须与注册表键一致）` +
+          `无可见几何：${stats.nonAirVoxelCount} 个非空气体素无有效 BakedQuads（检查 blockPalette.geometry 或 materialPalette 预取）` +
           undefinedAppend
       }
     } catch (e) {

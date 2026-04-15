@@ -8,10 +8,16 @@
  * 以便 {@code miscutils:TileEntities/FOO} → 磁盘 {@code assets/miscutils/textures/blocks/TileEntities/FOO.png}。
  */
 export function normalizeLocatorForBundle(locator: string): string {
-  const colon = locator.indexOf(':')
-  if (colon < 0) return locator
-  const ns = locator.slice(0, colon)
-  let path = locator.slice(colon + 1)
+  let s = locator.trim()
+  if (s.length === 0) {
+    s = 'minecraft:missingno'
+  } else if (s.indexOf(':') < 0) {
+    /** 无命名空间时与 MC 资源键习惯一致，默认 {@code minecraft} */
+    s = `minecraft:${s}`
+  }
+  const colon = s.indexOf(':')
+  const ns = s.slice(0, colon)
+  let path = s.slice(colon + 1)
   while (path.startsWith('textures/')) {
     path = path.slice('textures/'.length)
   }

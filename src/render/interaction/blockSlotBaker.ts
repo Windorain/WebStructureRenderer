@@ -38,8 +38,17 @@ function createMcItemSlotViewRoot(): { root: THREE.Group; meshParent: THREE.Grou
   return { root, meshParent: g }
 }
 import { collectSingleBlockModelMeshes } from '../mesh/modelMesh'
+import { buildBlockMesh } from '../mesh/blockMesh'
 import { quadGeometryForFace } from '../mesh/quadGeometry'
-import type { BlockEntry, LayerRole, ModelRegistryData, StructureDefinition } from '../schema/types'
+import type {
+  BlockEntry,
+  BlockPaletteEntry,
+  LayerRole,
+  MaterialPaletteEntry,
+  ModelRegistryData,
+  StructureDefinition,
+} from '../schema/types'
+import { STRUCTURE_DATA_SCHEMA_FINAL } from '../schema/types'
 import { resolveFaceLayerMaterialId } from '../mesh/layerMaterialResolve'
 
 function parseTint(hex?: string): THREE.Color {
@@ -59,6 +68,43 @@ export interface SingleBlockBakeResult {
 /**
  * 使用与结构网格相同的 1×1×1 体素坐标（column=0, row=0, zSlice=0），六面均生成面片。
  */
+const AIR_ICON_PALETTE: BlockPaletteEntry = {
+  registryId: 'air',
+  meta: 0,
+  renderMode: 'BakedQuads',
+  geometry: { encoding: 'bakedQuadsJsonV1', quads: [] },
+}
+
+/**
+ * 自 blockPalette 条目的烘焙几何构建物品栏视角（无 block_registry）。
+ */
+export async function buildSingleBlockPreviewFromBakedPalette(
+  entry: BlockPaletteEntry,
+  materialPalette: MaterialPaletteEntry[],
+  library: MaterialLibraryApi,
+): Promise<SingleBlockBakeResult> {
+  const blockPalette: BlockPaletteEntry[] = [AIR_ICON_PALETTE, { ...entry, geometry: { ...entry.geometry, quads: [...entry.geometry.quads] } }]
+  const miniDef: StructureDefinition = {
+    schemaVersion: STRUCTURE_DATA_SCHEMA_FINAL,
+    mode: 'voxelPalette',
+    id: 'icon-bake',
+    blockPalette,
+    materialPalette,
+    cellGrid: [[[1]]],
+  }
+  const built = await buildBlockMesh(miniDef, library, { layerPreview: 'all' })
+  const { root, meshParent } = createMcItemSlotViewRoot()
+  while (built.group.children.length > 0) {
+    const ch = built.group.children[0]
+    built.group.remove(ch)
+    meshParent.add(ch)
+  }
+  const dispose = () => {
+    built.dispose()
+  }
+  return { group: root, dispose }
+}
+
 export async function buildSingleBlockPreviewGroup(
   block: BlockEntry,
   library: MaterialLibraryApi,
@@ -143,8 +189,7 @@ export async function buildSingleBlockPreviewGroup(
   return { group: root, dispose }
 }
 
-/** 用于缓存失效：对 blocks 表做稳定摘要（无加密，仅变更检测） */
-export function summarizeBlocksForCache(blocks: StructureDefinition['blocks']): string {
-  const keys = Object.keys(blocks).sort()
-  return keys.map((k) => `${k}:${JSON.stringify(blocks[k])}`).join('|')
+/** 用于缓存失效：对 blockPalette 做稳定摘要（无加密，仅变更检测） */
+export function summarizeBlocksForCache(def: StructureDefinition): string {
+  return def.blockPalette.map((e, i) => `${i}:${e.registryId}@${e.meta}`).join('|')
 }

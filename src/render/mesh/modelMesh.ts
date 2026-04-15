@@ -245,6 +245,9 @@ export interface ModelMeshCollectContext {
   sizeColumn: number
   sizeRow: number
   sizeZSlice: number
+  /** 遗留 Model 路径；主渲染已不用 block_registry */
+  blockRegistry?: Record<string, BlockEntry>
+  modelRegistry?: ModelRegistryData
 }
 
 /** 将某体素的 Model 几何并入 batches（与 buildBlockMesh 共享批次表） */
@@ -252,12 +255,14 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
   const state = effectiveVoxelState(ctx.volume, col, row, zSlice, ctx.sizeRow, ctx.layerPreview)
   if (isAirState(state)) return
 
-  const block = getBlockEntry(ctx.def.blocks, state.registryId, state.meta)
+  const blocks = ctx.blockRegistry ?? {}
+  const reg = ctx.modelRegistry ?? { models: {} }
+  const block = getBlockEntry(blocks, state.registryId, state.meta)
   if (!block || block.meshKind !== 'Model') return
   const modelId = block.modelId
   if (!modelId) throw new Error(`Model 方块缺少 modelId: ${state.registryId}`)
 
-  const doc = getModelDoc(ctx.def.modelRegistry, modelId)
+  const doc = getModelDoc(reg, modelId)
 
   const machineFront = state.facing ?? '-z'
   const rotQ = machineFrontQuaternion(machineFront)
@@ -298,7 +303,7 @@ export function collectModelVoxelMeshes(ctx: ModelMeshCollectContext, col: numbe
         ctx.sizeRow,
         ctx.layerPreview,
       )
-      if (!shouldExposeFaceTowardNeighbor(state, neighborState, ctx.def.blocks)) continue
+      if (!shouldExposeFaceTowardNeighbor(state, neighborState, blocks)) continue
 
       const layerDefs = modelFaceToLayerDefs(faceDef)
       if (!layerDefs.length) continue

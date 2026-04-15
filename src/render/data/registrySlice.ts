@@ -1,6 +1,5 @@
 /**
- * 按 palette 从全局注册表切片、多段 block 表合并、按方块条目收集材质。
- * HTTP 返回 bundle 前的裁剪见 `sliceRenderBundleForHttp`。
+ * 结构内 materialPalette 裁剪、遗留注册表合并工具。
  */
 
 import { normalizeLocatorForBundle } from '../assets/resolveAssets'
@@ -15,32 +14,57 @@ import type {
   ModelRegistryData,
   StructureData,
 } from '../schema/types'
-import { mergeMaterialRegistries } from './mergeScene'
 import { collectMaterialIdsFromBlockEntry } from '../mesh/layerMaterialResolve'
 
-/** palette 解析所需的 block 键（含 `registryId@meta` 与裸 `registryId` 回退） */
+/** block_registry 键收集（遗留 HTTP 裁剪） */
 export function collectPaletteBlockKeys(structure: StructureData): Set<string> {
   const keys = new Set<string>()
-  for (const v of structure.palette) {
+  for (const v of structure.blockPalette) {
     keys.add(blockRegistryKeyForPalette(v.registryId, v.meta))
     keys.add(v.registryId)
   }
   return keys
 }
 
-/** 结构 palette 中 `shellMaterialId`（GT 仓室壳层）的 union，用于材质表裁剪 */
-export function collectPaletteShellMaterialIdsUnion(structures: StructureData[]): Set<string> {
-  const ids = new Set<string>()
-  for (const structure of structures) {
-    for (const v of structure.palette) {
-      const s = v.shellMaterialId
-      if (typeof s === 'string' && s.length > 0) ids.add(s)
+/** 几何实际引用的 materialPalette 下标 */
+export function collectReferencedMaterialIndices(structure: StructureData): Set<number> {
+  const s = new Set<number>()
+  for (const e of structure.blockPalette) {
+    for (const q of e.geometry?.quads ?? []) {
+      if (typeof q.materialIndex === 'number' && Number.isInteger(q.materialIndex)) {
+        s.add(q.materialIndex)
+      }
     }
   }
-  return ids
+  return s
 }
 
-/** 从全局 block 表中只保留 palette 可能用到的键（服务端组最小包） */
+/** 去除未引用项并重写 quads.materialIndex */
+export function compactStructureMaterialPalette(s: StructureData): StructureData {
+  const used = collectReferencedMaterialIndices(s)
+  const oldPal = s.materialPalette
+  const sorted = [...used].filter((i) => i >= 0 && i < oldPal.length).sort((a, b) => a - b)
+  const map = new Map<number, number>()
+  const newPal = sorted.map((oldI, newI) => {
+    map.set(oldI, newI)
+    return oldPal[oldI]
+  })
+  const newBlocks = s.blockPalette.map((entry) => ({
+    ...entry,
+    geometry: {
+      ...entry.geometry,
+      quads: entry.geometry.quads.map((q) => {
+        const ni = map.get(q.materialIndex)
+        if (ni === undefined) {
+          throw new Error(`compactMaterialPalette: 未映射的 materialIndex ${q.materialIndex}`)
+        }
+        return { ...q, materialIndex: ni }
+      }),
+    },
+  }))
+  return { ...s, materialPalette: newPal, blockPalette: newBlocks }
+}
+
 export function sliceBlockRegistryByPalette(
   structure: StructureData,
   global: BlockRegistryData,
@@ -76,7 +100,6 @@ function collectMaterialIdsFromModelDoc(doc: ModelDocument | undefined): Set<str
   return ids
 }
 
-/** 根据已切片的方块表，从全局材质表中只保留被引用的 materialId；可选并入 palette 采样的壳层 locator */
 export function sliceMaterialRegistryForBlocks(
   blocks: Record<string, BlockEntry>,
   global: MaterialRegistryData,
@@ -104,7 +127,6 @@ export function sliceMaterialRegistryForBlocks(
   return { materials }
 }
 
-/** 多上传方/多包 block 片段顺序合并（与 mergeStructureData 内链一致） */
 export function mergeManyBlockRegistryLayers(layers: BlockRegistryData[]): BlockRegistryData {
   if (layers.length === 0) return { blocks: {} }
   let blocks = mergeBlockRegistries({}, layers[0].blocks)
@@ -114,25 +136,12 @@ export function mergeManyBlockRegistryLayers(layers: BlockRegistryData[]): Block
   return { blocks }
 }
 
-/** `structure.capture` 中出现的 materialKey / sampler.texture，用于裁剪或补全材质表 */
-export function collectCaptureMaterialKeys(structure: StructureData): Set<string> {
-  const keys = new Set<string>()
-  const cap = structure.capture
-  if (!cap) return keys
-  for (const s of cap.samplers ?? []) {
-    if (typeof s.texture === 'string' && s.texture.length > 0) keys.add(s.texture)
-  }
-  for (const inst of cap.instances ?? []) {
-    for (const q of inst.quads ?? []) {
-      if (typeof q.materialKey === 'string' && q.materialKey.length > 0) keys.add(q.materialKey)
-    }
-  }
-  return keys
+/** @deprecated */
+export function collectCaptureMaterialKeys(_structure: StructureData): Set<string> {
+  return new Set()
 }
 
-/**
- * 为捕获中出现的键提供材质条目：优先用全局注册表，否则用与 SDE `samplers.texture` 相同的键经 {@link normalizeLocatorForBundle} 得 locator。
- */
+/** @deprecated */
 export function ensureMaterialsForCaptureKeys(
   global: MaterialRegistryData,
   keys: Set<string>,
@@ -150,12 +159,16 @@ export function ensureMaterialsForCaptureKeys(
   return { materials }
 }
 
-/** 将捕获所需材质合并进已切片材质表（overlay 覆盖同名键） */
+/** @deprecated */
 export function mergeCaptureMaterialsIntoSlice(
   sliced: MaterialRegistryData,
-  global: MaterialRegistryData,
+  _global: MaterialRegistryData,
   captureKeys: Set<string>,
 ): MaterialRegistryData {
   if (captureKeys.size === 0) return sliced
-  return mergeMaterialRegistries(sliced, ensureMaterialsForCaptureKeys(global, captureKeys))
+  return sliced
+}
+
+export function collectPaletteShellMaterialIdsUnion(_structures: StructureData[]): Set<string> {
+  return new Set()
 }

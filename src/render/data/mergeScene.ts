@@ -1,6 +1,5 @@
 /**
- * 合并层：StructureData + 本请求 block 注册表 → StructureDefinition（非 Three）。
- * 注册表由调用方或服务端预先定稿；库内仅将 `blockRegistry.blocks` 拷贝进 `StructureDefinition.blocks`。
+ * 合并层：终态 StructureData 已自包含；本模块仅保留遗留注册表合并工具（HTTP 裁剪等可选路径）。
  */
 
 import type {
@@ -47,11 +46,6 @@ function mergeBlockEntry(base: BlockEntry, partial: Partial<BlockEntry>): BlockE
   }
 }
 
-const EMPTY_MODEL_REGISTRY: ModelRegistryData = { models: {} }
-
-/**
- * 无基底时由片段补全；**meshKind 必填**（破坏性契约）。
- */
 function completeBlockEntry(partial: Partial<BlockEntry>): BlockEntry {
   if (partial.meshKind === undefined) {
     throw new Error('block_registry 片段缺少 meshKind')
@@ -68,9 +62,6 @@ function completeBlockEntry(partial: Partial<BlockEntry>): BlockEntry {
   } as BlockEntry
 }
 
-/**
- * 将 overlay 合并进基底 blocks（供 `registrySlice` 等纯函数复用；渲染主路径不经过多层合并）。
- */
 export function mergeBlockRegistries(
   global: Record<string, BlockEntry>,
   overlay: Record<string, Partial<BlockEntry>> | undefined,
@@ -90,7 +81,6 @@ export function mergeBlockRegistries(
   return out
 }
 
-/** 同 materialId 以 overlay 为准 */
 export function mergeMaterialRegistries(
   base: MaterialRegistryData,
   overlay?: MaterialRegistryData,
@@ -103,7 +93,6 @@ export function mergeMaterialRegistries(
   }
 }
 
-/** 同 modelId 以 overlay 为准 */
 export function mergeModelRegistries(
   base: ModelRegistryData,
   overlay?: ModelRegistryData,
@@ -116,24 +105,12 @@ export function mergeModelRegistries(
   }
 }
 
+/** @deprecated 终态 StructureData 无需合并输入；保留签名供旧调用点渐进迁移 */
 export interface MergeStructureDataInput {
-  /** 本请求已确定的 block 表（服务端或 Mock 给全） */
-  blockRegistry: BlockRegistryData
-  /** 与 block 配套的模型表；可省略，等价于空表 */
+  blockRegistry?: BlockRegistryData
   modelRegistry?: ModelRegistryData
 }
 
-export function mergeStructureData(model: StructureData, input: MergeStructureDataInput): StructureDefinition {
-  const blocks = { ...input.blockRegistry.blocks }
-  const modelRegistry = input.modelRegistry ?? EMPTY_MODEL_REGISTRY
-  return {
-    mode: 'voxelPalette',
-    id: model.id,
-    palette: model.palette,
-    cellGrid: model.cellGrid,
-    blocks,
-    modelRegistry,
-    capture: model.capture,
-    initialCamera: model.initialCamera,
-  }
+export function mergeStructureData(model: StructureData, _input?: MergeStructureDataInput): StructureDefinition {
+  return { ...model }
 }
