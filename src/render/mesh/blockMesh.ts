@@ -18,7 +18,7 @@ import { buildVoxelVolume } from '../data/grid'
 import type { MaterialLibraryApi } from '../materials/simpleMaterialLibrary'
 import { structureRowToWorldY } from '../data/grid'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
-import { machineFrontQuaternion, vec3ToFaceName } from './facingMap'
+import { vec3ToFaceName } from './facingMap'
 import { decodeBakedGeometry } from './bakedGeometryDecode'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 
@@ -43,25 +43,10 @@ function materialBlendModeFromPaletteEntry(entry: MaterialPaletteEntry): Materia
   return entry.blend ?? 'opaque'
 }
 
-/** 局部 [0,1]³ 顶点绕块中心按 facing 旋转 */
-function transformLocalPoint(
-  x: number,
-  y: number,
-  z: number,
-  facing: import('../schema/types').FaceName | undefined,
-  out: THREE.Vector3,
-): void {
-  out.set(x, y, z)
-  if (!facing || facing === '-z') return
-  const c = 0.5
-  out.x -= c
-  out.y -= c
-  out.z -= c
-  out.applyQuaternion(machineFrontQuaternion(facing))
-  out.x += c
-  out.y += c
-  out.z += c
-}
+/**
+ * BakedQuads 顶点为 SDE 捕获的块局部 [0,1]³（已在客户端随世界 TE/元数据朝向），此处不再按 `facing` 旋转。
+ * `facing` 仍保留在 JSON 中供调色盘/文档；初始相机等仍用 `initialCamera` 与 `FACE_NORMAL`。
+ */
 
 /** 外法线 worldFace 指向的邻格相对当前体素的 (column,row,zSlice) 增量 */
 function gridStepForOutwardWorldFace(f: FaceName): { dc: number; dr: number; dz: number } {
@@ -90,7 +75,6 @@ function outwardWorldFaceFromBakedQuad(
   sizeColumn: number,
   sizeRow: number,
   sizeZSlice: number,
-  facing: FaceName | undefined,
 ): FaceName | null {
   const v = quad.vertices
   if (!v || v.length !== 4) return null
@@ -101,7 +85,7 @@ function outwardWorldFaceFromBakedQuad(
   const blockCenter = new THREE.Vector3(ox + 0.5, oy + 0.5, oz + 0.5)
   const corners = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]
   for (let i = 0; i < 4; i++) {
-    transformLocalPoint(v[i].x, v[i].y, v[i].z, facing, corners[i])
+    corners[i].set(v[i].x, v[i].y, v[i].z)
     corners[i].x += ox
     corners[i].y += oy
     corners[i].z += oz
@@ -150,7 +134,6 @@ function bufferGeometryFromBakedQuad(
   sizeColumn: number,
   sizeRow: number,
   sizeZSlice: number,
-  facing: import('../schema/types').FaceName | undefined,
   globalQuadIndex: number,
 ): THREE.BufferGeometry | null {
   const v = quad.vertices
@@ -171,7 +154,7 @@ function bufferGeometryFromBakedQuad(
   for (const [i0, i1, i2] of triCorners) {
     for (const i of [i0, i1, i2]) {
       const p = v[i]
-      transformLocalPoint(p.x, p.y, p.z, facing, tmp)
+      tmp.set(p.x, p.y, p.z)
       positions[pi++] = tmp.x + ox
       positions[pi++] = tmp.y + oy
       positions[pi++] = tmp.z + oz
@@ -277,7 +260,6 @@ export async function buildBlockMesh(
             sizeColumn,
             sizeRow,
             sizeZSlice,
-            entry.facing ?? state.facing,
           )
           if (
             worldFace !== null &&
@@ -296,7 +278,6 @@ export async function buildBlockMesh(
             sizeColumn,
             sizeRow,
             sizeZSlice,
-            entry.facing ?? state.facing,
             quadSerial++,
           )
           if (!g) continue
