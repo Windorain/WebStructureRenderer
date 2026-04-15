@@ -1,5 +1,5 @@
 /**
- * 渲染前 prepare：由 PNG 首帧（竖条动画仅第一格）Alpha 推断 MaterialBlendMode。
+ * 从已解码纹理图像推断 {@link MaterialBlendMode}（仅用于场景 hydrate；竖条动画只读第一格）。
  */
 
 import * as THREE from 'three'
@@ -8,16 +8,12 @@ import { frameCountFromImageSize } from '../assets/textureStripAnimation'
 import type { MaterialBlendMode } from '../schema/types'
 
 const SAMPLE_STRIDE = 2
-/** 视为全不透明 */
 const ALPHA_OPAQUE_MIN = 250
-/** 透明与中间态分界 */
 const ALPHA_TRANSPARENT_MAX = 10
-/** 中间态上界（低于 OPAQUE_MIN） */
 const ALPHA_MID_MAX = 245
-/** 中间 α 占比超过此值则判为 translucent */
 const MID_RATIO_TRANSLUCENT = 0.008
 
-function safeFrameCount(width: number, height: number): number {
+function verticalStripFrameCountOrOne(width: number, height: number): number {
   try {
     return frameCountFromImageSize(width, height)
   } catch {
@@ -25,12 +21,12 @@ function safeFrameCount(width: number, height: number): number {
   }
 }
 
-function sampleFirstFrameToImageData(
+function readFirstFramePixels(
   source: CanvasImageSource,
   width: number,
   height: number,
 ): ImageData | null {
-  const frameH = Math.max(1, Math.floor(height / safeFrameCount(width, height)))
+  const frameH = Math.max(1, Math.floor(height / verticalStripFrameCountOrOne(width, height)))
   const cw = Math.min(width, 512)
   const ch = Math.min(frameH, 512)
   const canvas = document.createElement('canvas')
@@ -46,7 +42,7 @@ function sampleFirstFrameToImageData(
   }
 }
 
-function inferBlendFromImageData(data: ImageData): MaterialBlendMode {
+function materialBlendModeFromImageData(data: ImageData): MaterialBlendMode {
   const { width, height, data: buf } = data
   let sampled = 0
   let mid = 0
@@ -71,10 +67,7 @@ function inferBlendFromImageData(data: ImageData): MaterialBlendMode {
   return 'cutout'
 }
 
-/**
- * 由已加载的 Three纹理推断 blend；失败或无法读图时返回 `opaque`。
- */
-export function inferBlendFromTexture(tex: THREE.Texture): MaterialBlendMode {
+export function inferMaterialBlendModeFromTexture(tex: THREE.Texture): MaterialBlendMode {
   const img = tex.image as HTMLImageElement | HTMLCanvasElement | ImageBitmap | undefined
   if (!img) return 'opaque'
 
@@ -89,7 +82,7 @@ export function inferBlendFromTexture(tex: THREE.Texture): MaterialBlendMode {
   }
   if (w <= 0 || h <= 0) return 'opaque'
 
-  const imageData = sampleFirstFrameToImageData(img as CanvasImageSource, w, h)
+  const imageData = readFirstFramePixels(img as CanvasImageSource, w, h)
   if (!imageData) return 'opaque'
-  return inferBlendFromImageData(imageData)
+  return materialBlendModeFromImageData(imageData)
 }

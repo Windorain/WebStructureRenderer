@@ -10,12 +10,16 @@ import type {
   StructureDefinition,
   World,
 } from '../schema/types'
-import { materialPaletteEntryToMaterialEntry, materialPaletteToMaterialRegistry } from './materialPaletteBridge'
-import { mergeStructureData } from './mergeScene'
+import { indexedRegistryFromMaterialPalette, registryEntryFromPaletteSlot } from './materialPaletteBridge'
+import { toStructureDefinition } from './structureDefinition'
 import { embeddedStructure, frameAt, getDefaultFrameIndex } from './worldPlayback'
 
-/** 自场景 document 汇总材质（World 为每帧 `frameIndex:materialIndex`，单结构为 `0`..`n-1`）。须在 prepareMaterialPaletteBlends 之后调用。 */
-export function materialRegistryFromDocument(document: unknown): MaterialRegistryData {
+/**
+ * 由场景 document（StructureData 或 World）构建材质注册表。
+ * World：`materialId` = `` `${frameIndex}:${slotIndex}` ``；单结构：`"0"`..`"n-1"`。
+ * 须在 {@link hydrateMaterialBlendsInSceneDocument} 之后调用，以便 `blend` 已写入 palette。
+ */
+export function buildMaterialRegistryFromSceneDocument(document: unknown): MaterialRegistryData {
   if (!document || typeof document !== 'object') return { materials: {} }
   if (isWorldDocument(document)) {
     const materials: Record<string, MaterialEntry> = {}
@@ -24,24 +28,21 @@ export function materialRegistryFromDocument(document: unknown): MaterialRegistr
       const pal = st?.materialPalette
       if (!pal?.length) continue
       for (let mi = 0; mi < pal.length; mi++) {
-        materials[`${fi}:${mi}`] = materialPaletteEntryToMaterialEntry(pal[mi])
+        materials[`${fi}:${mi}`] = registryEntryFromPaletteSlot(pal[mi])
       }
     }
     return { materials }
   }
   const d = document as Partial<StructureData>
   if (d.mode === 'voxelPalette' && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
-    return materialPaletteToMaterialRegistry(d.materialPalette)
+    return indexedRegistryFromMaterialPalette(d.materialPalette)
   }
   return { materials: {} }
 }
 
-/** @deprecated 请使用 {@link materialRegistryFromDocument} */
-export const mergeMaterialRegistryFromDocument = materialRegistryFromDocument
-
 export function loadStructureData(raw: unknown): StructureDefinition {
   if (!raw || typeof raw !== 'object') throw new Error('StructureData 无效')
-  return mergeStructureData(raw as StructureData)
+  return toStructureDefinition(raw as StructureData)
 }
 
 export function isWorldDocument(raw: unknown): raw is World {
@@ -75,7 +76,7 @@ export function validateRenderBundle(_b: RenderBundle): void {}
 
 export interface RenderBundleResolveResult {
   definition: StructureDefinition
-  /** World 时为 `frameIndex:`，与 materialRegistryFromDocument 的键一致；单结构为 undefined */
+  /** World 时为 `frameIndex:`，与 buildMaterialRegistryFromSceneDocument 的 materialId 前缀一致；单结构为 undefined */
   materialKeyPrefix: string | undefined
 }
 

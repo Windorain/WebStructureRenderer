@@ -11,8 +11,7 @@ export type { EmbedBootstrapOptions, EmbedData, EmbedUiOptions, PreviewFeatures 
 export type { PreviewConfig } from './preview/previewConfig'
 
 export {
-  materialRegistryFromDocument,
-  mergeMaterialRegistryFromDocument,
+  buildMaterialRegistryFromSceneDocument,
   resolveRenderBundle,
   validateRenderBundle,
   type RenderBundle,

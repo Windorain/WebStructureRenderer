@@ -24,7 +24,7 @@ import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
-  /** World 当前帧前缀，如 `"2:"`，与 materialRegistryFromDocument 的 materialId 一致 */
+  /** World 当前帧前缀，如 `"2:"`，与 buildMaterialRegistryFromSceneDocument 的 materialId 一致 */
   materialKeyPrefix?: string
 }
 
@@ -38,7 +38,8 @@ function parseTintFromArgb(argb: number | undefined): THREE.Color {
   return new THREE.Color(r / 255, g / 255, b / 255)
 }
 
-function blendForMaterialEntry(entry: MaterialPaletteEntry): MaterialBlendMode {
+/** prepare 后应有 blend；`??` 仅防御未走 hydrate 的调用路径 */
+function materialBlendModeFromPaletteEntry(entry: MaterialPaletteEntry): MaterialBlendMode {
   return entry.blend ?? 'opaque'
 }
 
@@ -62,7 +63,8 @@ function transformLocalPoint(
   out.z += c
 }
 
-function neighborDeltaForWorldFace(f: FaceName): { dc: number; dr: number; dz: number } {
+/** 外法线 worldFace 指向的邻格相对当前体素的 (column,row,zSlice) 增量 */
+function gridStepForOutwardWorldFace(f: FaceName): { dc: number; dr: number; dz: number } {
   switch (f) {
     case '+x':
       return { dc: 1, dr: 0, dz: 0 }
@@ -79,7 +81,8 @@ function neighborDeltaForWorldFace(f: FaceName): { dc: number; dr: number; dz: n
   }
 }
 
-function quadOutwardWorldFace(
+/** 由四边形顶点估计朝外的轴对齐世界面；非法线或退化时返回 null（不剔除） */
+function outwardWorldFaceFromBakedQuad(
   quad: BakedQuad,
   col: number,
   row: number,
@@ -118,7 +121,7 @@ function quadOutwardWorldFace(
   return vec3ToFaceName(n)
 }
 
-function neighborOccludesAdjacentFace(
+function shouldCullQuadFacingOpaqueNeighbor(
   def: StructureDefinition,
   volume: VoxelVolume,
   layerPreview: LayerPreviewMode,
@@ -128,7 +131,7 @@ function neighborOccludesAdjacentFace(
   sizeRow: number,
   worldFace: FaceName,
 ): boolean {
-  const { dc, dr, dz } = neighborDeltaForWorldFace(worldFace)
+  const { dc, dr, dz } = gridStepForOutwardWorldFace(worldFace)
   const ncol = col + dc
   const nrow = row + dr
   const nz = zSlice + dz
@@ -266,7 +269,7 @@ export async function buildBlockMesh(
 
         for (let qi = 0; qi < quads.length; qi++) {
           const q = quads[qi]
-          const worldFace = quadOutwardWorldFace(
+          const worldFace = outwardWorldFaceFromBakedQuad(
             q,
             col,
             row,
@@ -278,7 +281,7 @@ export async function buildBlockMesh(
           )
           if (
             worldFace !== null &&
-            neighborOccludesAdjacentFace(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
+            shouldCullQuadFacingOpaqueNeighbor(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
           ) {
             continue
           }
@@ -314,7 +317,7 @@ export async function buildBlockMesh(
       materialId:
         matPrefix !== undefined ? `${matPrefix}${w.materialIndex}` : String(w.materialIndex),
       tint: w.tint,
-      blend: blendForMaterialEntry(w.matPalette),
+      blend: materialBlendModeFromPaletteEntry(w.matPalette),
     }
     const key = batchMaterialCacheKey(descriptor)
     let b = batches.get(key)

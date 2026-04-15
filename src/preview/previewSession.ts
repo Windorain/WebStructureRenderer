@@ -4,11 +4,11 @@
 
 import * as THREE from 'three'
 
-import { materialRegistryFromDocument, validateRenderBundle } from '@/render/data/bundleResolve'
+import { buildMaterialRegistryFromSceneDocument, validateRenderBundle } from '@/render/data/bundleResolve'
 import {
-  collectMaterialTextureJobs,
-  prepareMaterialPaletteBlends,
-} from '@/render/data/materialPalettePrepare'
+  hydrateMaterialBlendsInSceneDocument,
+  listPaletteTexturesToFetch,
+} from '@/render/data/sceneDocumentMaterialHydrate'
 import { SimpleMaterialLibrary, type MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import type { RenderBundle } from '@/render/schema/types'
 import { formatUnknownError } from '@/util/formatUnknownError'
@@ -133,17 +133,17 @@ export async function loadPreviewSession(options: {
 
   const resourcesBase = resourcesBaseFromApiPrefix(apiPrefix)
   const loader = new THREE.TextureLoader()
-  const jobs = collectMaterialTextureJobs(document, resourcesBase)
+  const fetchList = listPaletteTexturesToFetch(document, resourcesBase)
   const textures = await Promise.all(
-    jobs.map(async ({ materialId, url }) => {
+    fetchList.map(async ({ materialId, url }) => {
       const tex = await loadPngTexture(loader, url)
       return [materialId, tex] as const
     }),
   )
 
   const preloaded = new Map<string, THREE.Texture>(textures)
-  prepareMaterialPaletteBlends(document, preloaded)
-  const registry = materialRegistryFromDocument(document)
+  hydrateMaterialBlendsInSceneDocument(document, preloaded)
+  const registry = buildMaterialRegistryFromSceneDocument(document)
   const materialLibrary = new SimpleMaterialLibrary(registry, preloaded)
 
   return { renderBundle, materialLibrary }
