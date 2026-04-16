@@ -15,6 +15,7 @@
 const EXPLICIT_MINECRAFT_TEXTURE_ROOTS = [
   'blocks/',
   'items/',
+  'materialicons/',
   'models/',
   'entity/',
   'gui/',
@@ -72,6 +73,10 @@ export function locatorToRelativePngPath(locator: string): string {
   // 与 AssetMapper / 部分模组一致：贴图在 assets 根下的 models/，而非 textures/models/
   if (pathAfterNs.startsWith('models/')) {
     return `assets/${ns}/${pathAfterNs}.png`
+  }
+  // GregTech：同一路径可能只在 blocks 或 items 目录下存在；工具路径取 items（与多数 OrePrefix 贴图一致）。
+  if (pathAfterNs.startsWith('materialicons/')) {
+    return `assets/${ns}/textures/items/${pathAfterNs}.png`
   }
   return `assets/${ns}/textures/${pathAfterNs}.png`
 }

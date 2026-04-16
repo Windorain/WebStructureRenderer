@@ -30,7 +30,8 @@ export interface MaterialEntry {
 export type MaterialPaletteEntry = MaterialEntry & {
   /** 指向根级 `textureBlobs` 池中的 PNG（Base64）；打包交付必填 */
   textureBlobIndex?: number
-  atlas?: string
+  /** MC 1.7：`blocks` / `items` 对应 `TextureMap.location*Texture`；`null`/缺省且为独立贴图时由导出写 `null` */
+  atlas?: string | null
   linear?: boolean
   useMipmaps?: boolean
 }
