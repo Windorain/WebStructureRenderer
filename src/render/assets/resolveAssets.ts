@@ -9,10 +9,13 @@
  * <p>
  * 已含 {@code entity/}、{@code gui/} 等原版纹理根路径的 locator（如 TESR 导出的 {@code minecraft:entity/chest/normal}）
  * 不得再套 {@code blocks/}，否则会变成错误的 {@code textures/blocks/entity/...}。
+ * <p>
+ * {@code models/}（如 {@code enderio:models/transceiver}）对应磁盘 {@code assets/modid/models/...png}，不在 {@code textures/} 树下。
  */
 const EXPLICIT_MINECRAFT_TEXTURE_ROOTS = [
   'blocks/',
   'items/',
+  'models/',
   'entity/',
   'gui/',
   'misc/',
@@ -64,6 +67,10 @@ export function locatorToRelativePngPath(locator: string): string {
   const pathAfterNs = normalized.slice(colon + 1)
   // 部分导出写成 `ns:textures/blocks/...`，避免拼成 `.../textures/textures/...`
   if (pathAfterNs.startsWith('textures/')) {
+    return `assets/${ns}/${pathAfterNs}.png`
+  }
+  // 与 AssetMapper / 部分模组一致：贴图在 assets 根下的 models/，而非 textures/models/
+  if (pathAfterNs.startsWith('models/')) {
     return `assets/${ns}/${pathAfterNs}.png`
   }
   return `assets/${ns}/textures/${pathAfterNs}.png`
