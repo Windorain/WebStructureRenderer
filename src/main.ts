@@ -10,9 +10,12 @@ export { mount } from './embed/mount'
 export type { EmbedBootstrapOptions, EmbedData, EmbedUiOptions, PreviewFeatures } from './embed/embedContract'
 export type { PreviewConfig } from './preview/previewConfig'
 
+export { loadPreviewSessionFromDocument } from './preview/previewSession'
+
 export {
   buildMaterialRegistryFromSceneDocument,
   resolveRenderBundle,
+  validatePackedSceneDocument,
   validateRenderBundle,
   type RenderBundle,
   type RenderBundleResolveResult,

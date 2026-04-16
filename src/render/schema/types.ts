@@ -18,7 +18,8 @@ export interface MaterialAnimationSpec {
 }
 
 export interface MaterialEntry {
-  locator: ResourceLocator
+  /** 溯源；打包态下 Wiki 仅使用 textureBlobIndex，不请求 locator */
+  locator?: ResourceLocator
   kind: MaterialKind
   blend?: MaterialBlendMode
   emissive?: number
@@ -27,6 +28,8 @@ export interface MaterialEntry {
 
 /** 结构内材质调色盘条目（并入原独立 sampler 的 atlas / 线性 / mipmap 提示） */
 export type MaterialPaletteEntry = MaterialEntry & {
+  /** 指向根级 `textureBlobs` 池中的 PNG（Base64）；打包交付必填 */
+  textureBlobIndex?: number
   atlas?: string
   linear?: boolean
   useMipmaps?: boolean
@@ -82,14 +85,13 @@ export interface MeshCapturePayload {
 }
 
 /**
- * 渲染包：仅 `document` 为可信源（StructureData 或 World）；纹理由客户端按各帧 materialPalette 预取。
+ * 渲染包：仅 `document` 为可信源（StructureData 或 World）；纹理须已内嵌于 `document.textureBlobs`。
  */
 export interface RenderBundle {
   /** 与 BakedQuads 终态契约对齐时可 bump */
   payloadSchemaVersion?: number
   document: unknown
   bundleId?: string
-  assetsBaseUrl?: string
 }
 
 export type FaceName = '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
@@ -234,6 +236,10 @@ export interface StructureData {
   schemaVersion?: number
   mode: 'voxelPalette'
   id: string
+  /** 预留全局非体素配置 */
+  globalConfig?: Record<string, unknown>
+  /** 每张 PNG 原始字节的 Base64（无 `data:` 前缀）；打包交付必填 */
+  textureBlobs?: string[]
   source?: { javaClass?: string; structurePiece?: string; note?: string }
   axis?: {
     zSlice?: string
@@ -278,6 +284,9 @@ export interface Frame {
 export interface World {
   schemaVersion?: number
   id: string
+  globalConfig?: Record<string, unknown>
+  /** 各帧内嵌 structure 的 materialPalette 共用此池 */
+  textureBlobs?: string[]
   frames: Frame[]
   playback?: { loop?: boolean; defaultFrameIndex?: number }
 }

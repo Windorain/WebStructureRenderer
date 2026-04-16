@@ -1,13 +1,11 @@
 /**
- * 本地 dev：URL 参数与默认 UI → PreviewConfig；数据经 loadPreviewSession 一次拉齐。
+ * 本地 dev：URL 参数与默认 UI → PreviewConfig；场景来自 `data/scenes/<id>.json` 构建期打包。
  */
 
 import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
 import { defaultEmbedUi } from '@/preview/previewConfig'
-import {
-  DEFAULT_PREVIEW_SCENE_ID,
-  loadPreviewSession,
-} from '@/preview/previewSession'
+import { getDevSceneDocument, listDevSceneIds } from '@/dev/devScenes'
+import { DEFAULT_PREVIEW_SCENE_ID, loadPreviewSessionFromDocument } from '@/preview/previewSession'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 function parseBool(s: string | null): boolean | undefined {
@@ -26,7 +24,7 @@ function parseHex6(s: string | null): number | undefined {
 }
 
 /**
- * 本地 dev 入口 URL 查询参数（白名单）。与 resolveDevPreviewConfigAsync 合并（覆盖默认值）；不含 renderBundle JSON。
+ * 本地 dev 入口 URL 查询参数（白名单）。与 resolveDevPreviewConfigAsync 合并（覆盖默认值）。
  */
 function parseUrlPreviewParams(
   search: string = typeof window !== 'undefined' ? window.location.search : '',
@@ -125,14 +123,16 @@ export async function resolveDevPreviewConfigAsync(): Promise<PreviewConfig> {
   }
 
   const sceneId = resolveSceneId({ ...mergedBase, ...url })
-  const { renderBundle, materialLibrary } = await loadPreviewSession({
-    sceneId,
-    apiPrefix: '/preview-api',
-  })
+  const document = getDevSceneDocument(sceneId)
+  const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
+  const docId =
+    document && typeof document === 'object' && 'id' in document
+      ? String((document as { id?: unknown }).id ?? sceneId)
+      : sceneId
 
   const out: PreviewConfig = {
     ...mergedBase,
-    sceneId,
+    sceneId: typeof docId === 'string' && docId.length > 0 ? docId : sceneId,
     renderBundle,
     materialLibrary,
     okMessage: mergedBase.okMessage ?? defaultEmbedUi.okMessage,
@@ -140,3 +140,5 @@ export async function resolveDevPreviewConfigAsync(): Promise<PreviewConfig> {
   }
   return out
 }
+
+export { listDevSceneIds }

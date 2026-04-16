@@ -71,8 +71,68 @@ export function loadStructureOrWorld(raw: unknown, frameIndex: number | undefine
   return loadStructureData(raw)
 }
 
-/** 不校验根级 schemaVersion；终态 StructureData 以 mode=voxelPalette 与字段形态为准 */
-export function validateRenderBundle(_b: RenderBundle): void {}
+function rootTextureBlobs(document: unknown): string[] | null {
+  if (!document || typeof document !== 'object') return null
+  const raw = (document as Record<string, unknown>).textureBlobs
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  if (!raw.every((x) => typeof x === 'string' && (x as string).length > 0)) return null
+  return raw as string[]
+}
+
+function validateMaterialPaletteEntries(blobs: string[], pal: unknown, ctx: string): void {
+  if (!Array.isArray(pal)) return
+  for (let i = 0; i < pal.length; i++) {
+    const entry = pal[i]
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`${ctx}[${i}] 无效`)
+    }
+    const idx = (entry as { textureBlobIndex?: unknown }).textureBlobIndex
+    if (typeof idx !== 'number' || !Number.isFinite(idx)) {
+      throw new Error(`${ctx}[${i}] 缺少有效 textureBlobIndex（须为 SDE 打包后的单文件 JSON）`)
+    }
+    const bi = Math.floor(idx)
+    if (bi < 0 || bi >= blobs.length) {
+      throw new Error(
+        `${ctx}[${i}] textureBlobIndex=${bi} 越界（textureBlobs.length=${blobs.length}）`,
+      )
+    }
+  }
+}
+
+/**
+ * 校验 Wiki 消费态：非空 `textureBlobs` 且每条材质槽位含合法 `textureBlobIndex`。
+ */
+export function validatePackedSceneDocument(document: unknown): void {
+  const blobs = rootTextureBlobs(document)
+  if (!blobs) {
+    throw new Error(
+      '场景缺少非空 textureBlobs（须为含 Base64 PNG 池的打包 JSON；旧版仅 locator 已不再支持）',
+    )
+  }
+  if (isWorldDocument(document)) {
+    for (let fi = 0; fi < document.frames.length; fi++) {
+      const st = embeddedStructure(document.frames[fi])
+      if (st?.materialPalette?.length) {
+        validateMaterialPaletteEntries(
+          blobs,
+          st.materialPalette,
+          `World.frames[${fi}].materialPalette`,
+        )
+      }
+    }
+    return
+  }
+  const d = document as Partial<StructureData>
+  if (d.mode === 'voxelPalette' && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
+    validateMaterialPaletteEntries(blobs, d.materialPalette, 'materialPalette')
+  }
+}
+
+/** 校验 `document` 已打包；不校验根级 schemaVersion */
+export function validateRenderBundle(b: RenderBundle): void {
+  if (!b || typeof b !== 'object') throw new Error('RenderBundle 无效')
+  validatePackedSceneDocument(b.document)
+}
 
 export interface RenderBundleResolveResult {
   definition: StructureDefinition

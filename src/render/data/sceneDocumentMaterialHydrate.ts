@@ -1,41 +1,51 @@
 /**
- * 场景 document（StructureData | World）的材质 hydrate：枚举拉图、补全 palette `blend`。
+ * 场景 document（StructureData | World）的材质 hydrate：由内嵌 Base64 池加载纹理、补全 palette `blend`。
  * 与 {@link buildMaterialRegistryFromSceneDocument} 共用 materialId 规则。
  */
 
 import * as THREE from 'three'
 
-import { locatorToResourceUrl } from '../assets/resolveAssets'
 import { inferMaterialBlendModeFromTexture } from '../materials/inferMaterialBlendModeFromTexture'
 import type { MaterialPaletteEntry, StructureData } from '../schema/types'
 import { isWorldDocument } from './bundleResolve'
 import { embeddedStructure } from './worldPlayback'
 
-export interface PaletteTextureFetchItem {
+export interface PaletteTextureDataUrlItem {
   materialId: string
-  url: string
+  dataUrl: string
+}
+
+function base64PngToDataUrl(b64: string): string {
+  const t = b64.trim()
+  if (t.startsWith('data:')) return t
+  return `data:image/png;base64,${t}`
 }
 
 /**
- * 枚举需拉取的 palette 纹理（不构建 registry）。
- * materialId：单结构为槽下标字符串；World 为 `` `${frame}:${slot}` ``。
+ * 枚举 palette 纹理为 data URL（依赖根级 `textureBlobs` + 各槽 `textureBlobIndex`）。
+ * 调用前应先 {@link validatePackedSceneDocument}。
  */
-export function listPaletteTexturesToFetch(
-  document: unknown,
-  resourcesBase: string,
-): PaletteTextureFetchItem[] {
+export function listPaletteTextureDataUrls(document: unknown): PaletteTextureDataUrlItem[] {
   if (!document || typeof document !== 'object') return []
+  const root = document as { textureBlobs?: unknown }
+  const blobs = root.textureBlobs
+  if (!Array.isArray(blobs)) return []
+
   if (isWorldDocument(document)) {
-    const items: PaletteTextureFetchItem[] = []
+    const items: PaletteTextureDataUrlItem[] = []
     for (let fi = 0; fi < document.frames.length; fi++) {
       const st = embeddedStructure(document.frames[fi])
       const pal = st?.materialPalette
       if (!pal?.length) continue
       for (let mi = 0; mi < pal.length; mi++) {
         const entry = pal[mi]
+        const idx = entry.textureBlobIndex
+        if (typeof idx !== 'number' || !Number.isFinite(idx)) continue
+        const b = blobs[Math.floor(idx)]
+        if (typeof b !== 'string') continue
         items.push({
           materialId: `${fi}:${mi}`,
-          url: locatorToResourceUrl(entry.locator, resourcesBase),
+          dataUrl: base64PngToDataUrl(b),
         })
       }
     }
@@ -44,11 +54,16 @@ export function listPaletteTexturesToFetch(
   const d = document as Partial<StructureData>
   if (d.mode !== 'voxelPalette' || !Array.isArray(d.materialPalette)) return []
   const pal = d.materialPalette
-  const items: PaletteTextureFetchItem[] = []
+  const items: PaletteTextureDataUrlItem[] = []
   for (let i = 0; i < pal.length; i++) {
+    const entry = pal[i]
+    const idx = entry.textureBlobIndex
+    if (typeof idx !== 'number' || !Number.isFinite(idx)) continue
+    const b = blobs[Math.floor(idx)]
+    if (typeof b !== 'string') continue
     items.push({
       materialId: String(i),
-      url: locatorToResourceUrl(pal[i].locator, resourcesBase),
+      dataUrl: base64PngToDataUrl(b),
     })
   }
   return items

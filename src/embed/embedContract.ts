@@ -1,20 +1,26 @@
 /**
- * 嵌入端公开契约；HTTP 形状见 server/wiki-mock/README.md。
- * 含 bootstrap → PreviewConfig（含 HTTP 加载阶段）。
+ * 嵌入端公开契约：宿主传入已打包 document（含 textureBlobs），无 HTTP 加载阶段。
  */
 
 import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
 import { defaultEmbedUi } from '@/preview/previewConfig'
-import { loadPreviewSession } from '@/preview/previewSession'
+import { loadPreviewSessionFromDocument } from '@/preview/previewSession'
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 export type { PreviewFeatures }
 
+function sceneKeyFromDocument(document: unknown): string {
+  if (document && typeof document === 'object' && 'id' in document) {
+    const id = (document as { id: unknown }).id
+    if (typeof id === 'string' && id.length > 0) return id
+  }
+  return 'scene'
+}
+
 export interface EmbedData {
-  sceneId: string
-  /** 默认 `/preview-api` */
-  apiPrefix?: string
+  /** SDE 打包后的 StructureData 或 World（根级含 `textureBlobs`） */
+  document: unknown
 }
 
 export interface EmbedUiOptions {
@@ -42,11 +48,9 @@ export async function resolveBootstrapToPreviewConfig(
   }
   const ui = options.ui ?? {}
 
-  const { sceneId, apiPrefix } = options.data
-  const { renderBundle, materialLibrary } = await loadPreviewSession({
-    sceneId,
-    apiPrefix,
-  })
+  const { document } = options.data
+  const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
+  const sceneId = sceneKeyFromDocument(document)
 
   const out: PreviewConfig = {
     sceneId,

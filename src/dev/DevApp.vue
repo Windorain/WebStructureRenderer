@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 本地 Vite 入口：异步拉取 dev 配置后挂载 AppShell（bundle 经 Mock /preview-api）。
+ * 本地 Vite 入口：异步加载 dev 配置后挂载 AppShell（场景来自 data/scenes/*.json）。
  */
 import { onMounted, ref } from 'vue'
 

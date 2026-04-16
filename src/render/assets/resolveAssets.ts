@@ -1,6 +1,6 @@
 /**
- * 资源定位符 → HTTP 路径（相对 `resources` 根下的 assets 树）。
- * 不含纹理加载；PNG 由 previewSession 经 HTTP 预取后注入材质库。
+ * 资源定位符 → 相对 `resources` 根下的 assets 路径（与 SDE 磁盘布局对齐）。
+ * Wiki 运行时不再经 HTTP 加载 PNG；本模块仅供路径规则对照或工具使用。
  */
 
 /**
@@ -45,7 +45,7 @@ export function normalizeLocatorForBundle(locator: string): string {
     s = `minecraft:${s}`
   }
   const colon = s.indexOf(':')
-  const ns = s.slice(0, colon)
+  const ns = s.slice(0, colon).toLowerCase()
   let path = s.slice(colon + 1)
   while (path.startsWith('textures/')) {
     path = path.slice('textures/'.length)
@@ -77,7 +77,7 @@ export function locatorToRelativePngPath(locator: string): string {
 }
 
 /**
- * `resourcesBase` 为 `/preview-api/resources` 形式（无尾斜杠）。
+ * 将 locator 拼成 URL 路径段（历史用途）；当前渲染端应使用内嵌 `textureBlobs`。
  */
 export function locatorToResourceUrl(locator: string, resourcesBase: string): string {
   const base = resourcesBase.replace(/\/$/, '')

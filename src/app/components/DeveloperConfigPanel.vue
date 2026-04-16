@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
- * 本地 dev：URL 带参链接、下载当前场景 document（数据来自 HTTP，非 localStorage）。
+ * 本地 dev：URL 带参链接、下载当前场景 document（数据来自 data/scenes，非 localStorage）。
  */
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { PreviewConfig } from '@/preview/previewConfig'
-import { DEFAULT_PREVIEW_SCENE_ID, fetchSceneIdList } from '@/preview/previewSession'
+import { listDevSceneIds } from '@/dev/devPreviewConfig'
+import { DEFAULT_PREVIEW_SCENE_ID } from '@/preview/previewSession'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 import pkg from '../../../package.json'
@@ -33,7 +34,7 @@ const devInfoLines = computed(() => {
   return [
     `场景 id（解析用）: ${resolved}`,
     `URL sceneId: ${sid || '（空=默认）'}`,
-    `场景 JSON: GET /preview-api/scenes/:id（data/scenes/<id>.json 原文，StructureData 或 World）`,
+    `场景 JSON: 构建期打包自 data/scenes/<id>.json（须含 textureBlobs；StructureData 或 World）`,
     `import.meta.env.MODE: ${import.meta.env.MODE}`,
     `应用版本: ${'version' in pkg && typeof pkg.version === 'string' ? pkg.version : '—'}`,
   ]
@@ -86,11 +87,11 @@ function syncFromMerged(): void {
   clearAlpha.value = c.blockIconCacheOptions.clearAlpha ?? 0
 }
 
-onMounted(async () => {
+onMounted(() => {
   try {
-    selectableSceneIds.value = await fetchSceneIdList()
+    selectableSceneIds.value = listDevSceneIds()
   } catch (e) {
-    console.error('[DeveloperConfigPanel] fetchSceneIdList', e)
+    console.error('[DeveloperConfigPanel] listDevSceneIds', e)
     selectableSceneIds.value = []
   }
   syncFromMerged()
@@ -168,8 +169,8 @@ function downloadCurrentBundle(): void {
         开发者配置（URL 参数）
       </h2>
       <p class="wm-dev-panel-hint">
-        场景 JSON 仅通过 HTTP（<code>/preview-api</code>、<code>/namespace</code> 经 Vite 代理到
-        <code>server/wiki-mock</code> 拉取）。本面板用查询参数表达「应用并跳转」，不写入 localStorage。开发请使用
+        场景来自仓库 <code>data/scenes/&lt;id&gt;.json</code>（SDE 打包：根级 <code>textureBlobs</code> +
+        <code>textureBlobIndex</code>）。本面板用查询参数表达「应用并跳转」，不写入 localStorage。开发请使用
         <code>npm run dev</code>。
       </p>
 
@@ -198,7 +199,7 @@ function downloadCurrentBundle(): void {
 
       <div class="wm-dev-panel-grid">
         <label class="wm-dev-field wm-dev-field--full">
-          <span>场景 id（data/scenes/&lt;id&gt;.json；palette 为 registryId@meta）</span>
+          <span>场景 id（data/scenes/&lt;id&gt;.json，须为打包 JSON）</span>
           <select v-model="sceneId">
             <option value="">
               默认（{{ DEFAULT_PREVIEW_SCENE_ID }}）

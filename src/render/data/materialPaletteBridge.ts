@@ -8,7 +8,7 @@ import type { MaterialEntry, MaterialPaletteEntry, MaterialRegistryData } from '
 /** 单格 palette 条目映射为材质注册表中的逻辑条目（无下标） */
 export function registryEntryFromPaletteSlot(e: MaterialPaletteEntry): MaterialEntry {
   return {
-    locator: e.locator,
+    locator: e.locator ?? 'minecraft:missingno',
     kind: e.kind,
     blend: e.blend,
     emissive: e.emissive,
