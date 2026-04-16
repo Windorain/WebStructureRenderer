@@ -199,7 +199,7 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
     const hit = this.materialByBatchKey.get(key)
     if (hit) return hit
 
-    const { materialId, tint, blend } = descriptor
+    const { materialId, blend, tint } = descriptor
     const tex = this.textureByMaterialId.get(materialId)
     if (!tex) throw new Error(`纹理未预取: ${materialId}`)
 

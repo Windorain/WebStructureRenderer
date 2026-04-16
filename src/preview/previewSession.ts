@@ -18,9 +18,9 @@ export const DEFAULT_PREVIEW_SCENE_ID = 'export'
 
 const DEFAULT_API_PREFIX = '/preview-api'
 
-/** 1×1 PNG，缺资源或网络异常时避免预览整体失败 */
+/** 16×16 紫黑棋盘（类 MC missing），缺 PNG 或网络异常时避免预览静默失败 */
 const MISSING_TEXTURE_DATA_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAJ0lEQVR4nGNkwAH+M/zHKs7EQCJgGtVABGDEFd6MDIxDxQ9Mw0ADACTzBB1zL3aeAAAAAElFTkSuQmCC'
 
 function isLikelyNetworkFetchFailure(e: unknown): boolean {
   if (!(e instanceof Error)) return false

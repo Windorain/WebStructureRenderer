@@ -28,14 +28,14 @@ export interface BuildBlockMeshOptions {
   materialKeyPrefix?: string
 }
 
-function parseTintFromArgb(argb: number | undefined): THREE.Color {
-  if (argb === undefined || !Number.isFinite(argb)) return new THREE.Color(0xffffff)
-  const a = (argb >>> 24) & 0xff
-  const r = (argb >>> 16) & 0xff
-  const g = (argb >>> 8) & 0xff
-  const b = argb & 0xff
-  if (a < 8) return new THREE.Color(0xffffff)
-  return new THREE.Color(r / 255, g / 255, b / 255)
+/** MC Tessellator 顶点色（多为 `setColorOpaque_I` 的 0xRRGGBB，高位常为 0）→ 材质 tint */
+function tintColorFromMcVertexArgb(packed: number | undefined): THREE.Color {
+  if (packed === undefined || !Number.isFinite(packed)) return new THREE.Color(0xffffff)
+  const u = packed >>> 0
+  const r = ((u >>> 16) & 0xff) / 255
+  const g = ((u >>> 8) & 0xff) / 255
+  const b = (u & 0xff) / 255
+  return new THREE.Color(r, g, b)
 }
 
 /** prepare 后应有 blend；`??` 仅防御未走 hydrate 的调用路径 */
@@ -326,12 +326,13 @@ export async function buildBlockMesh(
             quadSerial++,
           )
           if (!g) continue
+          const tint = tintColorFromMcVertexArgb(q.vertices?.[0]?.color)
           workUnits.push({
             materialIndex: mi,
             geom: g,
             quadOrder: (g.userData.globalQuadIndex as number) ?? 0,
             matPalette: matPal,
-            tint: parseTintFromArgb(q.vertices[0]?.color),
+            tint,
           })
         }
       }
@@ -343,8 +344,8 @@ export async function buildBlockMesh(
     const descriptor: BatchDescriptor = {
       materialId:
         matPrefix !== undefined ? `${matPrefix}${w.materialIndex}` : String(w.materialIndex),
-      tint: w.tint,
       blend: materialBlendModeFromPaletteEntry(w.matPalette),
+      tint: w.tint,
     }
     const key = batchMaterialCacheKey(descriptor)
     let b = batches.get(key)
