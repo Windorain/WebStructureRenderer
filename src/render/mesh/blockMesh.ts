@@ -28,13 +28,17 @@ export interface BuildBlockMeshOptions {
   materialKeyPrefix?: string
 }
 
-/** MC Tessellator 顶点色（多为 `setColorOpaque_I` 的 0xRRGGBB，高位常为 0）→ 材质 tint */
-function tintColorFromMcVertexArgb(packed: number | undefined): THREE.Color {
+/**
+ * MC 1.7.10 客户端（小端）Tessellator 写入 `rawBuffer` 的整型色值：
+ * {@code setColorRGBA} → {@code alpha<<24 | blue<<16 | green<<8 | red}（见 MCP Tessellator）。
+ * 与常见的 0xAARRGGBB 十六进制写法不同，RGB 在低 24 位且 **R 在最低字节**。
+ */
+function tintColorFromMcTessellatorColor(packed: number | undefined): THREE.Color {
   if (packed === undefined || !Number.isFinite(packed)) return new THREE.Color(0xffffff)
   const u = packed >>> 0
-  const r = ((u >>> 16) & 0xff) / 255
+  const r = (u & 0xff) / 255
   const g = ((u >>> 8) & 0xff) / 255
-  const b = (u & 0xff) / 255
+  const b = ((u >>> 16) & 0xff) / 255
   return new THREE.Color(r, g, b)
 }
 
@@ -326,7 +330,7 @@ export async function buildBlockMesh(
             quadSerial++,
           )
           if (!g) continue
-          const tint = tintColorFromMcVertexArgb(q.vertices?.[0]?.color)
+          const tint = tintColorFromMcTessellatorColor(q.vertices?.[0]?.color)
           workUnits.push({
             materialIndex: mi,
             geom: g,
