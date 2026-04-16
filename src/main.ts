@@ -11,6 +11,13 @@ export type { EmbedBootstrapOptions, EmbedData, EmbedUiOptions, PreviewFeatures 
 export type { PreviewConfig } from './preview/previewConfig'
 
 export { loadPreviewSessionFromDocument } from './preview/previewSession'
+export {
+  normalizeSceneDocumentForWiki,
+  readDocumentFormat,
+  isCompactSceneEnvelope,
+} from './render/data/compactSceneDocument'
+export type { CompactSceneEnvelope, DocumentFormat } from './render/schema/types'
+export { COMPACT_PAYLOAD_ENCODING } from './render/schema/types'
 
 export {
   buildMaterialRegistryFromSceneDocument,

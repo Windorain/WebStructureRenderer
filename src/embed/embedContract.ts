@@ -50,7 +50,7 @@ export async function resolveBootstrapToPreviewConfig(
 
   const { document } = options.data
   const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
-  const sceneId = sceneKeyFromDocument(document)
+  const sceneId = sceneKeyFromDocument(renderBundle.document)
 
   const out: PreviewConfig = {
     sceneId,

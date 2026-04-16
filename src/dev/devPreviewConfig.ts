@@ -125,10 +125,11 @@ export async function resolveDevPreviewConfigAsync(): Promise<PreviewConfig> {
   const sceneId = resolveSceneId({ ...mergedBase, ...url })
   const document = getDevSceneDocument(sceneId)
   const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
-  const docId =
-    document && typeof document === 'object' && 'id' in document
-      ? String((document as { id?: unknown }).id ?? sceneId)
-      : sceneId
+  const doc =
+    renderBundle.document && typeof renderBundle.document === 'object'
+      ? (renderBundle.document as { id?: unknown })
+      : undefined
+  const docId = doc && 'id' in doc ? String(doc.id ?? sceneId) : sceneId
 
   const out: PreviewConfig = {
     ...mergedBase,

@@ -4,6 +4,7 @@
 
 import * as THREE from 'three'
 
+import { normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
 import {
   buildMaterialRegistryFromSceneDocument,
   validateRenderBundle,
@@ -34,11 +35,12 @@ function loadTextureDataUrl(loader: THREE.TextureLoader, dataUrl: string): Promi
  * 由已解析的打包场景 document（StructureData | World）构建材质库与 RenderBundle。
  */
 export async function loadPreviewSessionFromDocument(document: unknown): Promise<PreviewSessionResult> {
-  const renderBundle: RenderBundle = { document }
+  const normalized = await normalizeSceneDocumentForWiki(document)
+  const renderBundle: RenderBundle = { document: normalized }
   validateRenderBundle(renderBundle)
 
   const loader = new THREE.TextureLoader()
-  const fetchList = listPaletteTextureDataUrls(document)
+  const fetchList = listPaletteTextureDataUrls(normalized)
   const textures = await Promise.all(
     fetchList.map(async ({ materialId, dataUrl }) => {
       try {
@@ -53,8 +55,8 @@ export async function loadPreviewSessionFromDocument(document: unknown): Promise
   )
 
   const preloaded = new Map<string, THREE.Texture>(textures)
-  hydrateMaterialBlendsInSceneDocument(document, preloaded)
-  const registry = buildMaterialRegistryFromSceneDocument(document)
+  hydrateMaterialBlendsInSceneDocument(normalized, preloaded)
+  const registry = buildMaterialRegistryFromSceneDocument(normalized)
   const materialLibrary = new SimpleMaterialLibrary(registry, preloaded)
 
   return { renderBundle, materialLibrary }

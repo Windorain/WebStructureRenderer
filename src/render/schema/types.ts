@@ -85,6 +85,20 @@ export interface MeshCapturePayload {
   instances: MeshCaptureInstance[]
 }
 
+/** 磁盘 / 传输层文档形态；Wiki 据 `documentFormat` 选择解析路径。 */
+export type DocumentFormat = 'Raw' | 'Compact'
+
+/** 与 SDE 写出一致：单 gzip 流再以标准 Base64 嵌入 JSON 字符串。 */
+export const COMPACT_PAYLOAD_ENCODING = 'gzip+base64' as const
+
+/** Compact 信封根（解压合并后与 Raw 同形）。 */
+export interface CompactSceneEnvelope {
+  documentFormat: 'Compact'
+  payloadEncoding: typeof COMPACT_PAYLOAD_ENCODING
+  meta: Record<string, unknown>
+  payload: string
+}
+
 /**
  * 渲染包：仅 `document` 为可信源（StructureData 或 World）；纹理须已内嵌于 `document.textureBlobs`。
  */
