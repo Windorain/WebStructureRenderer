@@ -6,7 +6,33 @@
 /**
  * 与 SDE {@code ExportTextureLocator.normalizeLocatorForBundle} 对齐：方块图集路径在 {@code textures/} 下缺省时补 {@code blocks/}，
  * 以便 {@code miscutils:TileEntities/FOO} → 磁盘 {@code assets/miscutils/textures/blocks/TileEntities/FOO.png}。
+ * <p>
+ * 已含 {@code entity/}、{@code gui/} 等原版纹理根路径的 locator（如 TESR 导出的 {@code minecraft:entity/chest/normal}）
+ * 不得再套 {@code blocks/}，否则会变成错误的 {@code textures/blocks/entity/...}。
  */
+const EXPLICIT_MINECRAFT_TEXTURE_ROOTS = [
+  'blocks/',
+  'items/',
+  'entity/',
+  'gui/',
+  'misc/',
+  'environment/',
+  'font/',
+  'map/',
+  'painting/',
+  'particle/',
+  'colormap/',
+] as const
+
+function pathHasExplicitTextureRoot(path: string): boolean {
+  for (const root of EXPLICIT_MINECRAFT_TEXTURE_ROOTS) {
+    if (path.startsWith(root)) {
+      return true
+    }
+  }
+  return false
+}
+
 export function normalizeLocatorForBundle(locator: string): string {
   let s = locator.trim()
   if (s.length === 0) {
@@ -21,7 +47,7 @@ export function normalizeLocatorForBundle(locator: string): string {
   while (path.startsWith('textures/')) {
     path = path.slice('textures/'.length)
   }
-  if (!path.startsWith('blocks/') && !path.startsWith('items/')) {
+  if (!pathHasExplicitTextureRoot(path)) {
     path = `blocks/${path}`
   }
   return `${ns}:${path}`
