@@ -126,6 +126,7 @@ onMounted(() => {
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(props.sceneBackground)
 
+  /** 回调 IBL 后保持原始偏保守灯光，避免室内/玻璃过曝 */
   const ambient = new THREE.AmbientLight(0xffffff, 0.55)
   const dir = new THREE.DirectionalLight(0xffffff, 0.9)
   dir.position.set(6, 10, 8)

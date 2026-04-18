@@ -22,6 +22,9 @@ import { vec3ToFaceName } from './facingMap'
 import { decodeBakedGeometry } from './bakedGeometryDecode'
 import { batchMaterialCacheKey, type BatchDescriptor } from './batchDescriptor'
 
+/** 顶点色批次：`MeshStandardMaterial.color` 保持白，染色仅来自 `geometry.attributes.color` */
+const BATCH_VERTEX_COLOR_TINT = new THREE.Color(0xffffff)
+
 export interface BuildBlockMeshOptions {
   layerPreview?: LayerPreviewMode
   /** World 当前帧前缀，如 `"2:"`，与 buildMaterialRegistryFromSceneDocument 的 materialId 一致 */
@@ -33,13 +36,13 @@ export interface BuildBlockMeshOptions {
  * {@code setColorRGBA} → {@code alpha<<24 | blue<<16 | green<<8 | red}（见 MCP Tessellator）。
  * 与常见的 0xAARRGGBB 十六进制写法不同，RGB 在低 24 位且 **R 在最低字节**。
  */
-function tintColorFromMcTessellatorColor(packed: number | undefined): THREE.Color {
-  if (packed === undefined || !Number.isFinite(packed)) return new THREE.Color(0xffffff)
+function rgbTripletFromMcTessellatorColor(packed: number | undefined): [number, number, number] {
+  if (packed === undefined || !Number.isFinite(packed)) return [1, 1, 1]
   const u = packed >>> 0
   const r = (u & 0xff) / 255
   const g = ((u >>> 8) & 0xff) / 255
   const b = ((u >>> 16) & 0xff) / 255
-  return new THREE.Color(r, g, b)
+  return [r, g, b]
 }
 
 /** prepare 后应有 blend；`??` 仅防御未走 hydrate 的调用路径 */
@@ -178,12 +181,15 @@ function bufferGeometryFromBakedQuad(
   const tmp = new THREE.Vector3()
   const positions = new Float32Array(18)
   const uvs = new Float32Array(12)
+  /** 与 MC `GL_COLOR_ARRAY` 一致：四角各自颜色，在三角形内插值 */
+  const colors = new Float32Array(18)
   const triCorners = [
     [0, 1, 2],
     [0, 2, 3],
   ] as const
   let pi = 0
   let ui = 0
+  let ci = 0
   for (const [i0, i1, i2] of triCorners) {
     for (const i of [i0, i1, i2]) {
       const p = v[i]
@@ -193,11 +199,16 @@ function bufferGeometryFromBakedQuad(
       positions[pi++] = tmp.z + oz
       uvs[ui++] = p.u
       uvs[ui++] = p.v
+      const rgb = rgbTripletFromMcTessellatorColor(p.color)
+      colors[ci++] = rgb[0]
+      colors[ci++] = rgb[1]
+      colors[ci++] = rgb[2]
     }
   }
   const g = new THREE.BufferGeometry()
   g.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
   g.computeVertexNormals()
   g.userData.globalQuadIndex = globalQuadIndex
   return g
@@ -227,7 +238,6 @@ interface QuadWorkUnit {
   geom: THREE.BufferGeometry
   quadOrder: number
   matPalette: MaterialPaletteEntry
-  tint: THREE.Color
 }
 
 export async function buildBlockMesh(
@@ -330,13 +340,11 @@ export async function buildBlockMesh(
             quadSerial++,
           )
           if (!g) continue
-          const tint = tintColorFromMcTessellatorColor(q.vertices?.[0]?.color)
           workUnits.push({
             materialIndex: mi,
             geom: g,
             quadOrder: (g.userData.globalQuadIndex as number) ?? 0,
             matPalette: matPal,
-            tint,
           })
         }
       }
@@ -349,7 +357,8 @@ export async function buildBlockMesh(
       materialId:
         matPrefix !== undefined ? `${matPrefix}${w.materialIndex}` : String(w.materialIndex),
       blend: materialBlendModeFromPaletteEntry(w.matPalette),
-      tint: w.tint,
+      tint: BATCH_VERTEX_COLOR_TINT,
+      useVertexColor: true,
     }
     const key = batchMaterialCacheKey(descriptor)
     let b = batches.get(key)

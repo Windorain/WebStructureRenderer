@@ -24,12 +24,15 @@ function createFaceMaterial(
   tex: THREE.Texture,
   tint: THREE.Color,
   blend: MaterialBlendMode,
+  useVertexColor: boolean,
 ): THREE.MeshStandardMaterial {
+  const baseColor = useVertexColor ? new THREE.Color(0xffffff) : tint
   if (blend === 'cutout' || blend === 'translucent') {
     const cutout = blend === 'cutout'
     return new THREE.MeshStandardMaterial({
       map: tex,
-      color: tint,
+      color: baseColor,
+      vertexColors: useVertexColor,
       transparent: true,
       alphaTest: cutout ? 0.5 : 0,
       /**
@@ -45,7 +48,8 @@ function createFaceMaterial(
   }
   return new THREE.MeshStandardMaterial({
     map: tex,
-    color: tint,
+    color: baseColor,
+    vertexColors: useVertexColor,
     roughness: 0.85,
     metalness: 0.05,
     polygonOffset: true,
@@ -203,7 +207,7 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
     const tex = this.textureByMaterialId.get(materialId)
     if (!tex) throw new Error(`纹理未预取: ${materialId}`)
 
-    const mat = createFaceMaterial(tex, tint, blend)
+    const mat = createFaceMaterial(tex, tint, blend, descriptor.useVertexColor === true)
     this.materialByBatchKey.set(key, mat)
     return mat
   }
