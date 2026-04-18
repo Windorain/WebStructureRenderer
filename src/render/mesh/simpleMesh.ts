@@ -1,5 +1,5 @@
 /**
- * voxelPalette 模式体素网格（薄导出）：实现见 `blockMesh` / `quadGeometry`。
+ * 终态烘焙体素网格（geometryPhase=baked）：实现见 `blockMesh` / `quadGeometry`。
  */
 
 export { quadGeometryForFace } from './quadGeometry'

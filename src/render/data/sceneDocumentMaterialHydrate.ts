@@ -7,7 +7,7 @@ import * as THREE from 'three'
 
 import { inferMaterialBlendModeFromTexture } from '../materials/inferMaterialBlendModeFromTexture'
 import type { MaterialPaletteEntry, StructureData } from '../schema/types'
-import { isWorldDocument } from './bundleResolve'
+import { isBakedStructureData, isWorldDocument } from './bundleResolve'
 import { embeddedStructure } from './worldPlayback'
 
 export interface PaletteTextureDataUrlItem {
@@ -35,7 +35,8 @@ export function listPaletteTextureDataUrls(document: unknown): PaletteTextureDat
     const items: PaletteTextureDataUrlItem[] = []
     for (let fi = 0; fi < document.frames.length; fi++) {
       const st = embeddedStructure(document.frames[fi])
-      const pal = st?.materialPalette
+      if (!isBakedStructureData(st)) continue
+      const pal = st.materialPalette
       if (!pal?.length) continue
       for (let mi = 0; mi < pal.length; mi++) {
         const entry = pal[mi]
@@ -51,8 +52,8 @@ export function listPaletteTextureDataUrls(document: unknown): PaletteTextureDat
     }
     return items
   }
-  const d = document as Partial<StructureData>
-  if (d.mode !== 'voxelPalette' || !Array.isArray(d.materialPalette)) return []
+  const d = document as StructureData
+  if (!isBakedStructureData(d) || !Array.isArray(d.materialPalette)) return []
   const pal = d.materialPalette
   const items: PaletteTextureDataUrlItem[] = []
   for (let i = 0; i < pal.length; i++) {
@@ -77,7 +78,8 @@ function forEachPaletteSlot(
   if (isWorldDocument(document)) {
     for (let fi = 0; fi < document.frames.length; fi++) {
       const st = embeddedStructure(document.frames[fi])
-      const pal = st?.materialPalette
+      if (!isBakedStructureData(st)) continue
+      const pal = st.materialPalette
       if (!pal?.length) continue
       for (let mi = 0; mi < pal.length; mi++) {
         fn(pal[mi], `${fi}:${mi}`)
@@ -85,8 +87,8 @@ function forEachPaletteSlot(
     }
     return
   }
-  const d = document as Partial<StructureData>
-  if (d.mode !== 'voxelPalette' || !Array.isArray(d.materialPalette)) return
+  const d = document as StructureData
+  if (!isBakedStructureData(d) || !Array.isArray(d.materialPalette)) return
   const pal = d.materialPalette
   for (let i = 0; i < pal.length; i++) {
     fn(pal[i], String(i))

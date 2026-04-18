@@ -65,7 +65,8 @@ export async function buildSingleBlockPreviewFromBakedPalette(
     { ...entry, geometry: { ...entry.geometry, quads: [...entry.geometry.quads] } },
   ]
   const miniDef: StructureDefinition = {
-    mode: 'voxelPalette',
+    geometryPhase: 'baked',
+    mode: 'multiblock',
     id: 'icon-bake',
     blockPalette,
     materialPalette,

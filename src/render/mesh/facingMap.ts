@@ -1,6 +1,6 @@
 /**
  * 注册表按「正面朝北 -z」烘焙时的方向工具（如 Model 体素绕中心旋转）。
- * 终态 `voxelPalette` 的 BakedQuads 在 `blockMesh` 中按捕获几何原样放置，不经此处旋转。
+ * 终态 `geometryPhase=baked` 的 BakedQuads 在 `blockMesh` 中按捕获几何原样放置，不经此处旋转。
  */
 
 import * as THREE from 'three'

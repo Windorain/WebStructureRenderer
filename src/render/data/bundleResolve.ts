@@ -7,12 +7,17 @@ import type {
   MaterialRegistryData,
   RenderBundle,
   StructureData,
+  StructureDataBaked,
   StructureDefinition,
   World,
 } from '../schema/types'
 import { indexedRegistryFromMaterialPalette, registryEntryFromPaletteSlot } from './materialPaletteBridge'
 import { toStructureDefinition } from './structureDefinition'
 import { embeddedStructure, frameAt, getDefaultFrameIndex } from './worldPlayback'
+
+export function isBakedStructureData(x: StructureData | undefined | null): x is StructureDataBaked {
+  return x != null && x.geometryPhase === 'baked'
+}
 
 /**
  * 由场景 document（StructureData 或 World）构建材质注册表。
@@ -25,7 +30,8 @@ export function buildMaterialRegistryFromSceneDocument(document: unknown): Mater
     const materials: Record<string, MaterialEntry> = {}
     for (let fi = 0; fi < document.frames.length; fi++) {
       const st = embeddedStructure(document.frames[fi])
-      const pal = st?.materialPalette
+      if (!isBakedStructureData(st)) continue
+      const pal = st.materialPalette
       if (!pal?.length) continue
       for (let mi = 0; mi < pal.length; mi++) {
         materials[`${fi}:${mi}`] = registryEntryFromPaletteSlot(pal[mi])
@@ -33,8 +39,8 @@ export function buildMaterialRegistryFromSceneDocument(document: unknown): Mater
     }
     return { materials }
   }
-  const d = document as Partial<StructureData>
-  if (d.mode === 'voxelPalette' && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
+  const d = document as StructureData
+  if (isBakedStructureData(d) && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
     return indexedRegistryFromMaterialPalette(d.materialPalette)
   }
   return { materials: {} }
@@ -42,7 +48,11 @@ export function buildMaterialRegistryFromSceneDocument(document: unknown): Mater
 
 export function loadStructureData(raw: unknown): StructureDefinition {
   if (!raw || typeof raw !== 'object') throw new Error('StructureData 无效')
-  return toStructureDefinition(raw as StructureData)
+  const s = raw as StructureData
+  if (!isBakedStructureData(s)) {
+    throw new Error('StructureData 须为 geometryPhase=baked 的终态（含 blockPalette / materialPalette）')
+  }
+  return toStructureDefinition(s)
 }
 
 export function isWorldDocument(raw: unknown): raw is World {
@@ -112,7 +122,7 @@ export function validatePackedSceneDocument(document: unknown): void {
   if (isWorldDocument(document)) {
     for (let fi = 0; fi < document.frames.length; fi++) {
       const st = embeddedStructure(document.frames[fi])
-      if (st?.materialPalette?.length) {
+      if (isBakedStructureData(st) && st.materialPalette?.length) {
         validateMaterialPaletteEntries(
           blobs,
           st.materialPalette,
@@ -122,8 +132,8 @@ export function validatePackedSceneDocument(document: unknown): void {
     }
     return
   }
-  const d = document as Partial<StructureData>
-  if (d.mode === 'voxelPalette' && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
+  const d = document as StructureData
+  if (isBakedStructureData(d) && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
     validateMaterialPaletteEntries(blobs, d.materialPalette, 'materialPalette')
   }
 }

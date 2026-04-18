@@ -1,6 +1,5 @@
 /**
- * voxelPalette：终态 StructureData =全局字段 + blockPalette + materialPalette + cellGrid。
- * 几何仅来自 blockPalette[].geometry（BakedQuads）；材质仅 materialPalette[materialIndex]。
+ * StructureData：`geometryPhase` 区分扫描中间态与可渲染终态；根级 `mode` 仅表示 Wiki 展示策略（与几何管线无关）。
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
@@ -192,6 +191,67 @@ export interface InitialCameraDef {
 
 export type JsonNbt = Record<string, unknown>
 
+/** Wiki 展示：多方块启用统计侧栏与分层条；简单模式关闭二者 */
+export type SceneDisplayMode = 'multiblock' | 'simple'
+
+/** 数据形态：scan=服务端扫描待客户端烘焙；baked=含 BakedQuads 可渲染 */
+export type StructureGeometryPhase = 'scan' | 'baked'
+
+/** 扫描中间态（SDE 写出；Wiki 不直接渲染） */
+export interface StructureDataScan {
+  geometryPhase: 'scan'
+  mode: SceneDisplayMode
+  id: string
+  label?: string
+  gtnhVersion?: string
+  author?: string
+  description?: string | null
+  /** 模组来源（如多方块 mod），可选 */
+  modSource?: string
+  globalConfig?: Record<string, unknown>
+  source?: { javaClass?: string; structurePiece?: string; note?: string }
+  axis?: {
+    zSlice?: string
+    row?: string
+    column?: string
+    spaceChar?: string
+  }
+  scanBounds?: { minX: number; maxY: number; minZ: number }
+  initialCamera?: InitialCameraDef
+  cellTypes: unknown[]
+  cellGrid: number[][][]
+  worldGrid: unknown
+}
+
+/** 可渲染终态（palette + cellGrid） */
+export interface StructureDataBaked {
+  geometryPhase: 'baked'
+  mode: SceneDisplayMode
+  id: string
+  label?: string
+  gtnhVersion?: string
+  author?: string
+  description?: string | null
+  modSource?: string
+  schemaVersion?: number
+  globalConfig?: Record<string, unknown>
+  textureBlobs?: string[]
+  source?: { javaClass?: string; structurePiece?: string; note?: string }
+  axis?: {
+    zSlice?: string
+    row?: string
+    column?: string
+    spaceChar?: string
+  }
+  blockPalette: BlockPaletteEntry[]
+  materialPalette: MaterialPaletteEntry[]
+  cellGrid: number[][][]
+  scanBounds?: { minX: number; maxY: number; minZ: number }
+  initialCamera?: InitialCameraDef
+}
+
+export type StructureData = StructureDataScan | StructureDataBaked
+
 /** 体素逻辑态（运行时由 blockPalette 条目映射） */
 export interface VoxelState {
   registryId: string
@@ -243,34 +303,8 @@ export interface BlockPaletteEntry {
   geometry: BakedQuadsGeometry
 }
 
-/**
- * 磁盘 / 运行时结构根（终态 BakedQuads：{@code blockPalette} + {@code materialPalette}）。
- * cellGrid[z][row][col] 为 blockPalette 下标。根级可不写 {@code schemaVersion}。
- */
-export interface StructureData {
-  schemaVersion?: number
-  mode: 'voxelPalette'
-  id: string
-  /** 预留全局非体素配置 */
-  globalConfig?: Record<string, unknown>
-  /** 每张 PNG 原始字节的 Base64（无 `data:` 前缀）；打包交付必填 */
-  textureBlobs?: string[]
-  source?: { javaClass?: string; structurePiece?: string; note?: string }
-  axis?: {
-    zSlice?: string
-    row?: string
-    column?: string
-    spaceChar?: string
-  }
-  blockPalette: BlockPaletteEntry[]
-  materialPalette: MaterialPaletteEntry[]
-  cellGrid: number[][][]
-  scanBounds?: { minX: number; maxY: number; minZ: number }
-  initialCamera?: InitialCameraDef
-}
-
-/** 与 StructureData 同形（合并层已恒等） */
-export type StructureDefinition = StructureData
+/** Wiki 网格管线使用的终态结构（保证已烘焙） */
+export type StructureDefinition = StructureDataBaked
 
 export function voxelStateFromBlockPaletteEntry(e: BlockPaletteEntry): VoxelState {
   return {
@@ -299,6 +333,12 @@ export interface Frame {
 export interface World {
   schemaVersion?: number
   id: string
+  mode?: SceneDisplayMode
+  label?: string
+  gtnhVersion?: string
+  author?: string
+  description?: string | null
+  modSource?: string
   globalConfig?: Record<string, unknown>
   /** 各帧内嵌 structure 的 materialPalette 共用此池 */
   textureBlobs?: string[]

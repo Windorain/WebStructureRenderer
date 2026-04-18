@@ -5,6 +5,7 @@
 import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
 import { defaultEmbedUi } from '@/preview/previewConfig'
 import { loadPreviewSessionFromDocument } from '@/preview/previewSession'
+import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
@@ -42,14 +43,17 @@ export interface EmbedBootstrapOptions {
 export async function resolveBootstrapToPreviewConfig(
   options: EmbedBootstrapOptions,
 ): Promise<PreviewConfig> {
-  const features = {
-    ...defaultEmbedUi.features,
-    ...options.features,
-  }
   const ui = options.ui ?? {}
 
   const { document } = options.data
   const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
+  const docMode = sceneDisplayModeFromDocument(renderBundle.document)
+  const docUi = previewFeaturesForDisplayMode(docMode)
+  const features: PreviewFeatures = {
+    ...defaultEmbedUi.features,
+    ...docUi,
+    ...options.features,
+  }
   const sceneId = sceneKeyFromDocument(renderBundle.document)
 
   const out: PreviewConfig = {
