@@ -1,35 +1,26 @@
 <script setup lang="ts">
 /**
- * 本地 Vite 入口：异步加载 dev 配置后挂载 AppShell（场景来自 data/scenes/*.json）。
+ * 工作台入口：聚合根全量子组件 + 子树错误边界。
  */
-import { onMounted, ref } from 'vue'
+import { onErrorCaptured, ref } from 'vue'
 
-import AppShell from '@/app/AppShell.vue'
-import type { PreviewConfig } from '@/preview/previewConfig'
-import { resolveDevPreviewConfigAsync } from '@/dev/devPreviewConfig'
+import WorkbenchRoot from '@/workbench/WorkbenchRoot.vue'
 import { formatUnknownError } from '@/util/formatUnknownError'
 
-const mergedConfig = ref<PreviewConfig | null>(null)
-const loadError = ref<string | null>(null)
+const bootError = ref<string | null>(null)
 
-onMounted(async () => {
-  try {
-    mergedConfig.value = await resolveDevPreviewConfigAsync()
-  } catch (e) {
-    loadError.value = formatUnknownError(e)
-    console.error('[WikiMultiStructureRender] resolveDevPreviewConfigAsync', e)
-  }
+onErrorCaptured((err) => {
+  bootError.value = formatUnknownError(err)
+  console.error('[WikiMultiStructureRender] WorkbenchRoot', err)
+  return false
 })
 </script>
 
 <template>
-  <div v-if="loadError" class="wm-boot wm-boot--err">
-    {{ loadError }}
+  <div v-if="bootError" class="wm-boot wm-boot--err">
+    {{ bootError }}
   </div>
-  <AppShell v-else-if="mergedConfig" :merged-config="mergedConfig" />
-  <div v-else class="wm-boot">
-    加载预览配置…
-  </div>
+  <WorkbenchRoot v-else />
 </template>
 
 <style scoped>

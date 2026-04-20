@@ -27,3 +27,13 @@ export {
   type RenderBundle,
   type RenderBundleResolveResult,
 } from './render/data/bundleResolve'
+
+export {
+  patchSceneMetadataRoot,
+  buildCompactEnvelope,
+  downloadJson,
+  copyTextToClipboard,
+  type BuildCompactOptions,
+} from './workbench/sceneExportKit'
+export { previewConfigFromDocument, documentLooksPreviewable } from './workbench/previewFromDocument'
+export type { PreviewFromDocumentOptions } from './workbench/previewFromDocument'
