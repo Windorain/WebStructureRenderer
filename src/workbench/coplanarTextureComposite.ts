@@ -1,5 +1,6 @@
 /**
- * 共面重叠 Quad 的材质栅格叠化（MC quadOrder 越早越在底层，越大越覆盖在上），浏览器适配层。
+ * 共面重叠 Quad 的材质栅格叠化（MC quadOrder 越早越先画、越大越后画），浏览器适配层。
+ * 像素合成：按 quadOrder 从底到顶做 source-over alpha 混合（与「仅取最大 quadOrder 一层」不同）。
  */
 
 import type { MaterialPaletteEntry, StructureDefinition } from '@/render/schema/types'
@@ -140,6 +141,36 @@ function sampleImageForgeNearest(
   return [data[o]!, data[o + 1]!, data[o + 2]!, data[o + 3]!]
 }
 
+/** Porter–Duff source-over：src 叠在 dst 之上（直通道 RGBA，与 Canvas 一致） */
+function blendSourceOverStraight(
+  dst: [number, number, number, number],
+  src: [number, number, number, number],
+): void {
+  const sr = src[0] / 255
+  const sg = src[1] / 255
+  const sb = src[2] / 255
+  const sa = src[3] / 255
+  const dr = dst[0] / 255
+  const dg = dst[1] / 255
+  const db = dst[2] / 255
+  const da = dst[3] / 255
+  const oa = sa + da * (1.0 - sa)
+  const or = sr * sa + dr * da * (1.0 - sa)
+  const og = sg * sa + dg * da * (1.0 - sa)
+  const ob = sb * sa + db * da * (1.0 - sa)
+  if (oa <= 1e-8) {
+    dst[0] = 0
+    dst[1] = 0
+    dst[2] = 0
+    dst[3] = 0
+    return
+  }
+  dst[0] = clamp(Math.round((or / oa) * 255), 0, 255)
+  dst[1] = clamp(Math.round((og / oa) * 255), 0, 255)
+  dst[2] = clamp(Math.round((ob / oa) * 255), 0, 255)
+  dst[3] = clamp(Math.round(oa * 255), 0, 255)
+}
+
 export interface CompositeCoplanarResult {
   pngBlob: Blob
   pngFileName: string
@@ -154,7 +185,7 @@ export interface CompositeCoplanarResult {
 }
 
 /**
- * 将同一聚类内Quad按 quadOrder 叠画到一张纹理；几何顶点不变，仅重写 UV。
+ * 将同一聚类内 Quad 按 quadOrder 从底层到顶层叠画到一张纹理；几何顶点不变，仅重写 UV。
  */
 export async function compositeCoplanarCluster(
   cluster: BakedQuadGeometryPiece[],
@@ -253,43 +284,19 @@ export async function compositeCoplanarCluster(
         y: minT + ((iy + 0.5) / texH) * (maxT - minT),
       }
 
-      let chosen: LayerInfo | undefined
+      const di = (iy * texW + ix) * 4
+      const acc: [number, number, number, number] = [0, 0, 0, 0]
       for (const L of layers) {
         if (!pointInQuad2D(L.stQ, st)) continue
-        if (!chosen || L.piece.quadOrder >= chosen.piece.quadOrder) {
-          chosen = L
-        }
+        const uv = uvForSTInQuad(L.stQ, L.uv8, st)
+        if (!uv) continue
+        const s = sampleImageForgeNearest(L.img.data, L.img.w, L.img.h, uv.u, uv.v)
+        blendSourceOverStraight(acc, s)
       }
-
-      const di = (iy * texW + ix) * 4
-      if (!chosen) {
-        dst[di] = 0
-        dst[di + 1] = 0
-        dst[di + 2] = 0
-        dst[di + 3] = 0
-        continue
-      }
-
-      const uv = uvForSTInQuad(chosen.stQ, chosen.uv8, st)
-      if (!uv) {
-        dst[di] = 0
-        dst[di + 1] = 0
-        dst[di + 2] = 0
-        dst[di + 3] = 0
-        continue
-      }
-
-      const [r, g, b, a] = sampleImageForgeNearest(
-        chosen.img.data,
-        chosen.img.w,
-        chosen.img.h,
-        uv.u,
-        uv.v,
-      )
-      dst[di] = r
-      dst[di + 1] = g
-      dst[di + 2] = b
-      dst[di + 3] = a
+      dst[di] = acc[0]!
+      dst[di + 1] = acc[1]!
+      dst[di + 2] = acc[2]!
+      dst[di + 3] = acc[3]!
     }
   }
 

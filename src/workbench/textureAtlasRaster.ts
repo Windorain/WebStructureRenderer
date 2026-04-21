@@ -1,5 +1,5 @@
 /**
- * 纹理解码与 atlas 栅格化（浏览器适配层；供 OBJ 连通模式）。
+ * 纹理解码与 atlas 栅格化（浏览器适配层；供 OBJ 连通模式与方块模式体素 atlas）。
  */
 
 import {
@@ -7,7 +7,7 @@ import {
   resolveAnimationTimeline,
   type ParsedMcmeta,
 } from '@/render/assets/textureStripAnimation'
-import type { AtlasPlacement } from '@/render/mesh/atlasLayout'
+import type { AtlasPlacement, AtlasTilePlacement } from '@/render/mesh/atlasLayout'
 import type { MaterialPaletteEntry } from '@/render/schema/types'
 
 export function base64PngToDataUrl(b64: string): string {
@@ -155,6 +155,56 @@ export async function rasterizeAtlasToPngBlob(options: {
       rawBlob: raw,
       entry: rep,
     })
+  }
+
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG 编码失败'))), 'image/png')
+  })
+}
+
+/** 方块模式体素 atlas：格子顺序与 {@link packTextureGridByTileId} 的 items 一致 */
+export type VoxelAtlasTileSource =
+  | { kind: 'blob'; blobIndex: number }
+  | { kind: 'png'; pngBlob: Blob }
+
+/** 将 blob 首帧与已栅格化的 PNG（如共面叠化结果）画入同一张 atlas */
+export async function rasterizeVoxelAtlasToPngBlob(options: {
+  atlasWidth: number
+  atlasHeight: number
+  placements: AtlasTilePlacement[]
+  tileSources: VoxelAtlasTileSource[]
+  blobs: string[]
+  representativeEntry: (blobIndex: number) => MaterialPaletteEntry | undefined
+}): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, options.atlasWidth)
+  canvas.height = Math.max(1, options.atlasHeight)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas 不可用')
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  for (let i = 0; i < options.placements.length; i++) {
+    const p = options.placements[i]!
+    const src = options.tileSources[i]
+    if (!src) continue
+    if (src.kind === 'blob') {
+      const raw = options.blobs[src.blobIndex]
+      if (typeof raw !== 'string') continue
+      const rep = options.representativeEntry(src.blobIndex)
+      if (!rep) continue
+      await drawTextureBlobFirstFrameToRect({
+        ctx,
+        destX: p.x,
+        destY: p.y,
+        destW: p.width,
+        destH: p.height,
+        rawBlob: raw,
+        entry: rep,
+      })
+    } else {
+      const bmp = await createImageBitmap(src.pngBlob)
+      ctx.drawImage(bmp, 0, 0, bmp.width, bmp.height, p.x, p.y, p.width, p.height)
+    }
   }
 
   return await new Promise((resolve, reject) => {

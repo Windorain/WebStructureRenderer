@@ -5,9 +5,8 @@
 
 import JSZip from 'jszip'
 
-import { buildBlobIndexToUvRect, packTextureGrid } from '@/render/mesh/atlasLayout'
-import { clusterAllPiecesForBlockExport } from '@/render/mesh/coplanarOverlapCluster'
-import { mergeBakedQuadsWithinVoxelBucket } from '@/render/mesh/inVoxelQuadMerge'
+import { buildTileIdToUvRect, packTextureGridByTileId } from '@/render/mesh/atlasLayout'
+import { clusterCoplanarOverlappingPiecesInVoxel } from '@/render/mesh/coplanarOverlapCluster'
 import {
   type ObjExportMesh,
   serializeMtl,
@@ -31,8 +30,8 @@ import {
 } from '@/workbench/coplanarTextureComposite'
 import {
   measureTextureBlobFirstFrame,
-  rasterizeAtlasToPngBlob,
-  textureBlobToFirstFramePngBlob,
+  rasterizeVoxelAtlasToPngBlob,
+  type VoxelAtlasTileSource,
 } from '@/workbench/textureAtlasRaster'
 
 const OBJ_NAME = 'structure.obj'
@@ -45,30 +44,14 @@ export type StructureBundleExportMode = 'block' | 'connected'
 export interface StructureBundleExportOptions extends BuildBlockMeshOptions {
   /** World 文档时覆盖默认帧 */
   worldFrameIndex?: number
-  /** `block`：体素内合并；`connected`：连通域外表面 + 每域单 atlas */
+  /** `block`：每体素单 mesh + 单 atlas；`connected`：每连通域单 mesh + 单 atlas（先 component 邻面剔除再叠化打包） */
   mode?: StructureBundleExportMode
-  /** 连通模式纹理图集最大边长（像素） */
+  /** 纹理图集最大边长（像素）；`block` 与 `connected` 共用 */
   atlasMaxSide?: number
-}
-
-function paletteMaterialId(
-  document: unknown,
-  frameIndex: number | undefined,
-  materialIndex: number,
-): string {
-  if (isWorldDocument(document)) {
-    const fi = frameIndex !== undefined ? Math.floor(frameIndex) : getDefaultFrameIndex(document)
-    return `${fi}:${materialIndex}`
-  }
-  return String(materialIndex)
 }
 
 function sanitizeNewmtlName(id: string): string {
   return `m_${id.replace(/[^a-zA-Z0-9]+/g, '_')}`
-}
-
-function textureZipPath(blobIndex: number): string {
-  return `textures/blob_${blobIndex}.png`
 }
 
 function mtlDissolveAndIllum(blend: MaterialBlendMode | undefined): { d: number; illum: number } {
@@ -76,12 +59,12 @@ function mtlDissolveAndIllum(blend: MaterialBlendMode | undefined): { d: number;
   return { d: 1, illum: 1 }
 }
 
-function remapUvsToAtlasRect(
+function remapUvsByTileId(
   uvs: Float32Array,
-  blobIndex: number,
-  blobToRect: Map<number, { u0: number; v0: number; u1: number; v1: number }>,
+  tileId: number,
+  tileToRect: Map<number, { u0: number; v0: number; u1: number; v1: number }>,
 ): Float32Array {
-  const rect = blobToRect.get(blobIndex)
+  const rect = tileToRect.get(tileId)
   if (!rect) return new Float32Array(uvs)
   const out = new Float32Array(uvs.length)
   for (let i = 0; i < uvs.length; i += 2) {
@@ -91,6 +74,176 @@ function remapUvsToAtlasRect(
     out[i + 1] = rect.v0 + v * (rect.v1 - rect.v0)
   }
   return out
+}
+
+/**
+ * 按体素做共面聚类 → 叠化 → blob+叠化 tile 打 atlas；合并全部片段为一块几何。
+ * `pieces` 可为单个体素或整个连通域。
+ */
+async function buildAtlasFromPieces(
+  pieces: BakedQuadGeometryPiece[],
+  def: StructureDefinition,
+  blobs: string[],
+  maxSide: number,
+  serialRef: { next: number },
+): Promise<{
+  merged: { positions: Float32Array; uvs: Float32Array; colors: Float32Array }
+  pngBlob: Blob | null
+  repBlend: MaterialPaletteEntry | undefined
+  hasAtlas: boolean
+}> {
+  if (pieces.length === 0) {
+    return {
+      merged: {
+        positions: new Float32Array(0),
+        uvs: new Float32Array(0),
+        colors: new Float32Array(0),
+      },
+      pngBlob: null,
+      repBlend: undefined,
+      hasAtlas: false,
+    }
+  }
+
+  const matOrder = [...new Set(pieces.map((q) => q.materialIndex))].sort((a, b) => a - b)
+
+  const byVoxel = new Map<string, BakedQuadGeometryPiece[]>()
+  for (const p of pieces) {
+    const k = `${p.col},${p.row},${p.zSlice}`
+    let arr = byVoxel.get(k)
+    if (!arr) {
+      arr = []
+      byVoxel.set(k, arr)
+    }
+    arr.push(p)
+  }
+
+  const sortedVoxelKeys = [...byVoxel.keys()].sort((a, b) => {
+    const [ca, ra, za] = a.split(',').map(Number)
+    const [cb, rb, zb] = b.split(',').map(Number)
+    if (za !== zb) return za - zb
+    if (ra !== rb) return ra - rb
+    return ca - cb
+  })
+
+  const mergedEntries: Array<{
+    mergedPieces: BakedQuadGeometryPiece[]
+    width: number
+    height: number
+    pngBlob: Blob
+  }> = []
+
+  for (const voxelKey of sortedVoxelKeys) {
+    const voxelPieces = byVoxel.get(voxelKey)!
+    const clusters = clusterCoplanarOverlappingPiecesInVoxel(voxelPieces)
+    for (const cluster of clusters) {
+      if (cluster.length > 1) {
+        const comp = await compositeCoplanarCluster(cluster, def, blobs, serialRef.next++)
+        mergedEntries.push({
+          mergedPieces: comp.mergedPieces,
+          width: comp.width,
+          height: comp.height,
+          pngBlob: comp.pngBlob,
+        })
+      }
+    }
+  }
+
+  const usedBlob = new Set<number>()
+  for (const voxelKey of sortedVoxelKeys) {
+    const voxelPieces = byVoxel.get(voxelKey)!
+    const clusters = clusterCoplanarOverlappingPiecesInVoxel(voxelPieces)
+    for (const cluster of clusters) {
+      if (cluster.length === 1) {
+        const p = cluster[0]!
+        const e = def.materialPalette[p.materialIndex]
+        const bi = e?.textureBlobIndex
+        if (typeof bi === 'number' && Number.isFinite(bi) && blobs[Math.floor(bi)]) {
+          usedBlob.add(Math.floor(bi))
+        }
+      }
+    }
+  }
+
+  const sortedBlobs = [...usedBlob].sort((a, b) => a - b)
+
+  const dims: Array<{ tileId: number; width: number; height: number }> = []
+  let nextTileId = 0
+  const blobIndexToTileId = new Map<number, number>()
+  for (const bi of sortedBlobs) {
+    const raw = blobs[bi]
+    const rep = representativePaletteEntryForBlob(def, matOrder, bi)
+    if (!rep || typeof raw !== 'string') continue
+    const { width, height } = await measureTextureBlobFirstFrame(raw, rep)
+    blobIndexToTileId.set(bi, nextTileId)
+    dims.push({ tileId: nextTileId++, width, height })
+  }
+
+  const blobTileCount = dims.length
+  for (const m of mergedEntries) {
+    dims.push({ tileId: nextTileId++, width: m.width, height: m.height })
+  }
+
+  const repBlend = mergedMaterialBlendForCluster(pieces, def)
+
+  if (dims.length === 0) {
+    const merged = mergeBakedQuadPiecesAttributes(pieces)
+    return { merged, pngBlob: null, repBlend, hasAtlas: false }
+  }
+
+  const { atlasWidth, atlasHeight, placements } = packTextureGridByTileId(dims, 2, maxSide)
+  const tileToRect = buildTileIdToUvRect(placements, atlasWidth, atlasHeight)
+
+  const remapped: BakedQuadGeometryPiece[] = []
+  let mergedIter = 0
+  for (const voxelKey of sortedVoxelKeys) {
+    const voxelPieces = byVoxel.get(voxelKey)!
+    const clusters = clusterCoplanarOverlappingPiecesInVoxel(voxelPieces)
+    for (const cluster of clusters) {
+      if (cluster.length === 1) {
+        const p = cluster[0]!
+        const e = def.materialPalette[p.materialIndex]
+        const bi = typeof e?.textureBlobIndex === 'number' ? Math.floor(e.textureBlobIndex) : -1
+        const tid = blobIndexToTileId.get(bi)
+        if (tid === undefined) {
+          remapped.push(p)
+          continue
+        }
+        remapped.push({ ...p, uvs: remapUvsByTileId(p.uvs, tid, tileToRect) })
+      } else {
+        const m = mergedEntries[mergedIter]!
+        const tileId = blobTileCount + mergedIter
+        mergedIter++
+        for (const p of m.mergedPieces) {
+          remapped.push({ ...p, uvs: remapUvsByTileId(p.uvs, tileId, tileToRect) })
+        }
+      }
+    }
+  }
+
+  const merged = mergeBakedQuadPiecesAttributes(remapped)
+
+  const tileSources: VoxelAtlasTileSource[] = []
+  for (const bi of sortedBlobs) {
+    const raw = blobs[bi]
+    const rep = representativePaletteEntryForBlob(def, matOrder, bi)
+    if (!rep || typeof raw !== 'string') continue
+    tileSources.push({ kind: 'blob', blobIndex: bi })
+  }
+  for (const m of mergedEntries) {
+    tileSources.push({ kind: 'png', pngBlob: m.pngBlob })
+  }
+
+  const pngBlob = await rasterizeVoxelAtlasToPngBlob({
+    atlasWidth,
+    atlasHeight,
+    placements,
+    tileSources,
+    blobs,
+    representativeEntry: (bidx) => representativePaletteEntryForBlob(def, matOrder, bidx),
+  })
+
+  return { merged, pngBlob, repBlend, hasAtlas: true }
 }
 
 export async function buildStructureBundleZip(
@@ -103,19 +256,6 @@ export async function buildStructureBundleZip(
     return buildStructureBundleZipConnected(def, normalizedDocument, options)
   }
   return buildStructureBundleZipBlock(def, normalizedDocument, options)
-}
-
-function sortExportClusters(clusters: BakedQuadGeometryPiece[][]): BakedQuadGeometryPiece[][] {
-  return [...clusters].sort((a, b) => {
-    const pa = a[0]!
-    const pb = b[0]!
-    if (pa.zSlice !== pb.zSlice) return pa.zSlice - pb.zSlice
-    if (pa.row !== pb.row) return pa.row - pb.row
-    if (pa.col !== pb.col) return pa.col - pb.col
-    return (
-      Math.min(...a.map((x) => x.quadOrder)) - Math.min(...b.map((x) => x.quadOrder))
-    )
-  })
 }
 
 async function buildStructureBundleZipBlock(
@@ -133,80 +273,81 @@ async function buildStructureBundleZipBlock(
     : undefined
 
   const blobs = extractTextureBlobs(normalizedDocument)
+  const maxSide = options?.atlasMaxSide ?? DEFAULT_ATLAS_MAX_SIDE
 
-  const clusters = sortExportClusters(clusterAllPiecesForBlockExport(pieces))
+  const byVoxel = new Map<string, BakedQuadGeometryPiece[]>()
+  for (const p of pieces) {
+    const k = `${p.col},${p.row},${p.zSlice}`
+    let arr = byVoxel.get(k)
+    if (!arr) {
+      arr = []
+      byVoxel.set(k, arr)
+    }
+    arr.push(p)
+  }
+
+  const sortedVoxelKeys = [...byVoxel.keys()].sort((a, b) => {
+    const [ca, ra, za] = a.split(',').map(Number)
+    const [cb, rb, zb] = b.split(',').map(Number)
+    if (za !== zb) return za - zb
+    if (ra !== rb) return ra - rb
+    return ca - cb
+  })
 
   const objMeshes: ObjExportMesh[] = []
   const mtlEntries: MtlSerializedEntry[] = []
-  const seenMtlName = new Set<string>()
-  let coplanarMergeSerial = 0
+  const atlasZipFiles: Array<{ path: string; blob: Blob }> = []
+  const serialRef = { next: 0 }
 
-  function pushMtlOnce(entry: MtlSerializedEntry): void {
-    if (seenMtlName.has(entry.name)) return
-    seenMtlName.add(entry.name)
-    mtlEntries.push(entry)
-  }
+  for (const voxelKey of sortedVoxelKeys) {
+    const voxelPieces = byVoxel.get(voxelKey)!
+    const col = voxelPieces[0]!.col
+    const row = voxelPieces[0]!.row
+    const zSlice = voxelPieces[0]!.zSlice
 
-  const blobIndices = new Set<number>()
-  const mergedPngFiles: Array<{ path: string; blob: Blob }> = []
+    const matBase = isWorldDocument(normalizedDocument)
+      ? `block_${frameIdx}_${col}_${row}_${zSlice}`
+      : `block_${col}_${row}_${zSlice}`
+    const matName = sanitizeNewmtlName(matBase)
 
-  for (const cluster of clusters) {
-    const head = cluster[0]!
-    const { col, row, zSlice } = head
+    const r = await buildAtlasFromPieces(voxelPieces, def, blobs, maxSide, serialRef)
 
-    if (cluster.length === 1) {
-      const units = [...cluster].sort((a, b) => a.quadOrder - b.quadOrder)
-      const mergedAttrs = mergeBakedQuadsWithinVoxelBucket(units)
-      const mi = head.materialIndex
-      const mname = sanitizeNewmtlName(paletteMaterialId(normalizedDocument, frameIdx, mi))
-      const entry = def.materialPalette[mi]
-      const { d, illum } = mtlDissolveAndIllum(entry?.blend)
-      let mapKd: string | undefined
-      if (
-        entry &&
-        typeof entry.textureBlobIndex === 'number' &&
-        Number.isFinite(entry.textureBlobIndex) &&
-        blobs[Math.floor(entry.textureBlobIndex)]
-      ) {
-        const bi = Math.floor(entry.textureBlobIndex)
-        blobIndices.add(bi)
-        mapKd = textureZipPath(bi)
-      }
-      pushMtlOnce({ name: mname, d, illum, mapKd })
+    const texName = `textures/block_${col}_${row}_${zSlice}.png`
+    const { d, illum } = mtlDissolveAndIllum(r.repBlend?.blend)
+
+    if (!r.hasAtlas) {
+      mtlEntries.push({ name: matName, d, illum, mapKd: undefined })
       objMeshes.push({
-        objectName: `block_${col}_${row}_${zSlice}_mat${mi}`,
-        materialName: mname,
-        positions: mergedAttrs.positions,
-        uvs: mergedAttrs.uvs,
-        colors: mergedAttrs.colors,
+        objectName: `block_${col}_${row}_${zSlice}`,
+        materialName: matName,
+        positions: r.merged.positions,
+        uvs: r.merged.uvs,
+        colors: r.merged.colors,
       })
-    } else {
-      const mergeId = coplanarMergeSerial++
-      const comp = await compositeCoplanarCluster(cluster, def, blobs, mergeId)
-      mergedPngFiles.push({ path: comp.pngFileName, blob: comp.pngBlob })
-      const mergedAttrs = mergeBakedQuadPiecesAttributes(comp.mergedPieces)
-      const rep = mergedMaterialBlendForCluster(cluster, def)
-      const mname = sanitizeNewmtlName(`merged_coplanar_${mergeId}`)
-      const { d, illum } = mtlDissolveAndIllum(rep?.blend)
-      pushMtlOnce({
-        name: mname,
-        d,
-        illum,
-        mapKd: comp.pngFileName,
-      })
-      objMeshes.push({
-        objectName: `block_${col}_${row}_${zSlice}_ov_${mergeId}`,
-        materialName: mname,
-        positions: mergedAttrs.positions,
-        uvs: mergedAttrs.uvs,
-        colors: mergedAttrs.colors,
-      })
+      continue
     }
+
+    mtlEntries.push({
+      name: matName,
+      d,
+      illum,
+      mapKd: texName,
+    })
+
+    objMeshes.push({
+      objectName: `block_${col}_${row}_${zSlice}`,
+      materialName: matName,
+      positions: r.merged.positions,
+      uvs: r.merged.uvs,
+      colors: r.merged.colors,
+    })
+
+    atlasZipFiles.push({ path: texName, blob: r.pngBlob! })
   }
 
   const objHeader = [
     '# wiki-multi-structure-render',
-    '# mode=block; coplanar overlaps baked to merged_*.png (MC quadOrder)',
+    '# mode=block; one mesh + one atlas per voxel (blob tiles + merged_coplanar tiles)',
     `# voxels_non_air=${stats.nonAirVoxelCount} skipped_unmapped_voxels=${stats.skippedUnmappedCount}`,
   ]
 
@@ -220,17 +361,8 @@ async function buildStructureBundleZipBlock(
   zip.file(OBJ_NAME, objBody)
   zip.file(MTL_NAME, serializeMtl(mtlEntries))
 
-  for (const f of mergedPngFiles) {
+  for (const f of atlasZipFiles) {
     zip.file(f.path, f.blob)
-  }
-
-  const paletteIndices = Array.from({ length: def.materialPalette.length }, (_, i) => i)
-  for (const bidx of [...blobIndices].sort((a, b) => a - b)) {
-    const rep = representativePaletteEntryForBlob(def, paletteIndices, bidx)
-    if (!rep) continue
-    const raw = blobs[bidx] as string
-    const png = await textureBlobToFirstFramePngBlob(raw, rep)
-    zip.file(textureZipPath(bidx), png)
   }
 
   return await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
@@ -254,79 +386,57 @@ async function buildStructureBundleZipConnected(
   const mtlEntries: MtlSerializedEntry[] = []
   const atlasZipFiles: Array<{ path: string; blob: Blob }> = []
   let texSerial = 0
+  const serialRef = { next: 0 }
 
   for (let cid = 0; cid < componentCount; cid++) {
     const { pieces } = collectStructureGeometryPiecesPure(def, {
       ...options,
       componentGather: { labels, componentId: cid },
+      cullOccludedQuads: true,
     })
     if (pieces.length === 0) continue
 
-    const matOrder = [...new Set(pieces.map((q) => q.materialIndex))].sort((a, b) => a - b)
+    const r = await buildAtlasFromPieces(pieces, def, blobs, maxSide, serialRef)
 
-    const usedBlob = new Set<number>()
-    for (const p of pieces) {
-      const e = def.materialPalette[p.materialIndex]
-      const bi = e?.textureBlobIndex
-      if (typeof bi === 'number' && Number.isFinite(bi)) usedBlob.add(Math.floor(bi))
-    }
-
-    const sortedBlobs = [...usedBlob].sort((a, b) => a - b)
-    const dims: Array<{ blobIndex: number; width: number; height: number }> = []
-    for (const bi of sortedBlobs) {
-      const raw = blobs[bi]
-      const rep = representativePaletteEntryForBlob(def, matOrder, bi)
-      if (!rep || typeof raw !== 'string') continue
-      const { width, height } = await measureTextureBlobFirstFrame(raw, rep)
-      dims.push({ blobIndex: bi, width, height })
-    }
-
-    if (dims.length === 0) continue
-
-    const { atlasWidth, atlasHeight, placements } = packTextureGrid(dims, 2, maxSide)
-
-    const blobToRect = buildBlobIndexToUvRect(placements, atlasWidth, atlasHeight)
-
-    const remapped: BakedQuadGeometryPiece[] = pieces.map((p) => {
-      const e = def.materialPalette[p.materialIndex]
-      const bi = typeof e?.textureBlobIndex === 'number' ? Math.floor(e.textureBlobIndex) : 0
-      const newUvs = remapUvsToAtlasRect(p.uvs, bi, blobToRect)
-      return { ...p, uvs: newUvs }
-    })
-
-    const merged = mergeBakedQuadPiecesAttributes(remapped)
     const texName = `textures/component_${texSerial}.png`
     texSerial++
 
     const matName = sanitizeNewmtlName(`component_${cid}`)
+    const { d, illum } = mtlDissolveAndIllum(r.repBlend?.blend)
+
+    if (!r.hasAtlas) {
+      mtlEntries.push({ name: matName, d, illum, mapKd: undefined })
+      objMeshes.push({
+        objectName: `component_${cid}`,
+        materialName: matName,
+        positions: r.merged.positions,
+        uvs: r.merged.uvs,
+        colors: r.merged.colors,
+      })
+      continue
+    }
+
     mtlEntries.push({
       name: matName,
-      d: 1,
-      illum: 1,
+      d,
+      illum,
       mapKd: texName,
     })
 
     objMeshes.push({
       objectName: `component_${cid}`,
       materialName: matName,
-      positions: merged.positions,
-      uvs: merged.uvs,
-      colors: merged.colors,
+      positions: r.merged.positions,
+      uvs: r.merged.uvs,
+      colors: r.merged.colors,
     })
 
-    const pngBlob = await rasterizeAtlasToPngBlob({
-      atlasWidth,
-      atlasHeight,
-      placements,
-      blobs,
-      representativeEntry: (bidx) => representativePaletteEntryForBlob(def, matOrder, bidx),
-    })
-    atlasZipFiles.push({ path: texName, blob: pngBlob })
+    atlasZipFiles.push({ path: texName, blob: r.pngBlob! })
   }
 
   const objHeader = [
     '# wiki-multi-structure-render',
-    '# mode=connected components; interior faces culled within component',
+    '# mode=connected; componentGather => neighbor cull + voxel quad cluster + source-over atlas',
     `# voxels_non_air=${stats.nonAirVoxelCount} skipped_unmapped_voxels=${stats.skippedUnmappedCount}`,
   ]
 

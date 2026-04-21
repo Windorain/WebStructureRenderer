@@ -235,32 +235,3 @@ export function clusterCoplanarOverlappingPiecesInVoxel(
 
   return [...groups.values()].map((g) => [...g].sort((a, b) => a.quadOrder - b.quadOrder))
 }
-
-/**
- * 将全部片段先按体素分组，再对每个体素做重叠聚类，返回「待独立导出簇」列表。
- * 每个元素为同属一个体素的一组片段：len>1 表示需材质叠加。
- */
-export function clusterAllPiecesForBlockExport(
-  pieces: BakedQuadGeometryPiece[],
-): BakedQuadGeometryPiece[][] {
-  const byVoxel = new Map<string, BakedQuadGeometryPiece[]>()
-  for (const p of pieces) {
-    const k = `${p.col},${p.row},${p.zSlice}`
-    let arr = byVoxel.get(k)
-    if (!arr) {
-      arr = []
-      byVoxel.set(k, arr)
-    }
-    arr.push(p)
-  }
-
-  const out: BakedQuadGeometryPiece[][] = []
-  for (const arr of byVoxel.values()) {
-    const clusters = clusterCoplanarOverlappingPiecesInVoxel(arr)
-    for (const c of clusters) {
-      out.push(c)
-    }
-  }
-
-  return out
-}
