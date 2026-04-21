@@ -21,17 +21,19 @@ export function faceVec3(f: FaceName): THREE.Vector3 {
   return FACE_VEC[f]
 }
 
-/** 将任意轴对齐法线归为 FaceName（主分量） */
-export function vec3ToFaceName(v: THREE.Vector3): FaceName {
-  const x = v.x,
-    y = v.y,
-    z = v.z
+/** 将任意轴对齐法线归为 FaceName（主分量）；纯数值版供几何核心使用 */
+export function vec3ToFaceNameComponents(x: number, y: number, z: number): FaceName {
   const ax = Math.abs(x),
     ay = Math.abs(y),
     az = Math.abs(z)
   if (ax >= ay && ax >= az) return x > 0 ? '+x' : '-x'
   if (ay >= ax && ay >= az) return y > 0 ? '+y' : '-y'
   return z > 0 ? '+z' : '-z'
+}
+
+/** 将任意轴对齐法线归为 FaceName（主分量） */
+export function vec3ToFaceName(v: THREE.Vector3): FaceName {
+  return vec3ToFaceNameComponents(v.x, v.y, v.z)
 }
 
 /**
