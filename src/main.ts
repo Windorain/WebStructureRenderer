@@ -1,5 +1,8 @@
 /**
  * 库入口（IIFE）：mount、类型与数据校验 API。
+ *
+ * 不包含 SDE Workbench 整站（WorkbenchRoot 等）；后者见 main-workbench.ts 与 vite.workbench.config.ts，产物为 dist-workbench/（含 bundled/ 下的打包分块，勿与库 dist/ 或场景导出混淆）。
+ * 灰机/wiki 嵌入只需 npm run build:lib，勿部署 dist-workbench。
  */
 
 import '@/styles/nei-tokens.css'

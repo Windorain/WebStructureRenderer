@@ -6,7 +6,11 @@ import vue from '@vitejs/plugin-vue'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-/** 计划约定产物为 dist-workbench/index.html；入口文件名仍为 index-workbench.html 以免与根 index.html 冲突。 */
+/**
+ * 工作台 SPA 构建：产物目录 dist-workbench/（已 gitignore）。
+ * `bundled/` 内为 Vite Rollup 输出的 JS/CSS 哈希文件，与源码 `src/render/assets`、场景导出 ZIP 无关。
+ * 入口构建后为 dist-workbench/index.html（由插件自 index-workbench.html 重命名）。
+ */
 function workbenchRenameIndexHtml(): Plugin {
   return {
     name: 'workbench-rename-index-html',
@@ -31,6 +35,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist-workbench',
+    /** 避免与业务「资源 / 导出素材」语义混淆，不用默认名 `assets` */
+    assetsDir: 'bundled',
     emptyOutDir: true,
     rollupOptions: {
       input: path.resolve(__dirname, 'index-workbench.html'),
