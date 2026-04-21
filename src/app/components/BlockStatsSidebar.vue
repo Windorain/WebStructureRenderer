@@ -67,6 +67,7 @@ function onRowPointerLeave(): void {
         v-else
         class="wm-block-stats-list"
         role="list"
+        style="max-height: min(72vh, 640px)"
       >
         <li
           v-for="row in entries"

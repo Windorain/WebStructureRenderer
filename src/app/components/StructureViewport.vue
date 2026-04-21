@@ -197,7 +197,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="container" class="wm-viewport">
+  <div
+    ref="container"
+    class="wm-viewport"
+    style="min-height: 320px; overflow: hidden"
+  >
     <button
       type="button"
       class="wm-projection-toggle"
