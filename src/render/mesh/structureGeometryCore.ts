@@ -4,6 +4,7 @@
  */
 
 import { buildVoxelVolume, structureRowToWorldY } from '../data/grid'
+import { voxelLinearIndex, AIR_COMPONENT } from './voxelComponents'
 import { effectiveVoxelState, type LayerPreviewMode } from '../data/layerPreview'
 import type {
   BakedQuad,
@@ -23,6 +24,14 @@ export interface StructureGeometryGatherOptions {
    * 预览/渲染默认剔除；OBJ 全量导出传 `false`。
    */
   cullOccludedQuads?: boolean
+  /**
+   * 若设置：仅收集 `componentId` 对应连通域内体素，并与邻居做域感知遮挡剔除（域间共面保留）。
+   * 与 {@link labelVoxelComponents} 返回的 `labels` 对齐。
+   */
+  componentGather?: {
+    labels: Int32Array
+    componentId: number
+  }
 }
 
 export interface UndefinedBlockDetail {
@@ -82,7 +91,8 @@ function gridStepForOutwardWorldFace(f: FaceName): { dc: number; dr: number; dz:
   }
 }
 
-function outwardWorldFaceFromBakedQuadPure(
+/** 外向世界空间面（用于遮挡与域剔除）；与烘焙四边形法线一致 */
+export function outwardWorldFaceFromBakedQuadPure(
   quad: BakedQuad,
   col: number,
   row: number,
@@ -137,6 +147,21 @@ function outwardWorldFaceFromBakedQuadPure(
     nz = -nz
   }
   return vec3ToFaceNameComponents(nx, ny, nz)
+}
+
+function componentAt(
+  labels: Int32Array,
+  col: number,
+  row: number,
+  zSlice: number,
+  sizeColumn: number,
+  sizeRow: number,
+  sizeZSlice: number,
+): number {
+  if (col < 0 || row < 0 || zSlice < 0 || col >= sizeColumn || row >= sizeRow || zSlice >= sizeZSlice) {
+    return AIR_COMPONENT
+  }
+  return labels[voxelLinearIndex(col, row, zSlice, sizeColumn, sizeRow)] ?? AIR_COMPONENT
 }
 
 function shouldCullQuadFacingOpaqueNeighbor(
@@ -272,7 +297,8 @@ export function collectStructureGeometryPiecesPure(
   const volume = buildVoxelVolume(def)
   const { sizeColumn, sizeRow, sizeZSlice } = volume
   const { blockPalette, materialPalette } = def
-  const cullOccluded = options?.cullOccludedQuads !== false
+  const compGather = options?.componentGather
+  const cullOccluded = compGather !== undefined ? true : options?.cullOccludedQuads !== false
 
   let quadSerial = 0
   const pieces: BakedQuadGeometryPiece[] = []
@@ -285,6 +311,11 @@ export function collectStructureGeometryPiecesPure(
       for (let col = 0; col < sizeColumn; col++) {
         const state = effectiveVoxelState(volume, col, row, zSlice, sizeRow, layerPreview)
         if (isAirState(state)) continue
+
+        if (compGather) {
+          const li = voxelLinearIndex(col, row, zSlice, sizeColumn, sizeRow)
+          if (compGather.labels[li] !== compGather.componentId) continue
+        }
 
         nonAirVoxelCount++
         const idx = def.cellGrid[zSlice][row][col]
@@ -329,13 +360,56 @@ export function collectStructureGeometryPiecesPure(
               sizeZSlice,
             )
             if (worldFace !== null) {
-              if (
+              if (compGather) {
+                const labels = compGather.labels
+                const selfLab = labels[voxelLinearIndex(col, row, zSlice, sizeColumn, sizeRow)]!
+                const { dc, dr, dz } = gridStepForOutwardWorldFace(worldFace)
+                const nLab = componentAt(
+                  labels,
+                  col + dc,
+                  row + dr,
+                  zSlice + dz,
+                  sizeColumn,
+                  sizeRow,
+                  sizeZSlice,
+                )
+                if (nLab !== selfLab) {
+                  /* 域边界或空气邻：不剔除 */
+                } else if (
+                  entry.occludesAdjacentFaces === true &&
+                  shouldCullQuadFacingOpaqueNeighbor(
+                    def,
+                    volume,
+                    layerPreview,
+                    col,
+                    row,
+                    zSlice,
+                    sizeRow,
+                    worldFace,
+                  )
+                ) {
+                  continue
+                } else if (
+                  shouldCullQuadFacingSamePaletteNeighbor(
+                    def,
+                    volume,
+                    layerPreview,
+                    col,
+                    row,
+                    zSlice,
+                    sizeRow,
+                    worldFace,
+                    idx,
+                  )
+                ) {
+                  continue
+                }
+              } else if (
                 entry.occludesAdjacentFaces === true &&
                 shouldCullQuadFacingOpaqueNeighbor(def, volume, layerPreview, col, row, zSlice, sizeRow, worldFace)
               ) {
                 continue
-              }
-              if (
+              } else if (
                 shouldCullQuadFacingSamePaletteNeighbor(
                   def,
                   volume,

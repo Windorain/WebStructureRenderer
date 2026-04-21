@@ -77,14 +77,27 @@ async function saveFullToSde(): Promise<void> {
   }
 }
 
-async function downloadObj(): Promise<void> {
+async function downloadObjBlock(): Promise<void> {
   if (!doc.value) return
   try {
     const normalized = await normalizeSceneDocumentForWiki(doc.value)
     const def = loadStructureOrWorld(normalized, undefined)
-    const zip = await buildStructureBundleZip(def, normalized)
-    downloadBlob(`${String(baseName.value)}-structure.zip`, zip)
-    ctx.connectionMessage.value = '已导出 OBJ+MTL+贴图（ZIP）'
+    const zip = await buildStructureBundleZip(def, normalized, { mode: 'block' })
+    downloadBlob(`${String(baseName.value)}-structure-block.zip`, zip)
+    ctx.connectionMessage.value = '已导出 OBJ（方块模式：体素内合并，域内共面保留）'
+  } catch (e) {
+    ctx.connectionMessage.value = formatUnknownError(e)
+  }
+}
+
+async function downloadObjConnected(): Promise<void> {
+  if (!doc.value) return
+  try {
+    const normalized = await normalizeSceneDocumentForWiki(doc.value)
+    const def = loadStructureOrWorld(normalized, undefined)
+    const zip = await buildStructureBundleZip(def, normalized, { mode: 'connected' })
+    downloadBlob(`${String(baseName.value)}-structure-connected.zip`, zip)
+    ctx.connectionMessage.value = '已导出 OBJ（连通模式：外表面 + 每域单 atlas）'
   } catch (e) {
     ctx.connectionMessage.value = formatUnknownError(e)
   }
@@ -102,10 +115,19 @@ async function downloadObj(): Promise<void> {
         type="button"
         class="wm-btn"
         :disabled="!canExportObj"
-        :title="canExportObj ? 'ZIP：structure.obj + structure.mtl + textures/；按方块×材质合并；动画贴为首帧（支持 Compact）' : '须为可解压的 Compact 或 geometryPhase=baked 的 Raw / World'"
-        @click="downloadObj"
+        :title="canExportObj ? '方块模式：每方块独立 mesh，体素内 Quad 合并；MTL 顺序与 usemtl 首次出现一致；textures/blob_*.png（支持 Compact）' : '须为可解压的 Compact 或 geometryPhase=baked 的 Raw / World'"
+        @click="downloadObjBlock"
       >
-        下载 OBJ 包
+        OBJ 方块模式
+      </button>
+      <button
+        type="button"
+        class="wm-btn"
+        :disabled="!canExportObj"
+        :title="canExportObj ? '连通模式：6-邻域分组，域内剔除；每连通域一张合并贴图 + UV 重映射' : '须为可解压的 Compact 或 geometryPhase=baked 的 Raw / World'"
+        @click="downloadObjConnected"
+      >
+        OBJ 连通模式
       </button>
       <button type="button" class="wm-btn" @click="copyRawJson">复制 Raw</button>
       <button v-if="showSdeSave" type="button" class="wm-btn wm-btn--primary" @click="saveFullToSde">保存工作区到 SDE</button>
