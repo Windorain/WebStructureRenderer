@@ -36,15 +36,11 @@ export async function previewConfigFromDocument(
   document: unknown,
   options: PreviewFromDocumentOptions = {},
 ): Promise<PreviewConfig> {
-  const features: PreviewFeatures = {
-    ...defaultEmbedUi.features,
-    blockStatsSidebar: true,
-    layerBar: true,
-    ...options.features,
-  }
+  // 勿在此强制 true：`resolveBootstrapToPreviewConfig` 会据 `sceneDisplayModeFromDocument` 合并
+  // `previewFeaturesForDisplayMode`（simple → 关统计/分层；multiblock → 开）。
   return await resolveBootstrapToPreviewConfig({
     data: { document },
-    features,
+    features: options.features,
     ui: {
       loadingMessage: defaultEmbedUi.loadingMessage,
       okMessage: defaultEmbedUi.okMessage,

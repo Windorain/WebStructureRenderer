@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import AppShell from '@/app/AppShell.vue'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
+
+const PREVIEW_H_STORAGE = 'wmsr-workbench-preview-h'
+const PREVIEW_H_DEFAULT = 520
+const PREVIEW_H_MIN = 260
 
 const ctx = useWorkbenchContext()
 
@@ -12,8 +16,57 @@ const previewErrorText = computed(() => ctx.previewError.value)
 const previewCfg = computed(() => ctx.previewConfig.value)
 const previewKey = computed(() => ctx.previewEpoch.value)
 
+function clampPreviewHeight(h: number): number {
+  const max =
+    typeof window !== 'undefined' ? Math.min(2400, Math.max(PREVIEW_H_MIN + 80, window.innerHeight - 40)) : 2400
+  return Math.min(max, Math.max(PREVIEW_H_MIN, Math.round(h)))
+}
+
+function readStoredPreviewHeight(): number {
+  if (typeof window === 'undefined') return PREVIEW_H_DEFAULT
+  const raw = localStorage.getItem(PREVIEW_H_STORAGE)
+  const n = raw ? parseInt(raw, 10) : NaN
+  return clampPreviewHeight(Number.isFinite(n) ? n : PREVIEW_H_DEFAULT)
+}
+
+const previewHeightPx = ref(PREVIEW_H_DEFAULT)
+
+onMounted(() => {
+  previewHeightPx.value = readStoredPreviewHeight()
+})
+
 async function onRetrySync(): Promise<void> {
   await ctx.syncPreview()
+}
+
+function persistPreviewHeight(): void {
+  try {
+    localStorage.setItem(PREVIEW_H_STORAGE, String(previewHeightPx.value))
+  } catch {
+    /* ignore */
+  }
+}
+
+function onResizeHandlePointerDown(e: PointerEvent): void {
+  if (e.button !== 0) return
+  e.preventDefault()
+  const startY = e.clientY
+  const startH = previewHeightPx.value
+  const move = (ev: PointerEvent): void => {
+    previewHeightPx.value = clampPreviewHeight(startH + (ev.clientY - startY))
+  }
+  const up = (): void => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+    persistPreviewHeight()
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+}
+
+function onResizeHandleDblClick(): void {
+  previewHeightPx.value = clampPreviewHeight(PREVIEW_H_DEFAULT)
+  persistPreviewHeight()
 }
 </script>
 
@@ -28,32 +81,39 @@ async function onRetrySync(): Promise<void> {
       <button type="button" class="wm-btn-inline" @click="onRetrySync">重试同步</button>
     </p>
 
-    <div v-if="!scene" class="wm-boot wm-boot--muted">
+    <div v-if="!scene" class="wm-boot wm-boot--muted wm-boot--tall">
       请先在右上角「设置」中加载场景（本机 / SDE / 示例）；须含 textureBlobs 与 baked 几何以预览。
     </div>
 
-    <div v-else-if="!previewCfg && previewErrorText" class="wm-boot wm-boot--err">
+    <div v-else-if="!previewCfg && previewErrorText" class="wm-boot wm-boot--err wm-boot--tall">
       <p>{{ previewErrorText }}</p>
       <button type="button" class="wm-btn" @click="onRetrySync">重试</button>
     </div>
 
-    <div v-else-if="!previewCfg" class="wm-boot">
-      正在从内存中的场景数据构建三维预览…
-    </div>
+    <div v-else-if="!previewCfg" class="wm-boot wm-boot--tall">正在从内存中的场景数据构建三维预览…</div>
 
-    <div v-else class="wm-preview-embed" :class="{ 'wm-preview-embed--busy': previewBusy }">
-      <AppShell
-        :key="`pv-${previewKey}`"
-        :merged-config="previewCfg"
-      />
-      <div v-if="previewBusy" class="wm-preview-veil" aria-hidden="true" />
-    </div>
+    <template v-else>
+      <div class="wm-preview-resize-root" :style="{ height: `${previewHeightPx}px` }">
+        <div class="wm-preview-embed" :class="{ 'wm-preview-embed--busy': previewBusy }">
+          <AppShell :key="`pv-${previewKey}`" :merged-config="previewCfg" />
+          <div v-if="previewBusy" class="wm-preview-veil" aria-hidden="true" />
+        </div>
+        <div
+          class="wm-preview-resize-handle"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="拖动调整预览区域高度，双击恢复默认"
+          title="拖动调整高度 · 双击恢复默认"
+          @pointerdown="onResizeHandlePointerDown"
+          @dblclick="onResizeHandleDblClick"
+        />
+      </div>
+    </template>
   </section>
 </template>
 
 <style scoped>
 .wm-preview {
-  min-height: 60vh;
   background: #0f172a;
   border-radius: 8px;
   border: 1px solid #334155;
@@ -82,9 +142,54 @@ async function onRetrySync(): Promise<void> {
   color: #f8fafc;
   cursor: pointer;
 }
+.wm-preview-resize-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  box-sizing: border-box;
+}
 .wm-preview-embed {
   position: relative;
-  min-height: 60vh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* AppShell 根与主舞台填满剩余高度，Three 视口随容器 ResizeObserver 更新 */
+.wm-preview-embed :deep(.wm-root) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.wm-preview-embed :deep(.wm-main-stage) {
+  flex: 1;
+  min-height: 0;
+}
+.wm-preview-embed :deep(.wm-viewport-column) {
+  flex: 1;
+  min-height: 0;
+}
+.wm-preview-embed :deep(.wm-viewport) {
+  flex: 1;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+.wm-preview-resize-handle {
+  flex-shrink: 0;
+  height: 10px;
+  cursor: ns-resize;
+  background: linear-gradient(180deg, #1e293b 0%, #334155 45%, #475569 100%);
+  border-top: 1px solid #64748b;
+  touch-action: none;
+  user-select: none;
+}
+.wm-preview-resize-handle:hover {
+  filter: brightness(1.08);
+}
+.wm-preview-resize-handle:active {
+  filter: brightness(1.15);
 }
 .wm-preview-embed--busy {
   pointer-events: none;
@@ -102,6 +207,9 @@ async function onRetrySync(): Promise<void> {
   padding: 16px;
   font-family: system-ui, sans-serif;
   color: #e2e8f0;
+}
+.wm-boot--tall {
+  min-height: 50vh;
 }
 .wm-boot--err {
   color: #fecaca;
