@@ -6,7 +6,11 @@ import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 
 import { PreviewSceneContextKey } from '@/preview/sceneStore'
-import { applyDiagonalOrbitView, applyInitialCamera } from '@/render/interaction/initialCamera'
+import {
+  applyDiagonalOrbitView,
+  applyInitialCamera,
+  STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG,
+} from '@/render/interaction/initialCamera'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import { pickBlockIdFromPointer } from '@/render/interaction/voxelPick'
@@ -149,7 +153,7 @@ onMounted(() => {
   applyInitialCamera(vp.perspectiveCamera, vp.controls, def, fallbackTarget, fallbackPosition)
   applyDiagonalOrbitView(vp.perspectiveCamera, vp.controls, {
     yawDeg: 225,
-    elevationFromHorizontalDeg: 15,
+    elevationFromHorizontalDeg: STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG,
   })
   vp.syncOrthographicFromPerspective()
   vp.setMode(props.projectionMode)

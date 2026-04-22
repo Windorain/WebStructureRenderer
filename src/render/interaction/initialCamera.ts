@@ -21,6 +21,14 @@ const WORLD_UP = new THREE.Vector3(0, 1, 0)
 const DEFAULT_DISTANCE = 10
 
 /**
+ * 标准等轴（透视球坐标近似）：视线与水平面夹角 = atan(1/√2) ≈ 35.264°。
+ * 与方位角 45°+k·90° 联用时，三轴在画面上的可见伸缩比一致（常见工程/体素等轴示意）。
+ */
+export const STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG = THREE.MathUtils.radToDeg(
+  Math.atan(1 / Math.sqrt(2)),
+)
+
+/**
  * 与 simpleMesh 体素中心一致：column、zSlice 为体素下标；row 为 **行下标**（0=顶行），
  * 世界 Y 由 `structureRowToWorldY(row, sizeRow)` 得到。
  */
@@ -71,12 +79,12 @@ export interface ApplyDiagonalOrbitViewOptions {
   distance?: number
   /** 绕世界 Y 轴方位角（度），默认 45（左旋 45°） */
   yawDeg?: number
-  /** 相对水平面的俯仰：视线自水平面向下为「俯视」，默认 45° */
+  /** 相对水平面的俯仰：视线自水平面向下为「俯视」；缺省为 {@link STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG} */
   elevationFromHorizontalDeg?: number
 }
 
 /**
- * 在已有 `controls.target` 下，将球坐标系相机置于目标外侧：默认方位 45° + 俯视 45°（类轴测观感）。
+ * 在已有 `controls.target` 下，将球坐标系相机置于目标外侧：默认方位 45° + 标准等轴俯仰。
  */
 export function applyDiagonalOrbitView(
   camera: THREE.Camera,
@@ -87,7 +95,8 @@ export function applyDiagonalOrbitView(
   const dist =
     options?.distance ?? Math.max(0.1, camera.position.distanceTo(target))
   const yawDeg = options?.yawDeg ?? 45
-  const elevDeg = options?.elevationFromHorizontalDeg ?? 45
+  const elevDeg =
+    options?.elevationFromHorizontalDeg ?? STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG
 
   const theta = THREE.MathUtils.degToRad(yawDeg)
   const phi = Math.PI / 2 - THREE.MathUtils.degToRad(elevDeg)
