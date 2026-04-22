@@ -11,7 +11,6 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 export interface PreviewFeatures {
   blockStatsSidebar: boolean
   layerBar: boolean
-  developerPanel: boolean
 }
 
 export interface PreviewConfig {
@@ -31,7 +30,6 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
   features: {
     blockStatsSidebar: false,
     layerBar: false,
-    developerPanel: false,
   },
   blockIconCacheOptions: {
     sizePx: 128,

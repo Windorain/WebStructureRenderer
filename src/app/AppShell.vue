@@ -6,7 +6,6 @@ import { computed, onBeforeUnmount, onMounted, provide } from 'vue'
 import type { Scene } from 'three'
 
 import BlockStatsSidebar from '@/app/components/BlockStatsSidebar.vue'
-import DeveloperConfigPanel from '@/app/components/DeveloperConfigPanel.vue'
 import LayerPreviewBar from '@/app/components/LayerPreviewBar.vue'
 import StructureViewport from '@/app/components/StructureViewport.vue'
 import ToolTipBox from '@/app/components/ToolTipBox.vue'
@@ -17,6 +16,11 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
+  /**
+   * 可选：用文档根级 `label` / `id` 作为顶栏标题（如 World 包时内嵌 structure 的 id
+   * 常为导出占位，与根级元数据不一致）。
+   */
+  titleOverride?: string | null
 }>()
 
 const store = createPreviewSceneStore(props.mergedConfig)
@@ -45,6 +49,18 @@ const tooltipDisplayText = computed(() => {
   const h = hover.value
   if (!def || !h?.blockId) return ''
   return resolveBlockTooltip(h.blockId, def)
+})
+
+/** 优先 `titleOverride`（根级元数据），否则与内嵌 `StructureDefinition` 的 label / id 一致 */
+const previewTitle = computed(() => {
+  const fromRoot = props.titleOverride?.trim()
+  if (fromRoot) return fromRoot
+  const def = structureDefinition.value
+  const lab = def?.label?.trim()
+  if (lab) return lab
+  const id = def?.id?.trim()
+  if (id) return id
+  return '结构预览'
 })
 
 const statusBarClass = computed(() => {
@@ -102,7 +118,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="wm-root">
-    <p class="wm-title">Industrial Electrolyzer — Simple 结构预览（GT5U 数据）</p>
+    <p class="wm-title">{{ previewTitle }}</p>
     <div class="wm-main-stage">
       <BlockStatsSidebar
         v-if="showBlockStatsSidebar && loadStatus === 'ok' && blockIconCache"
@@ -137,10 +153,6 @@ onBeforeUnmount(() => {
       :client-y="hover.clientY"
     />
   </div>
-  <DeveloperConfigPanel
-    v-if="mergedConfig.features.developerPanel"
-    :merged-config="mergedConfig"
-  />
 </template>
 
 <style scoped>

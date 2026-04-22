@@ -47,7 +47,6 @@ export async function previewConfigFromDocument(
     ...defaultEmbedUi.features,
     blockStatsSidebar: true,
     layerBar: true,
-    developerPanel: true,
     ...options.features,
   }
   const cfg = await resolveBootstrapToPreviewConfig({

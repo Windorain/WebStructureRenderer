@@ -10,6 +10,18 @@ const previewBusy = computed(() => ctx.previewBusy.value)
 const previewErrorText = computed(() => ctx.previewError.value)
 const previewCfg = computed(() => ctx.previewConfig.value)
 
+/** 顶栏标题与元数据编辑一致：用 JSON 根上 label，其次 id（World 时与帧内 structure 的占位 id 脱钩） */
+const titleFromDocumentRoot = computed((): string | null => {
+  const d = ctx.document.value
+  if (!d || typeof d !== 'object') return null
+  const o = d as Record<string, unknown>
+  const lab = typeof o.label === 'string' ? o.label.trim() : ''
+  if (lab) return lab
+  const id = typeof o.id === 'string' ? o.id.trim() : ''
+  if (id) return id
+  return null
+})
+
 async function onRetryPreview(): Promise<void> {
   await ctx.refreshPreview()
 }
@@ -22,7 +34,11 @@ async function onRetryPreview(): Promise<void> {
       <p>{{ previewErrorText }}</p>
       <button type="button" class="wm-btn" @click="onRetryPreview">重试预览</button>
     </div>
-    <AppShell v-else-if="previewCfg" :merged-config="previewCfg" />
+    <AppShell
+      v-else-if="previewCfg"
+      :merged-config="previewCfg"
+      :title-override="titleFromDocumentRoot"
+    />
     <div v-else class="wm-boot wm-boot--muted">
       请先在右上角「设置」中选择数据源并加载文档（须 geometryPhase=baked 且含 textureBlobs 方可预览）。
     </div>

@@ -2,7 +2,7 @@
  * 工作台共享状态：由 WorkbenchRoot provide，子面板 inject。
  */
 
-import type { InjectionKey, Ref } from 'vue'
+import type { InjectionKey, Ref, ShallowRef } from 'vue'
 import { inject, provide, ref, shallowRef } from 'vue'
 
 import type { PreviewConfig } from '@/preview/previewConfig'
@@ -19,7 +19,7 @@ import {
   type ExportFileInfo,
 } from '@/workbench/sdeApi'
 import { normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
-import { patchSceneMetadataRoot } from '@/workbench/sceneExportKit'
+import { downloadJson, patchSceneMetadataRoot } from '@/workbench/sceneExportKit'
 import { documentLooksPreviewable, previewConfigFromDocument } from '@/workbench/previewFromDocument'
 
 /** 界面工作模式：右上角「设置」中选择（数据源） */
@@ -68,7 +68,9 @@ export interface WorkbenchContext {
   applyMetadataPatch(patch: Record<string, unknown>): void
   refreshPreview(): Promise<void>
   loadLocalScene(sceneId?: string): Promise<void>
-  loadDocumentFromFile(file: File): Promise<void>
+  loadDocumentFromFile(file: File, options?: { saveHandle?: FileSystemFileHandle | null }): Promise<void>
+  /** 将当前内存中的文档写回磁盘（本地/示例模式）；支持 File System Access 时覆盖原文件或「另存为」 */
+  saveDocumentToDisk(): Promise<void>
 }
 
 export const workbenchContextKey: InjectionKey<WorkbenchContext> = Symbol('workbenchContext')
@@ -76,6 +78,33 @@ export const workbenchContextKey: InjectionKey<WorkbenchContext> = Symbol('workb
 function cloneDoc(doc: unknown): Record<string, unknown> | null {
   if (doc === null || typeof doc !== 'object') return null
   return JSON.parse(JSON.stringify(doc)) as Record<string, unknown>
+}
+
+/** TS 内置 DOM 类型未包含 queryPermission / requestPermission（File System Access） */
+type FileSystemFileHandleWritable = FileSystemFileHandle & {
+  queryPermission(descriptor?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
+  requestPermission(descriptor?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
+}
+
+async function ensureFileWritePermission(handle: FileSystemFileHandle): Promise<void> {
+  const h = handle as FileSystemFileHandleWritable
+  const opts = { mode: 'readwrite' as const }
+  if ((await h.queryPermission(opts)) === 'granted') return
+  if ((await h.requestPermission(opts)) === 'granted') return
+  throw new Error('未授予文件写入权限')
+}
+
+type SaveFilePickerOptions = {
+  suggestedName?: string
+  types?: Array<{ description: string; accept: Record<string, string[]> }>
+}
+
+function getShowSaveFilePicker():
+  | ((options: SaveFilePickerOptions) => Promise<FileSystemFileHandle>)
+  | undefined {
+  if (typeof window === 'undefined' || !window.isSecureContext) return undefined
+  const w = window as Window & { showSaveFilePicker?: (o: SaveFilePickerOptions) => Promise<FileSystemFileHandle> }
+  return typeof w.showSaveFilePicker === 'function' ? w.showSaveFilePicker : undefined
 }
 
 function parseWorkbenchQuery(): { apiBase: string; token: string } {
@@ -108,6 +137,8 @@ export function provideWorkbenchContext(): WorkbenchContext {
   const previewConfig = shallowRef<PreviewConfig | null>(null)
   const previewBusy = ref(false)
   const previewError = ref<string | null>(null)
+  /** 通过 showOpenFilePicker 打开文件时保留，便于 saveDocumentToDisk 直接写回 */
+  const localFileSaveHandle: ShallowRef<FileSystemFileHandle | null> = shallowRef(null)
 
   function resetSessionState(): void {
     document.value = null
@@ -116,6 +147,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     previewError.value = null
     selectedExportName.value = null
     localFileName.value = null
+    localFileSaveHandle.value = null
   }
 
   function setMainSection(section: WorkbenchMainSection): void {
@@ -209,6 +241,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     if (!apiBase.value) return
     workspaceMode.value = 'sde'
     localFileName.value = null
+    localFileSaveHandle.value = null
     selectedExportName.value = name
     const data = await sdeGetExportFile(apiBase.value, token.value, name)
     document.value = cloneDoc(data)
@@ -218,6 +251,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
 
   async function loadWorkspaceFromServer(): Promise<void> {
     if (!apiBase.value) return
+    localFileSaveHandle.value = null
     const data = await sdeGetWorkspaceDocument(apiBase.value, token.value)
     const c = cloneDoc(data)
     if (c && Object.keys(c).length > 0) {
@@ -231,6 +265,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     if (!apiBase.value || !document.value) return
     await sdePutWorkspaceDocument(apiBase.value, token.value, document.value)
     dirty.value = false
+    await refreshPreview()
   }
 
   async function saveWorkspaceMetadataPatch(patch: Record<string, unknown>): Promise<void> {
@@ -253,6 +288,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     const raw = getDevSceneDocument(id)
     workspaceMode.value = 'local-bundle'
     localFileName.value = null
+    localFileSaveHandle.value = null
     selectedExportName.value = null
     document.value = cloneDoc(raw)
     localFileName.value = `示例 · ${id}.json`
@@ -260,7 +296,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
     await refreshPreview()
   }
 
-  async function loadDocumentFromFile(file: File): Promise<void> {
+  async function loadDocumentFromFile(
+    file: File,
+    options?: { saveHandle?: FileSystemFileHandle | null },
+  ): Promise<void> {
     const text = await file.text()
     let data: unknown
     try {
@@ -274,10 +313,69 @@ export function provideWorkbenchContext(): WorkbenchContext {
     }
     workspaceMode.value = 'local-file'
     selectedExportName.value = null
+    localFileSaveHandle.value = options?.saveHandle ?? null
     document.value = parsed
     localFileName.value = file.name
     dirty.value = false
     await refreshPreview()
+  }
+
+  function suggestedLocalJsonFilename(): string {
+    let base = localFileName.value?.replace(/^示例 · /, '') ?? 'structure-export'
+    if (!base.toLowerCase().endsWith('.json')) base = `${base}.json`
+    return base
+  }
+
+  async function saveDocumentToDisk(): Promise<void> {
+    const doc = document.value
+    if (!doc) {
+      connectionMessage.value = '无文档可保存'
+      return
+    }
+    const text = `${JSON.stringify(doc, null, 2)}\n`
+    const downloadBaseName = suggestedLocalJsonFilename().replace(/\.json$/i, '')
+
+    let handle = localFileSaveHandle.value
+    const showSavePicker = getShowSaveFilePicker()
+
+    if (!handle && showSavePicker) {
+      try {
+        const newHandle = await showSavePicker({
+          suggestedName: suggestedLocalJsonFilename(),
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        })
+        localFileSaveHandle.value = newHandle
+        localFileName.value = newHandle.name
+        handle = newHandle
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') {
+          connectionMessage.value = '已取消保存'
+          return
+        }
+        console.warn('[Workbench] showSaveFilePicker 失败，将尝试下载 JSON', e)
+        handle = null
+      }
+    }
+
+    if (handle) {
+      try {
+        await ensureFileWritePermission(handle)
+        const writable = await handle.createWritable()
+        await writable.write(text)
+        await writable.close()
+        dirty.value = false
+        connectionMessage.value = `已保存到 ${handle.name}`
+        return
+      } catch (e) {
+        console.warn('[Workbench] 写入本地文件失败，将尝试下载 JSON', e)
+        localFileSaveHandle.value = null
+      }
+    }
+
+    downloadJson(downloadBaseName, doc, true)
+    dirty.value = false
+    connectionMessage.value =
+      '已触发浏览器下载 JSON。若没有出现文件，请检查地址栏是否拦截了下载，或允许本站弹出窗口。'
   }
 
   const ctx: WorkbenchContext = {
@@ -312,6 +410,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     refreshPreview,
     loadLocalScene,
     loadDocumentFromFile,
+    saveDocumentToDisk,
   }
 
   provide(workbenchContextKey, ctx)

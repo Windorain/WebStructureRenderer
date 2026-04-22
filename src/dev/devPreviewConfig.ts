@@ -56,9 +56,6 @@ function parseUrlPreviewParams(
   const layerBar = parseBool(params.get('layerBar'))
   if (layerBar !== undefined) feat.layerBar = layerBar
 
-  const devPanel = parseBool(params.get('devPanel'))
-  if (devPanel !== undefined) feat.developerPanel = devPanel
-
   if (Object.keys(feat).length > 0) {
     out.features = { ...feat } as PreviewConfig['features']
   }
@@ -96,7 +93,6 @@ const defaultDevPreviewBase: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
   features: {
     blockStatsSidebar: true,
     layerBar: true,
-    developerPanel: Boolean(import.meta.env.DEV),
   },
 }
 
@@ -138,8 +134,8 @@ export async function resolveDevPreviewConfigAsync(): Promise<PreviewConfig> {
   const out: PreviewConfig = {
     ...mergedBase,
     features: {
+      ...defaultDevPreviewBase.features,
       ...docLayerStats,
-      developerPanel: mergedBase.features.developerPanel,
       ...(urlFeatures ?? {}),
     },
     sceneId: typeof docId === 'string' && docId.length > 0 ? docId : sceneId,

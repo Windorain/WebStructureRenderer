@@ -13,6 +13,35 @@ function triggerPick(): void {
   fileInput.value?.click()
 }
 
+/** 支持 File System Access 时用手柄打开，便于之后「保存到文件」写回原路径 */
+async function pickFile(): Promise<void> {
+  lastErr.value = ''
+  if (
+    typeof window !== 'undefined' &&
+    'showOpenFilePicker' in window &&
+    typeof window.showOpenFilePicker === 'function'
+  ) {
+    busy.value = true
+    try {
+      const handles = await window.showOpenFilePicker({
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        multiple: false,
+      })
+      const handle = handles[0]
+      const file = await handle.getFile()
+      await ctx.loadDocumentFromFile(file, { saveHandle: handle })
+      ctx.connectionMessage.value = `已打开 ${file.name}`
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      lastErr.value = err instanceof Error ? err.message : String(err)
+    } finally {
+      busy.value = false
+    }
+    return
+  }
+  triggerPick()
+}
+
 async function onFile(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -64,7 +93,7 @@ async function onDrop(ev: DragEvent): Promise<void> {
       @drop="onDrop"
     >
       <p class="dash-drop__hint">拖放 .json 到此处，或</p>
-      <button type="button" class="dash-btn dash-btn--primary" :disabled="busy" @click="triggerPick">
+      <button type="button" class="dash-btn dash-btn--primary" :disabled="busy" @click="pickFile">
         {{ busy ? '读取中…' : '选择文件' }}
       </button>
     </div>

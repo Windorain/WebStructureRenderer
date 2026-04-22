@@ -27,6 +27,38 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(bin)
 }
 
+const ROOT_META_FORM_KEYS = [
+  'id',
+  'label',
+  'author',
+  'mode',
+  'gtnhVersion',
+  'structureId',
+] as const
+export type RootMetaFormKey = (typeof ROOT_META_FORM_KEYS)[number]
+
+/**
+ * 按表单值合并到文档根：空字符串表示从根上移除该键（用于「应用到预览」与本地元数据一致）。
+ */
+export function mergeRootStringFields(
+  document: unknown,
+  fields: Record<RootMetaFormKey, string>,
+): Record<string, unknown> {
+  if (document === null || typeof document !== 'object' || Array.isArray(document)) {
+    throw new Error('document 须为非 null 对象')
+  }
+  const doc = { ...(document as Record<string, unknown>) }
+  for (const k of ROOT_META_FORM_KEYS) {
+    const v = fields[k]
+    if (v === '') {
+      delete doc[k]
+    } else {
+      doc[k] = v
+    }
+  }
+  return doc
+}
+
 /** 浅合并 patch 到文档根（用于元数据编辑）；document 应为可变克隆。 */
 export function patchSceneMetadataRoot(
   document: unknown,
@@ -69,34 +101,34 @@ export function buildCompactEnvelope(
   }
 }
 
-export function downloadJson(filename: string, data: unknown, pretty = true): void {
-  const text = pretty ? `${JSON.stringify(data, null, 2)}\n` : `${JSON.stringify(data)}\n`
-  const blob = new Blob([text], { type: 'application/json;charset=utf-8' })
+/** 将链接挂到 document 并延迟 revoke，避免下载尚未开始 blob URL 已失效（常见于 Chrome） */
+function triggerBlobDownload(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = filename.endsWith('.json') ? filename : `${filename}.json`
+  a.download = filename
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+export function downloadJson(filename: string, data: unknown, pretty = true): void {
+  const text = pretty ? `${JSON.stringify(data, null, 2)}\n` : `${JSON.stringify(data)}\n`
+  const blob = new Blob([text], { type: 'application/json;charset=utf-8' })
+  const name = filename.endsWith('.json') ? filename : `${filename}.json`
+  triggerBlobDownload(name, blob)
 }
 
 export function downloadTextFile(filename: string, text: string, mime = 'text/plain;charset=utf-8'): void {
   const blob = new Blob([text], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerBlobDownload(filename, blob)
 }
 
 export function downloadBlob(filename: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerBlobDownload(filename, blob)
 }
 
 export async function copyTextToClipboard(text: string): Promise<void> {
