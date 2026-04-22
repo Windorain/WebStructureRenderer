@@ -7,5 +7,6 @@ dist-workbench/
 *.local
 .DS_Store
 
-data/*
+# 本地场景 / 资源（体积大，不纳入版本库）
+data/
 .wmr-preview-port
