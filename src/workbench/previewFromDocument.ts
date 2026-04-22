@@ -30,6 +30,8 @@ export function documentLooksPreviewable(document: unknown): boolean {
 export interface PreviewFromDocumentOptions {
   /** 覆盖默认嵌入 UI（工作台 dev 面板等） */
   features?: Partial<PreviewFeatures>
+  /** false 时隐藏底部调试状态栏 */
+  debug?: boolean
 }
 
 export async function previewConfigFromDocument(
@@ -44,6 +46,7 @@ export async function previewConfigFromDocument(
     ui: {
       loadingMessage: defaultEmbedUi.loadingMessage,
       okMessage: defaultEmbedUi.okMessage,
+      ...(options.debug !== undefined ? { debug: options.debug } : {}),
     },
   })
 }

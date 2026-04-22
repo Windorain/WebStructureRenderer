@@ -24,6 +24,8 @@ export interface EmbedUiOptions {
   sceneBackground?: number
   loadingMessage?: string
   okMessage?: (modelId: string) => string
+  /** false 时不显示底部调试状态栏 */
+  debug?: boolean
 }
 
 export interface EmbedBootstrapOptions {
@@ -63,6 +65,7 @@ export async function resolveBootstrapToPreviewConfig(
     sceneBackground: ui.sceneBackground ?? defaultEmbedUi.sceneBackground,
     loadingMessage: ui.loadingMessage ?? defaultEmbedUi.loadingMessage,
     okMessage: ui.okMessage ?? defaultEmbedUi.okMessage,
+    debug: ui.debug ?? defaultEmbedUi.debug,
   }
   return out
 }

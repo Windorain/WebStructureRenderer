@@ -3,7 +3,7 @@
  * 预览页薄壳：previewSceneStore + StructureViewport + 侧栏与分层条。
  * 唯一数据入口为 `mergedConfig: PreviewConfig`；场景与顶栏以 `renderBundle.document` 为准（见 `sceneDisplayTitle`）。
  */
-import { computed, onBeforeUnmount, onMounted, provide } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import type { Scene } from 'three'
 
 import BlockStatsSidebar from '@/app/components/BlockStatsSidebar.vue'
@@ -11,6 +11,7 @@ import LayerPreviewBar from '@/app/components/LayerPreviewBar.vue'
 import StructureViewport from '@/app/components/StructureViewport.vue'
 import ToolTipBox from '@/app/components/ToolTipBox.vue'
 import type { PreviewConfig } from '@/preview/previewConfig'
+import { readSceneMetaField } from '@/render/data/compactSceneDocument'
 import { sceneDisplayTitleFromRootDocument } from '@/preview/sceneDisplayTitle'
 import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/sceneStore'
 import { usePreviewTooltip, resolveBlockTooltip } from '@/preview/tooltip'
@@ -40,6 +41,49 @@ const {
 } = store
 
 const showLayerBar = computed(() => props.mergedConfig.features.layerBar)
+
+const sceneDocument = computed(() => props.mergedConfig.renderBundle.document)
+
+/** 标题旁「?」悬停：仅展示非空的作者、版本号（gtnhVersion）。 */
+const metaTooltipText = computed(() => {
+  const d = sceneDocument.value
+  if (!d || typeof d !== 'object') return ''
+  const rows: string[] = []
+  const pick = (label: string, key: string) => {
+    const v = readSceneMetaField(d, key).trim()
+    if (v) rows.push(`${label}：${v}`)
+  }
+  pick('作者', 'author')
+  pick('版本号', 'gtnhVersion')
+  return rows.join('\n')
+})
+
+const showMetaHint = computed(() => metaTooltipText.value.length > 0)
+
+const metaHintPointer = ref<{ clientX: number; clientY: number } | null>(null)
+
+function onMetaHintPointerEnter(e: PointerEvent): void {
+  metaHintPointer.value = { clientX: e.clientX, clientY: e.clientY }
+}
+
+function onMetaHintPointerMove(e: PointerEvent): void {
+  if (!metaHintPointer.value) return
+  metaHintPointer.value = { clientX: e.clientX, clientY: e.clientY }
+}
+
+function onMetaHintPointerLeave(): void {
+  metaHintPointer.value = null
+}
+
+function onMetaHintFocusIn(e: FocusEvent): void {
+  const t = e.currentTarget as HTMLElement
+  const r = t.getBoundingClientRect()
+  metaHintPointer.value = { clientX: r.left + r.width / 2, clientY: r.bottom }
+}
+
+function onMetaHintFocusOut(): void {
+  metaHintPointer.value = null
+}
 
 const tooltipDisplayText = computed(() => {
   const def = structureDefinition.value
@@ -118,7 +162,21 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="wm-root">
-    <p class="wm-title">{{ previewTitle }}</p>
+    <p class="wm-title">
+      <abbr
+        v-if="showMetaHint"
+        class="wm-title-meta-hint"
+        tabindex="0"
+        aria-label="作者与版本号"
+        title=""
+        @pointerenter="onMetaHintPointerEnter"
+        @pointermove="onMetaHintPointerMove"
+        @pointerleave="onMetaHintPointerLeave"
+        @focusin="onMetaHintFocusIn"
+        @focusout="onMetaHintFocusOut"
+      >?</abbr>
+      <span class="wm-title-text">{{ previewTitle }}</span>
+    </p>
     <div class="wm-main-stage">
       <BlockStatsSidebar
         v-if="showBlockStatsSidebar && loadStatus === 'ok' && blockIconCache"
@@ -142,7 +200,12 @@ onBeforeUnmount(() => {
         <LayerPreviewBar v-if="showLayerBar && loadStatus === 'ok'" />
       </div>
     </div>
-    <div :class="statusBarClass" role="status" aria-live="polite">
+    <div
+      v-if="mergedConfig.debug"
+      :class="statusBarClass"
+      role="status"
+      aria-live="polite"
+    >
       <span class="wm-status-dot" aria-hidden="true" />
       <span class="wm-status-text">{{ statusMessage }}</span>
     </div>
@@ -151,6 +214,12 @@ onBeforeUnmount(() => {
       :text="tooltipDisplayText"
       :client-x="hover.clientX"
       :client-y="hover.clientY"
+    />
+    <ToolTipBox
+      v-if="metaHintPointer && metaTooltipText"
+      :text="metaTooltipText"
+      :client-x="metaHintPointer.clientX"
+      :client-y="metaHintPointer.clientY"
     />
   </div>
 </template>
@@ -169,6 +238,42 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: var(--nei-text);
   text-shadow: var(--nei-label-shadow);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.wm-title-text {
+  min-width: 0;
+}
+.wm-title-meta-hint {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  color: var(--nei-text);
+  text-shadow: var(--nei-label-shadow);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  border-radius: 50%;
+  background: var(--nei-inset-bg);
+  cursor: help;
+  user-select: none;
+}
+.wm-title-meta-hint:hover {
+  filter: brightness(1.08);
+}
+.wm-title-meta-hint:focus-visible {
+  outline: 2px solid var(--nei-focus-ring);
+  outline-offset: 2px;
 }
 .wm-main-stage {
   display: flex;

@@ -28,6 +28,11 @@ export interface PreviewConfig {
   sceneBackground: number
   loadingMessage: string
   okMessage: (modelId: string) => string
+  /**
+   * 为 false 时隐藏底部调试状态栏（模型 id、非空气体素数等）。
+   * 默认 false；工作台可在预览区面板中打开。
+   */
+  debug: boolean
 }
 
 export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibrary' | 'sceneId'> = {
@@ -45,6 +50,7 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
   initialProjectionMode: 'orthographic',
   sceneBackground: 0x5a5a5a,
   loadingMessage: '正在加载数据与构建网格…',
-  okMessage: (modelId: string) =>
-    `渲染正常 · 模型 ${modelId} · 左键旋转 · 中键平移目标 · 滚轮/右键拖拽缩放 · 右上：世界轴（红+X 东 绿+Y 上 蓝+Z 南，对照 MC）`,
+  /** 状态条成功态已改由 sceneStore 拼调试摘要；保留回调供宿主覆盖（极少使用）。 */
+  okMessage: () => '',
+  debug: false,
 }

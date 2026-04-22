@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
+import ToolTipBox from '@/app/components/ToolTipBox.vue'
 import { readSceneMetaField } from '@/render/data/compactSceneDocument'
 import { mergeRootStringFields } from '@/workbench/sceneExportKit'
 import { useWorkbenchContext, type WorkbenchScene } from '@/workbench/workbenchContext'
@@ -24,6 +25,47 @@ const gtnhVersion = ref('')
 const structureId = ref('')
 /** 保存结果：编辑页不展示 connectionMessage（其在设置抽屉内），此处单独提示 */
 const saveFeedback = ref('')
+
+type FieldHelpKey = 'label' | 'id' | 'author' | 'mode' | 'gtnhVersion' | 'structureId'
+
+/** 与 Raw 根 / Compact meta 键一致，每项对应标签行右上角「?」 */
+const FIELD_HELP: Record<FieldHelpKey, string> = {
+  label: '人类可读标题，用于预览顶栏与 Wiki 展示名。',
+  id: '场景稳定标识，目前没有什么用，仅作为占位符',
+  author: '作者或来源说明。',
+  mode: '展示策略：multiblock 开启统计侧栏与分层条；simple 仅主视口。未设置时 Wiki 侧按 multiblock 处理。',
+  gtnhVersion: '版本标签',
+  structureId: '多方块结构注册名，目前仅作为占位符',
+}
+
+const fieldHintPointer = ref<{ clientX: number; clientY: number } | null>(null)
+const fieldHintText = ref('')
+
+function showFieldHint(key: FieldHelpKey, e: PointerEvent): void {
+  fieldHintText.value = FIELD_HELP[key]
+  fieldHintPointer.value = { clientX: e.clientX, clientY: e.clientY }
+}
+function onFieldHintPointerMove(e: PointerEvent): void {
+  if (!fieldHintPointer.value) return
+  fieldHintPointer.value = { clientX: e.clientX, clientY: e.clientY }
+}
+function hideFieldHint(): void {
+  fieldHintPointer.value = null
+  fieldHintText.value = ''
+}
+function onFieldHintFocusIn(key: FieldHelpKey, e: FocusEvent): void {
+  fieldHintText.value = FIELD_HELP[key]
+  const t = e.currentTarget as HTMLElement
+  const r = t.getBoundingClientRect()
+  fieldHintPointer.value = { clientX: r.left + r.width / 2, clientY: r.bottom }
+}
+function onFieldHintFocusOut(): void {
+  hideFieldHint()
+}
+
+function isPresetModeValue(m: string): boolean {
+  return m === 'multiblock' || m === 'simple'
+}
 
 /** 各字段当前输入是否与已合入 `scene` 的根字段一致（空输入 ↔ 根上无该键） */
 const pendingFields = computed(() => {
@@ -143,7 +185,20 @@ async function saveToSde(): Promise<void> {
       </p>
       <div class="wm-grid">
         <label class="wm-field" :class="{ 'wm-field--pending': pendingFields.label }">
-          <span class="wm-field__label">label</span>
+          <span class="wm-field__label-row">
+            <span class="wm-field__label">label</span>
+            <abbr
+              class="wm-field__hint"
+              tabindex="0"
+              aria-label="label 说明"
+              title=""
+              @pointerenter="showFieldHint('label', $event)"
+              @pointermove="onFieldHintPointerMove"
+              @pointerleave="hideFieldHint"
+              @focusin="onFieldHintFocusIn('label', $event)"
+              @focusout="onFieldHintFocusOut"
+            >?</abbr>
+          </span>
           <input
             v-model="label"
             class="wm-input"
@@ -155,7 +210,20 @@ async function saveToSde(): Promise<void> {
           />
         </label>
         <label class="wm-field" :class="{ 'wm-field--pending': pendingFields.id }">
-          <span class="wm-field__label">id</span>
+          <span class="wm-field__label-row">
+            <span class="wm-field__label">id</span>
+            <abbr
+              class="wm-field__hint"
+              tabindex="0"
+              aria-label="id 说明"
+              title=""
+              @pointerenter="showFieldHint('id', $event)"
+              @pointermove="onFieldHintPointerMove"
+              @pointerleave="hideFieldHint"
+              @focusin="onFieldHintFocusIn('id', $event)"
+              @focusout="onFieldHintFocusOut"
+            >?</abbr>
+          </span>
           <input
             v-model="id"
             class="wm-input"
@@ -166,7 +234,20 @@ async function saveToSde(): Promise<void> {
           />
         </label>
         <label class="wm-field" :class="{ 'wm-field--pending': pendingFields.author }">
-          <span class="wm-field__label">author</span>
+          <span class="wm-field__label-row">
+            <span class="wm-field__label">author</span>
+            <abbr
+              class="wm-field__hint"
+              tabindex="0"
+              aria-label="author 说明"
+              title=""
+              @pointerenter="showFieldHint('author', $event)"
+              @pointermove="onFieldHintPointerMove"
+              @pointerleave="hideFieldHint"
+              @focusin="onFieldHintFocusIn('author', $event)"
+              @focusout="onFieldHintFocusOut"
+            >?</abbr>
+          </span>
           <input
             v-model="author"
             class="wm-input"
@@ -177,19 +258,49 @@ async function saveToSde(): Promise<void> {
           />
         </label>
         <label class="wm-field" :class="{ 'wm-field--pending': pendingFields.mode }">
-          <span class="wm-field__label">mode</span>
-          <input
+          <span class="wm-field__label-row">
+            <span class="wm-field__label">mode</span>
+            <abbr
+              class="wm-field__hint"
+              tabindex="0"
+              aria-label="mode 说明"
+              title=""
+              @pointerenter="showFieldHint('mode', $event)"
+              @pointermove="onFieldHintPointerMove"
+              @pointerleave="hideFieldHint"
+              @focusin="onFieldHintFocusIn('mode', $event)"
+              @focusout="onFieldHintFocusOut"
+            >?</abbr>
+          </span>
+          <select
             v-model="mode"
-            class="wm-input"
+            class="wm-input wm-input--select"
             :class="{ 'wm-input--pending': pendingFields.mode }"
-            type="text"
-            autocomplete="off"
-            placeholder="multiblock | simple"
             :aria-invalid="pendingFields.mode"
-          />
+          >
+            <option value="">未设置</option>
+            <option value="multiblock">multiblock</option>
+            <option value="simple">simple</option>
+            <option v-if="mode !== '' && !isPresetModeValue(mode)" :value="mode">
+              {{ mode }}（当前文档）
+            </option>
+          </select>
         </label>
         <label class="wm-field" :class="{ 'wm-field--pending': pendingFields.gtnhVersion }">
-          <span class="wm-field__label">gtnhVersion</span>
+          <span class="wm-field__label-row">
+            <span class="wm-field__label">gtnhVersion</span>
+            <abbr
+              class="wm-field__hint"
+              tabindex="0"
+              aria-label="gtnhVersion 说明"
+              title=""
+              @pointerenter="showFieldHint('gtnhVersion', $event)"
+              @pointermove="onFieldHintPointerMove"
+              @pointerleave="hideFieldHint"
+              @focusin="onFieldHintFocusIn('gtnhVersion', $event)"
+              @focusout="onFieldHintFocusOut"
+            >?</abbr>
+          </span>
           <input
             v-model="gtnhVersion"
             class="wm-input"
@@ -200,7 +311,20 @@ async function saveToSde(): Promise<void> {
           />
         </label>
         <label class="wm-field" :class="{ 'wm-field--pending': pendingFields.structureId }">
-          <span class="wm-field__label">structureId</span>
+          <span class="wm-field__label-row">
+            <span class="wm-field__label">structureId</span>
+            <abbr
+              class="wm-field__hint"
+              tabindex="0"
+              aria-label="structureId 说明"
+              title=""
+              @pointerenter="showFieldHint('structureId', $event)"
+              @pointermove="onFieldHintPointerMove"
+              @pointerleave="hideFieldHint"
+              @focusin="onFieldHintFocusIn('structureId', $event)"
+              @focusout="onFieldHintFocusOut"
+            >?</abbr>
+          </span>
           <input
             v-model="structureId"
             class="wm-input"
@@ -219,6 +343,12 @@ async function saveToSde(): Promise<void> {
       <p v-if="saveFeedback" class="wm-save-feedback">{{ saveFeedback }}</p>
       <p v-if="isDirty" class="wm-dirty">文档有未写入磁盘/远程的变更</p>
     </template>
+    <ToolTipBox
+      v-if="fieldHintPointer && fieldHintText"
+      :text="fieldHintText"
+      :client-x="fieldHintPointer.clientX"
+      :client-y="fieldHintPointer.clientY"
+    />
   </section>
 </template>
 
@@ -236,6 +366,43 @@ async function saveToSde(): Promise<void> {
   font-weight: 600;
   color: #f1f5f9;
 }
+/* 标签与「?」缩为一组，紧贴字段名右上，不占满整格 */
+.wm-field__label-row {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1px;
+  width: fit-content;
+  max-width: 100%;
+}
+.wm-field__label {
+  min-width: 0;
+}
+.wm-field__hint {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  color: rgba(148, 163, 184, 0.55);
+  cursor: help;
+  user-select: none;
+  position: relative;
+  top: -0.12em;
+}
+.wm-field__hint:hover {
+  color: rgba(148, 163, 184, 0.85);
+}
+.wm-field__hint:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
 .wm-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -251,11 +418,11 @@ async function saveToSde(): Promise<void> {
   flex-direction: column;
   gap: 4px;
 }
-.wm-field__label {
+.wm-field__label-row .wm-field__label {
   font-size: 11px;
   color: #94a3b8;
 }
-.wm-field--pending .wm-field__label {
+.wm-field--pending .wm-field__label-row .wm-field__label {
   color: #fbbf24;
 }
 .wm-input {
@@ -275,6 +442,12 @@ async function saveToSde(): Promise<void> {
   border-color: #f59e0b;
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
   outline: none;
+}
+.wm-input--select {
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: auto;
 }
 .wm-row {
   display: flex;

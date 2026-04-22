@@ -190,16 +190,13 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
 
       if (hasMesh) {
         statusBarTone.value = hasUndefined ? 'warn' : 'ok'
-        statusMessage.value = config.okMessage(def.id) + ` · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
+        statusMessage.value = `模型 ${def.id} · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
       } else if (stats.nonAirVoxelCount === 0) {
         statusBarTone.value = 'ok'
-        statusMessage.value =
-          '无可视方块：当前分层下无体素或结构全为空气（可调整分层预览或检查 blockPalette）'
+        statusMessage.value = '非空气体素 0'
       } else {
         statusBarTone.value = 'warn'
-        statusMessage.value =
-          `无可见几何：${stats.nonAirVoxelCount} 个非空气体素无有效 BakedQuads（检查 blockPalette.geometry 或 materialPalette 预取）` +
-          undefinedAppend
+        statusMessage.value = `无可见几何 · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
       }
     } catch (e) {
       statusBarTone.value = 'error'

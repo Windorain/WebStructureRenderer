@@ -57,6 +57,9 @@ function parseUrlPreviewParams(
   const layerBar = parseBool(params.get('layerBar'))
   if (layerBar !== undefined) feat.layerBar = layerBar
 
+  const debug = parseBool(params.get('debug'))
+  if (debug !== undefined) out.debug = debug
+
   if (Object.keys(feat).length > 0) {
     out.features = { ...feat } as PreviewConfig['features']
   }

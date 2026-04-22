@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 
 import ExportActionsPanel from '@/workbench/components/ExportActionsPanel.vue'
 import MetadataEditor from '@/workbench/components/MetadataEditor.vue'
+import WorkbenchPreviewConfigPanel from '@/workbench/components/WorkbenchPreviewConfigPanel.vue'
 import WorkbenchPreviewPanel from '@/workbench/components/WorkbenchPreviewPanel.vue'
 import WorkbenchSettingsDrawer from '@/workbench/components/WorkbenchSettingsDrawer.vue'
 import WorkbenchSidebar from '@/workbench/components/WorkbenchSidebar.vue'
@@ -47,6 +48,7 @@ onMounted(async () => {
       <div class="dash-body">
         <div v-show="section === 'preview'" class="dash-pane dash-pane--preview">
           <WorkbenchPreviewPanel />
+          <WorkbenchPreviewConfigPanel />
         </div>
         <div v-show="section === 'edit'" class="dash-pane dash-pane--narrow">
           <MetadataEditor :key="metadataEditorKey" />

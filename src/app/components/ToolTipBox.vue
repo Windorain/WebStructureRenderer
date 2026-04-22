@@ -1,22 +1,58 @@
 <script setup lang="ts">
-defineProps<{
+import { ref, watch, nextTick } from 'vue'
+
+const props = defineProps<{
   text: string
   clientX: number
   clientY: number
 }>()
+
+const root = ref<HTMLElement | null>(null)
+const boxStyle = ref<Record<string, string>>({ left: '0px', top: '0px' })
+
+const PAD = 12
+
+function clampTooltipPosition(): void {
+  const el = root.value
+  if (!el) return
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const r = el.getBoundingClientRect()
+  let left = props.clientX + PAD
+  let top = props.clientY + PAD
+  if (left + r.width > vw - 8) {
+    left = props.clientX - r.width - PAD
+  }
+  if (left < 8) left = 8
+  if (top + r.height > vh - 8) {
+    top = vh - r.height - 8
+  }
+  if (top < 8) top = 8
+  boxStyle.value = {
+    left: `${left}px`,
+    top: `${top}px`,
+  }
+}
+
+watch(
+  () => [props.clientX, props.clientY, props.text] as const,
+  async () => {
+    boxStyle.value = {
+      left: `${props.clientX + PAD}px`,
+      top: `${props.clientY + PAD}px`,
+    }
+    await nextTick()
+    clampTooltipPosition()
+    requestAnimationFrame(() => clampTooltipPosition())
+  },
+  { flush: 'post', immediate: true },
+)
 </script>
 
 <template>
   <Teleport to="body">
-    <div
-      class="wm-tooltip-box"
-      role="tooltip"
-      :style="{
-        left: `${clientX + 12}px`,
-        top: `${clientY + 12}px`,
-      }"
-    >
-      <pre class="wm-tooltip-pre">{{ text }}</pre>
+    <div ref="root" class="wm-tooltip-box" role="tooltip" :style="boxStyle">
+      <div class="wm-tooltip-body">{{ text }}</div>
     </div>
   </Teleport>
 </template>
