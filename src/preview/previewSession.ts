@@ -32,7 +32,9 @@ function loadTextureDataUrl(loader: THREE.TextureLoader, dataUrl: string): Promi
 }
 
 /**
- * 由已解析的打包场景 document（StructureData | World）构建材质库与 RenderBundle。
+ * 由打包场景 document（StructureData | World）构建 **PreviewConfig 核心载荷**：
+ * `renderBundle`（`document` 为 normalize 后值）+ 预载 `materialLibrary`。
+ * `AppShell` / `createPreviewSceneStore` 只消费 `PreviewConfig` 中这两部分 + UI 开关。
  */
 export async function loadPreviewSessionFromDocument(document: unknown): Promise<PreviewSessionResult> {
   const normalized = await normalizeSceneDocumentForWiki(document)

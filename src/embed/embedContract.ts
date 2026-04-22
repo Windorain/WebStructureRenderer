@@ -5,19 +5,12 @@
 import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
 import { defaultEmbedUi } from '@/preview/previewConfig'
 import { loadPreviewSessionFromDocument } from '@/preview/previewSession'
+import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
 import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 export type { PreviewFeatures }
-
-function sceneKeyFromDocument(document: unknown): string {
-  if (document && typeof document === 'object' && 'id' in document) {
-    const id = (document as { id: unknown }).id
-    if (typeof id === 'string' && id.length > 0) return id
-  }
-  return 'scene'
-}
 
 export interface EmbedData {
   /** SDE 打包后的 StructureData 或 World（根级含 `textureBlobs`） */
@@ -54,7 +47,7 @@ export async function resolveBootstrapToPreviewConfig(
     ...docUi,
     ...options.features,
   }
-  const sceneId = sceneKeyFromDocument(renderBundle.document)
+  const sceneId = sceneStableStringIdFromDocument(renderBundle.document)
 
   const out: PreviewConfig = {
     sceneId,

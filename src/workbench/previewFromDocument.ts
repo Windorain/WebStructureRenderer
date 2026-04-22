@@ -1,5 +1,6 @@
 /**
- * 由可编辑文档构建 AppShell 所需的 PreviewConfig（baked + 校验失败时抛错，由调用方捕获）。
+ * 由可编辑场景 document 构建 `PreviewConfig`（经 `loadPreviewSessionFromDocument` 生成
+ * `renderBundle` 与 `materialLibrary`）。工作台/合入后刷新预览应调用本函数并传入**当前**内存快照。
  */
 
 import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
@@ -8,14 +9,6 @@ import { resolveBootstrapToPreviewConfig } from '@/embed/embedContract'
 import { isBakedStructureData, isWorldDocument } from '@/render/data/bundleResolve'
 import { embeddedStructure } from '@/render/data/worldPlayback'
 import type { StructureData } from '@/render/schema/types'
-
-function sceneKeyFromDocument(document: unknown): string {
-  if (document && typeof document === 'object' && 'id' in document) {
-    const id = (document as { id: unknown }).id
-    if (typeof id === 'string' && id.length > 0) return id
-  }
-  return 'scene'
-}
 
 /**
  * 文档是否可能通过打包校验（用于 UI 提示，非严格等价于 validate）。
@@ -49,7 +42,7 @@ export async function previewConfigFromDocument(
     layerBar: true,
     ...options.features,
   }
-  const cfg = await resolveBootstrapToPreviewConfig({
+  return await resolveBootstrapToPreviewConfig({
     data: { document },
     features,
     ui: {
@@ -57,9 +50,4 @@ export async function previewConfigFromDocument(
       okMessage: defaultEmbedUi.okMessage,
     },
   })
-  const key = sceneKeyFromDocument(document)
-  if (key !== cfg.sceneId) {
-    return { ...cfg, sceneId: key }
-  }
-  return cfg
 }

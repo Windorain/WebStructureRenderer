@@ -5,6 +5,7 @@ import { loadStructureOrWorld } from '@/render/data/bundleResolve'
 import {
   isCompactSceneEnvelope,
   normalizeSceneDocumentForWiki,
+  sceneStableStringIdFromDocument,
 } from '@/render/data/compactSceneDocument'
 import { COMPACT_PAYLOAD_ENCODING } from '@/render/schema/types'
 import {
@@ -19,15 +20,11 @@ import { useWorkbenchContext } from '@/workbench/workbenchContext'
 
 const ctx = useWorkbenchContext()
 
-const doc = computed(() => ctx.document.value)
+const doc = computed(() => ctx.scene.value)
 const hasApiBase = computed(() => ctx.apiBase.value.length > 0)
 const showSdeSave = computed(() => ctx.workspaceMode.value === 'sde' && hasApiBase.value)
 
-const baseName = computed(() => {
-  const id = doc.value?.id
-  if (typeof id === 'string' && id.length > 0) return id
-  return 'scene'
-})
+const baseName = computed(() => (doc.value ? sceneStableStringIdFromDocument(doc.value) : 'scene'))
 
 /**
  * OBJ 须解析后的 Raw 结构；Compact 信封根上无 cellGrid，须先 normalize（与预览加载链一致）。
@@ -50,21 +47,43 @@ const canExportObj = computed(() => {
   }
 })
 
-function downloadRaw(): void {
+/** Raw：解压 Compact（meta+payload+根壳合并）后的明文 JSON；已是 Raw 则原样导出。与「下载 Compact」相对。 */
+async function downloadRaw(): Promise<void> {
   if (!doc.value) return
-  downloadJson(`${String(baseName.value)}-raw`, doc.value, true)
+  try {
+    const raw = await normalizeSceneDocumentForWiki(doc.value)
+    downloadJson(`${String(baseName.value)}-raw`, raw, true)
+    ctx.connectionMessage.value = isCompactSceneEnvelope(doc.value)
+      ? '已下载解压后的 Raw JSON'
+      : '已下载 Raw JSON'
+  } catch (e) {
+    ctx.connectionMessage.value = formatUnknownError(e)
+  }
 }
 
-function downloadCompact(): void {
+async function downloadCompact(): Promise<void> {
   if (!doc.value) return
-  const env = buildCompactEnvelope(doc.value)
-  downloadJson(`${String(baseName.value)}-compact`, env, true)
+  try {
+    const raw = await normalizeSceneDocumentForWiki(doc.value)
+    const env = buildCompactEnvelope(raw)
+    downloadJson(`${String(baseName.value)}-compact`, env, true)
+    ctx.connectionMessage.value = '已下载 Compact JSON'
+  } catch (e) {
+    ctx.connectionMessage.value = formatUnknownError(e)
+  }
 }
 
 async function copyRawJson(): Promise<void> {
   if (!doc.value) return
-  await copyTextToClipboard(JSON.stringify(doc.value, null, 2))
-  ctx.connectionMessage.value = '已复制 Raw JSON'
+  try {
+    const raw = await normalizeSceneDocumentForWiki(doc.value)
+    await copyTextToClipboard(JSON.stringify(raw, null, 2))
+    ctx.connectionMessage.value = isCompactSceneEnvelope(doc.value)
+      ? '已复制解压后的 Raw JSON'
+      : '已复制 Raw JSON'
+  } catch (e) {
+    ctx.connectionMessage.value = formatUnknownError(e)
+  }
 }
 
 async function saveFullToSde(): Promise<void> {
@@ -109,7 +128,14 @@ async function downloadObjConnected(): Promise<void> {
     <h2 class="wm-panel__title">导出</h2>
     <p v-if="!doc" class="wm-muted">无文档</p>
     <div v-else class="wm-row">
-      <button type="button" class="wm-btn" @click="downloadRaw">下载 Raw JSON</button>
+      <button
+        type="button"
+        class="wm-btn"
+        title="导出解压合并后的明文结构（Compact 会展开）；与「下载 Compact」相对"
+        @click="downloadRaw"
+      >
+        下载 Raw JSON
+      </button>
       <button type="button" class="wm-btn" @click="downloadCompact">下载 Compact</button>
       <button
         type="button"
@@ -129,7 +155,14 @@ async function downloadObjConnected(): Promise<void> {
       >
         OBJ 连通模式
       </button>
-      <button type="button" class="wm-btn" @click="copyRawJson">复制 Raw</button>
+      <button
+        type="button"
+        class="wm-btn"
+        title="复制解压合并后的 Raw JSON（与下载 Raw 一致）"
+        @click="copyRawJson"
+      >
+        复制 Raw
+      </button>
       <button v-if="showSdeSave" type="button" class="wm-btn wm-btn--primary" @click="saveFullToSde">保存工作区到 SDE</button>
     </div>
   </section>

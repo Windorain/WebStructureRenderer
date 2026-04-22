@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
  * 预览页薄壳：previewSceneStore + StructureViewport + 侧栏与分层条。
+ * 唯一数据入口为 `mergedConfig: PreviewConfig`；场景与顶栏以 `renderBundle.document` 为准（见 `sceneDisplayTitle`）。
  */
 import { computed, onBeforeUnmount, onMounted, provide } from 'vue'
 import type { Scene } from 'three'
@@ -10,17 +11,13 @@ import LayerPreviewBar from '@/app/components/LayerPreviewBar.vue'
 import StructureViewport from '@/app/components/StructureViewport.vue'
 import ToolTipBox from '@/app/components/ToolTipBox.vue'
 import type { PreviewConfig } from '@/preview/previewConfig'
+import { sceneDisplayTitleFromRootDocument } from '@/preview/sceneDisplayTitle'
 import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/sceneStore'
 import { usePreviewTooltip, resolveBlockTooltip } from '@/preview/tooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
-  /**
-   * 可选：用文档根级 `label` / `id` 作为顶栏标题（如 World 包时内嵌 structure 的 id
-   * 常为导出占位，与根级元数据不一致）。
-   */
-  titleOverride?: string | null
 }>()
 
 const store = createPreviewSceneStore(props.mergedConfig)
@@ -51,10 +48,13 @@ const tooltipDisplayText = computed(() => {
   return resolveBlockTooltip(h.blockId, def)
 })
 
-/** 优先 `titleOverride`（根级元数据），否则与内嵌 `StructureDefinition` 的 label / id 一致 */
+/**
+ * 顶栏：从 `renderBundle.document` 解析（与 3D 同一数据源；支持根/World 内嵌/数字 id），
+ * 再退回已解析的 `StructureDefinition`。
+ */
 const previewTitle = computed(() => {
-  const fromRoot = props.titleOverride?.trim()
-  if (fromRoot) return fromRoot
+  const fromDoc = sceneDisplayTitleFromRootDocument(props.mergedConfig.renderBundle.document)
+  if (fromDoc) return fromDoc
   const def = structureDefinition.value
   const lab = def?.label?.trim()
   if (lab) return lab

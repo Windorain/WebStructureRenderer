@@ -30,7 +30,7 @@ const crumbs = computed(() => {
     const name = ctx.selectedExportName.value
     if (name) {
       out.push({ label: name })
-    } else if (ctx.document.value) {
+    } else if (ctx.scene.value) {
       out.push({ label: '工作区文档' })
     }
   } else if (m === 'local-file') {

@@ -90,7 +90,9 @@ export type DocumentFormat = 'Raw' | 'Compact'
 /** 与 SDE 写出一致：单 gzip 流再以标准 Base64 嵌入 JSON 字符串。 */
 export const COMPACT_PAYLOAD_ENCODING = 'gzip+base64' as const
 
-/** Compact 信封根（解压合并后与 Raw 同形）。 */
+/**
+ * Compact 信封：`meta` 为唯一元数据真源；`payload` 解压后为不含 id/label 等元数据键的 Raw 根 JSON（与 meta 合并后得到完整 Raw）。
+ */
 export interface CompactSceneEnvelope {
   documentFormat: 'Compact'
   payloadEncoding: typeof COMPACT_PAYLOAD_ENCODING

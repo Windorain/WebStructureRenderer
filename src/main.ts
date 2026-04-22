@@ -18,7 +18,11 @@ export {
   normalizeSceneDocumentForWiki,
   readDocumentFormat,
   isCompactSceneEnvelope,
+  readSceneMetaField,
+  sceneStableStringIdFromDocument,
 } from './render/data/compactSceneDocument'
+export { COMPACT_META_KEYS, ROOT_META_FORM_KEYS } from './render/data/compactMetaKeys'
+export type { CompactMetaKey, RootMetaFormKey } from './render/data/compactMetaKeys'
 export type { CompactSceneEnvelope, DocumentFormat } from './render/schema/types'
 export { COMPACT_PAYLOAD_ENCODING } from './render/schema/types'
 

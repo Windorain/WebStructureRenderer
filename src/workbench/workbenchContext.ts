@@ -1,5 +1,11 @@
 /**
- * 工作台共享状态：由 WorkbenchRoot provide，子面板 inject。
+ * 工作台共享状态（provide / inject）。
+ *
+ * 数据流（单向）：
+ * 1. **入口**：本机文件 / SDE 列表或工作区 / 内置示例 → 写入 `scene`（内存中唯一一份场景 JSON）
+ * 2. **编辑**：元数据等仅修改 `scene`，不直接改预览配置
+ * 3. **预览**：`syncPreview()` 从当前 `scene` 深拷贝后异步构建 `PreviewConfig`；不先抹掉旧配置，成功后再整体替换
+ * 4. **导出/落盘**：从 `scene` 读数据，按各面板格式输出（与预览构建独立）
  */
 
 import type { InjectionKey, Ref, ShallowRef } from 'vue'
@@ -18,41 +24,38 @@ import {
   sdePutWorkspaceDocument,
   type ExportFileInfo,
 } from '@/workbench/sdeApi'
-import { normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
-import { downloadJson, patchSceneMetadataRoot } from '@/workbench/sceneExportKit'
+import { isCompactSceneEnvelope, normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
+import { canonicalizeCompactInPlace, downloadJson, patchSceneMetadataRoot } from '@/workbench/sceneExportKit'
 import { documentLooksPreviewable, previewConfigFromDocument } from '@/workbench/previewFromDocument'
 
-/** 界面工作模式：右上角「设置」中选择（数据源） */
 export type WorkbenchWorkspaceMode = 'sde' | 'local-file' | 'local-bundle'
-
-/** 左侧主导航：预览 / 编辑 / 导出 */
 export type WorkbenchMainSection = 'preview' | 'edit' | 'export'
+/** 内存中的场景包（结构 JSON 根对象） */
+export type WorkbenchScene = Record<string, unknown>
 
 export interface WorkbenchContext {
-  /** 左侧当前板块 */
   mainSection: Ref<WorkbenchMainSection>
-  /** 右上角设置抽屉是否打开 */
   settingsOpen: Ref<boolean>
-  /** 当前主工作区模式（SDE / 本地磁盘 / 内置示例场景） */
   workspaceMode: Ref<WorkbenchWorkspaceMode>
-  /** 本地文件模式：当前打开的文件名（仅展示） */
   localFileName: Ref<string | null>
   apiBase: Ref<string>
   token: Ref<string>
   connectionOk: Ref<boolean | null>
   connectionMessage: Ref<string>
-
   exportFiles: Ref<ExportFileInfo[]>
   exportsLoading: Ref<boolean>
   selectedExportName: Ref<string | null>
-
-  document: Ref<Record<string, unknown> | null>
+  /** 当前内存中的完整场景数据（所有入口与编辑只改此对象） */
+  scene: Ref<WorkbenchScene | null>
   dirty: Ref<boolean>
-
-  previewConfig: Ref<PreviewConfig | null>
+  /** 由 `syncPreview` 从 `scene` 派生；成功前保留上一成功帧，避免闪断 */
+  previewConfig: ShallowRef<PreviewConfig | null>
+  /** 每成功 `syncPreview` 一次 +1，用于 AppShell 与上一配置实例隔离 */
+  previewEpoch: Ref<number>
+  /** 每次从本机/SDE/示例完整载入场景 +1，供元数据表单 `:key` 强制与磁盘快照对齐 */
+  sceneLoadEpoch: Ref<number>
   previewBusy: Ref<boolean>
   previewError: Ref<string | null>
-
   setMainSection(section: WorkbenchMainSection): void
   setSettingsOpen(open: boolean): void
   setWorkspaceMode(mode: WorkbenchWorkspaceMode): void
@@ -63,24 +66,25 @@ export interface WorkbenchContext {
   loadExportByName(name: string): Promise<void>
   loadWorkspaceFromServer(): Promise<void>
   saveWorkspaceFull(): Promise<void>
-  /** 服务端浅合并元数据（PATCH）并刷新本地文档与预览 */
   saveWorkspaceMetadataPatch(patch: Record<string, unknown>): Promise<void>
   applyMetadataPatch(patch: Record<string, unknown>): void
-  refreshPreview(): Promise<void>
+  /**
+   * 以当前 `scene` 为源重建预览会话（`PreviewConfig`）；失败时保留旧预览，仅写 `previewError`。
+   */
+  syncPreview(): Promise<void>
   loadLocalScene(sceneId?: string): Promise<void>
-  loadDocumentFromFile(file: File, options?: { saveHandle?: FileSystemFileHandle | null }): Promise<void>
-  /** 将当前内存中的文档写回磁盘（本地/示例模式）；支持 File System Access 时覆盖原文件或「另存为」 */
-  saveDocumentToDisk(): Promise<void>
+  loadSceneFromFile(file: File, options?: { saveHandle?: FileSystemFileHandle | null }): Promise<void>
+  /** 将当前 `scene` 以 JSON 写回本机/触发下载 */
+  writeSceneToLocalDisk(): Promise<void>
 }
 
 export const workbenchContextKey: InjectionKey<WorkbenchContext> = Symbol('workbenchContext')
 
-function cloneDoc(doc: unknown): Record<string, unknown> | null {
+function cloneDoc(doc: unknown): WorkbenchScene | null {
   if (doc === null || typeof doc !== 'object') return null
-  return JSON.parse(JSON.stringify(doc)) as Record<string, unknown>
+  return JSON.parse(JSON.stringify(doc)) as WorkbenchScene
 }
 
-/** TS 内置 DOM 类型未包含 queryPermission / requestPermission（File System Access） */
 type FileSystemFileHandleWritable = FileSystemFileHandle & {
   queryPermission(descriptor?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
   requestPermission(descriptor?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
@@ -131,27 +135,41 @@ export function provideWorkbenchContext(): WorkbenchContext {
   const exportsLoading = ref(false)
   const selectedExportName = ref<string | null>(null)
 
-  const document = ref<Record<string, unknown> | null>(null)
+  const scene = ref<WorkbenchScene | null>(null)
   const dirty = ref(false)
 
   const previewConfig = shallowRef<PreviewConfig | null>(null)
+  const previewEpoch = ref(0)
+  const sceneLoadEpoch = ref(0)
   const previewBusy = ref(false)
   const previewError = ref<string | null>(null)
-  /** 通过 showOpenFilePicker 打开文件时保留，便于 saveDocumentToDisk 直接写回 */
   const localFileSaveHandle: ShallowRef<FileSystemFileHandle | null> = shallowRef(null)
 
+  /** 写入 `scene`：Compact 先 canonicalize（根键折入 meta + 净化 payload）；非空则 bump `sceneLoadEpoch`。 */
+  function commitScene(next: WorkbenchScene | null): void {
+    if (next && isCompactSceneEnvelope(next)) {
+      canonicalizeCompactInPlace(next)
+    }
+    if (next) {
+      sceneLoadEpoch.value += 1
+    }
+    scene.value = next
+  }
+
   function resetSessionState(): void {
-    document.value = null
+    scene.value = null
     dirty.value = false
     previewConfig.value = null
+    previewEpoch.value = 0
+    sceneLoadEpoch.value = 0
     previewError.value = null
     selectedExportName.value = null
     localFileName.value = null
     localFileSaveHandle.value = null
   }
 
-  function setMainSection(section: WorkbenchMainSection): void {
-    mainSection.value = section
+  function setMainSection(s: WorkbenchMainSection): void {
+    mainSection.value = s
   }
 
   function setSettingsOpen(open: boolean): void {
@@ -168,17 +186,18 @@ export function provideWorkbenchContext(): WorkbenchContext {
     resetSessionState()
   }
 
-  async function refreshPreview(): Promise<void> {
-    const doc = document.value
+  async function syncPreview(): Promise<void> {
+    const raw = scene.value
     previewError.value = null
-    previewConfig.value = null
-    if (!doc) {
-      previewError.value = '无文档'
+    if (!raw) {
+      previewError.value = '无场景数据'
+      previewConfig.value = null
+      previewEpoch.value = 0
       return
     }
     let normalizedForCheck: unknown
     try {
-      normalizedForCheck = await normalizeSceneDocumentForWiki(doc)
+      normalizedForCheck = await normalizeSceneDocumentForWiki(raw)
     } catch (e) {
       previewError.value = formatSdeError(e)
       return
@@ -190,7 +209,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
     }
     previewBusy.value = true
     try {
-      previewConfig.value = await previewConfigFromDocument(JSON.parse(JSON.stringify(doc)))
+      const snapshot = JSON.parse(JSON.stringify(raw)) as unknown
+      const cfg = await previewConfigFromDocument(snapshot)
+      previewConfig.value = cfg
+      previewEpoch.value += 1
     } catch (e) {
       previewError.value = formatSdeError(e)
     } finally {
@@ -244,9 +266,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
     localFileSaveHandle.value = null
     selectedExportName.value = name
     const data = await sdeGetExportFile(apiBase.value, token.value, name)
-    document.value = cloneDoc(data)
+    const next = cloneDoc(data)
+    commitScene(next)
     dirty.value = false
-    await refreshPreview()
+    await syncPreview()
   }
 
   async function loadWorkspaceFromServer(): Promise<void> {
@@ -255,32 +278,33 @@ export function provideWorkbenchContext(): WorkbenchContext {
     const data = await sdeGetWorkspaceDocument(apiBase.value, token.value)
     const c = cloneDoc(data)
     if (c && Object.keys(c).length > 0) {
-      document.value = c
+      commitScene(c)
       dirty.value = false
-      await refreshPreview()
+      await syncPreview()
     }
   }
 
   async function saveWorkspaceFull(): Promise<void> {
-    if (!apiBase.value || !document.value) return
-    await sdePutWorkspaceDocument(apiBase.value, token.value, document.value)
+    if (!apiBase.value || !scene.value) return
+    await sdePutWorkspaceDocument(apiBase.value, token.value, scene.value)
     dirty.value = false
-    await refreshPreview()
+    await syncPreview()
   }
 
   async function saveWorkspaceMetadataPatch(patch: Record<string, unknown>): Promise<void> {
     if (!apiBase.value) return
     const merged = await sdePatchWorkspaceDocument(apiBase.value, token.value, patch)
-    document.value = cloneDoc(merged)
+    const next = cloneDoc(merged)
+    commitScene(next)
     dirty.value = false
-    await refreshPreview()
+    await syncPreview()
   }
 
   function applyMetadataPatch(patch: Record<string, unknown>): void {
-    if (!document.value) return
-    document.value = patchSceneMetadataRoot(document.value, patch) as Record<string, unknown>
+    if (!scene.value) return
+    scene.value = patchSceneMetadataRoot(scene.value, patch) as WorkbenchScene
     dirty.value = true
-    void refreshPreview()
+    void syncPreview()
   }
 
   async function loadLocalScene(sceneId?: string): Promise<void> {
@@ -290,13 +314,14 @@ export function provideWorkbenchContext(): WorkbenchContext {
     localFileName.value = null
     localFileSaveHandle.value = null
     selectedExportName.value = null
-    document.value = cloneDoc(raw)
+    const next = cloneDoc(raw)
+    commitScene(next)
     localFileName.value = `示例 · ${id}.json`
     dirty.value = false
-    await refreshPreview()
+    await syncPreview()
   }
 
-  async function loadDocumentFromFile(
+  async function loadSceneFromFile(
     file: File,
     options?: { saveHandle?: FileSystemFileHandle | null },
   ): Promise<void> {
@@ -314,10 +339,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
     workspaceMode.value = 'local-file'
     selectedExportName.value = null
     localFileSaveHandle.value = options?.saveHandle ?? null
-    document.value = parsed
+    commitScene(parsed)
     localFileName.value = file.name
     dirty.value = false
-    await refreshPreview()
+    await syncPreview()
   }
 
   function suggestedLocalJsonFilename(): string {
@@ -326,10 +351,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
     return base
   }
 
-  async function saveDocumentToDisk(): Promise<void> {
-    const doc = document.value
+  async function writeSceneToLocalDisk(): Promise<void> {
+    const doc = scene.value
     if (!doc) {
-      connectionMessage.value = '无文档可保存'
+      connectionMessage.value = '无场景数据可保存'
       return
     }
     const text = `${JSON.stringify(doc, null, 2)}\n`
@@ -390,9 +415,11 @@ export function provideWorkbenchContext(): WorkbenchContext {
     exportFiles,
     exportsLoading,
     selectedExportName,
-    document,
+    scene,
     dirty,
     previewConfig,
+    previewEpoch,
+    sceneLoadEpoch,
     previewBusy,
     previewError,
     setMainSection,
@@ -407,10 +434,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
     saveWorkspaceFull,
     saveWorkspaceMetadataPatch,
     applyMetadataPatch,
-    refreshPreview,
+    syncPreview,
     loadLocalScene,
-    loadDocumentFromFile,
-    saveDocumentToDisk,
+    loadSceneFromFile,
+    writeSceneToLocalDisk,
   }
 
   provide(workbenchContextKey, ctx)

@@ -12,6 +12,9 @@ import { provideWorkbenchContext } from '@/workbench/workbenchContext'
 const ctx = provideWorkbenchContext()
 
 const section = computed(() => ctx.mainSection.value)
+const metadataEditorKey = computed(
+  () => `${ctx.sceneLoadEpoch.value}-${ctx.localFileName.value ?? ''}-${ctx.selectedExportName.value ?? ''}`,
+)
 
 onMounted(async () => {
   if (ctx.apiBase.value) {
@@ -46,7 +49,7 @@ onMounted(async () => {
           <WorkbenchPreviewPanel />
         </div>
         <div v-show="section === 'edit'" class="dash-pane dash-pane--narrow">
-          <MetadataEditor />
+          <MetadataEditor :key="metadataEditorKey" />
         </div>
         <div v-show="section === 'export'" class="dash-pane dash-pane--narrow">
           <ExportActionsPanel />

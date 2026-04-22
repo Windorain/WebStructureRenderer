@@ -13,6 +13,10 @@ export interface PreviewFeatures {
   layerBar: boolean
 }
 
+/**
+ * 预览壳（`AppShell`）唯一入口：由 `loadPreviewSessionFromDocument` / `resolveBootstrapToPreviewConfig`
+ * 自场景 document 生成。几何与顶栏所读**场景真源**为 `renderBundle.document`（已 normalize，与材质库同批构建）。
+ */
 export interface PreviewConfig {
   sceneId: string
   renderBundle: RenderBundle

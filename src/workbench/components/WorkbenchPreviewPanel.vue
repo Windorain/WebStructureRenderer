@@ -6,41 +6,47 @@ import { useWorkbenchContext } from '@/workbench/workbenchContext'
 
 const ctx = useWorkbenchContext()
 
+const scene = computed(() => ctx.scene.value)
 const previewBusy = computed(() => ctx.previewBusy.value)
 const previewErrorText = computed(() => ctx.previewError.value)
 const previewCfg = computed(() => ctx.previewConfig.value)
+const previewKey = computed(() => ctx.previewEpoch.value)
 
-/** 顶栏标题与元数据编辑一致：用 JSON 根上 label，其次 id（World 时与帧内 structure 的占位 id 脱钩） */
-const titleFromDocumentRoot = computed((): string | null => {
-  const d = ctx.document.value
-  if (!d || typeof d !== 'object') return null
-  const o = d as Record<string, unknown>
-  const lab = typeof o.label === 'string' ? o.label.trim() : ''
-  if (lab) return lab
-  const id = typeof o.id === 'string' ? o.id.trim() : ''
-  if (id) return id
-  return null
-})
-
-async function onRetryPreview(): Promise<void> {
-  await ctx.refreshPreview()
+async function onRetrySync(): Promise<void> {
+  await ctx.syncPreview()
 }
 </script>
 
 <template>
   <section class="wm-preview">
-    <div v-if="previewBusy" class="wm-boot">构建预览…</div>
-    <div v-else-if="previewErrorText" class="wm-boot wm-boot--err">
-      <p>{{ previewErrorText }}</p>
-      <button type="button" class="wm-btn" @click="onRetryPreview">重试预览</button>
+    <p
+      v-if="scene && previewErrorText && previewCfg"
+      class="wm-preview-banner"
+      role="status"
+    >
+      {{ previewErrorText }}
+      <button type="button" class="wm-btn-inline" @click="onRetrySync">重试同步</button>
+    </p>
+
+    <div v-if="!scene" class="wm-boot wm-boot--muted">
+      请先在右上角「设置」中加载场景（本机 / SDE / 示例）；须含 textureBlobs 与 baked 几何以预览。
     </div>
-    <AppShell
-      v-else-if="previewCfg"
-      :merged-config="previewCfg"
-      :title-override="titleFromDocumentRoot"
-    />
-    <div v-else class="wm-boot wm-boot--muted">
-      请先在右上角「设置」中选择数据源并加载文档（须 geometryPhase=baked 且含 textureBlobs 方可预览）。
+
+    <div v-else-if="!previewCfg && previewErrorText" class="wm-boot wm-boot--err">
+      <p>{{ previewErrorText }}</p>
+      <button type="button" class="wm-btn" @click="onRetrySync">重试</button>
+    </div>
+
+    <div v-else-if="!previewCfg" class="wm-boot">
+      正在从内存中的场景数据构建三维预览…
+    </div>
+
+    <div v-else class="wm-preview-embed" :class="{ 'wm-preview-embed--busy': previewBusy }">
+      <AppShell
+        :key="`pv-${previewKey}`"
+        :merged-config="previewCfg"
+      />
+      <div v-if="previewBusy" class="wm-preview-veil" aria-hidden="true" />
     </div>
   </section>
 </template>
@@ -52,6 +58,45 @@ async function onRetryPreview(): Promise<void> {
   border-radius: 8px;
   border: 1px solid #334155;
   overflow: hidden;
+  position: relative;
+}
+.wm-preview-banner {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #fecaca;
+  background: #450a0a;
+  border-bottom: 1px solid #7f1d1d;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.wm-btn-inline {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #64748b;
+  background: #334155;
+  color: #f8fafc;
+  cursor: pointer;
+}
+.wm-preview-embed {
+  position: relative;
+  min-height: 60vh;
+}
+.wm-preview-embed--busy {
+  pointer-events: none;
+  opacity: 0.65;
+  transition: opacity 0.12s;
+}
+.wm-preview-veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.25);
+  z-index: 2;
+  pointer-events: none;
 }
 .wm-boot {
   padding: 16px;
@@ -73,6 +118,6 @@ async function onRetryPreview(): Promise<void> {
   background: #334155;
   color: #f8fafc;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
 }
 </style>

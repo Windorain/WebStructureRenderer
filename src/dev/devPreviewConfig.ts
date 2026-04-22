@@ -6,6 +6,7 @@ import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
 import { defaultEmbedUi } from '@/preview/previewConfig'
 import { getDevSceneDocument, listDevSceneIds } from '@/dev/devScenes'
 import { DEFAULT_PREVIEW_SCENE_ID, loadPreviewSessionFromDocument } from '@/preview/previewSession'
+import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
 import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
@@ -122,11 +123,8 @@ export async function resolveDevPreviewConfigAsync(): Promise<PreviewConfig> {
   const sceneId = resolveSceneId({ ...mergedBase, ...url })
   const document = getDevSceneDocument(sceneId)
   const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
-  const doc =
-    renderBundle.document && typeof renderBundle.document === 'object'
-      ? (renderBundle.document as { id?: unknown })
-      : undefined
-  const docId = doc && 'id' in doc ? String(doc.id ?? sceneId) : sceneId
+  const stableId = sceneStableStringIdFromDocument(renderBundle.document)
+  const docId = stableId !== 'scene' ? stableId : sceneId
 
   const docMode = sceneDisplayModeFromDocument(renderBundle.document)
   const docLayerStats = previewFeaturesForDisplayMode(docMode)

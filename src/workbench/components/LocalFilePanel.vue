@@ -29,7 +29,7 @@ async function pickFile(): Promise<void> {
       })
       const handle = handles[0]
       const file = await handle.getFile()
-      await ctx.loadDocumentFromFile(file, { saveHandle: handle })
+      await ctx.loadSceneFromFile(file, { saveHandle: handle })
       ctx.connectionMessage.value = `已打开 ${file.name}`
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
@@ -50,7 +50,7 @@ async function onFile(e: Event): Promise<void> {
   busy.value = true
   lastErr.value = ''
   try {
-    await ctx.loadDocumentFromFile(file)
+    await ctx.loadSceneFromFile(file)
     ctx.connectionMessage.value = `已打开 ${file.name}`
   } catch (err) {
     lastErr.value = err instanceof Error ? err.message : String(err)
@@ -69,7 +69,7 @@ async function onDrop(ev: DragEvent): Promise<void> {
   busy.value = true
   lastErr.value = ''
   try {
-    await ctx.loadDocumentFromFile(file)
+    await ctx.loadSceneFromFile(file)
     ctx.connectionMessage.value = `已打开 ${file.name}`
   } catch (err) {
     lastErr.value = err instanceof Error ? err.message : String(err)
