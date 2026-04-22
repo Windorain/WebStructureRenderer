@@ -1,5 +1,5 @@
 {
-  "name": "wiki-multi-structure-render",
+  "name": "web-structure-renderer",
   "private": true,
   "type": "module",
   "scripts": {

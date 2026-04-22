@@ -346,7 +346,7 @@ async function buildStructureBundleZipBlock(
   }
 
   const objHeader = [
-    '# wiki-multi-structure-render',
+    '# web-structure-renderer',
     '# mode=block; one mesh + one atlas per voxel (blob tiles + merged_coplanar tiles)',
     `# voxels_non_air=${stats.nonAirVoxelCount} skipped_unmapped_voxels=${stats.skippedUnmappedCount}`,
   ]
@@ -435,7 +435,7 @@ async function buildStructureBundleZipConnected(
   }
 
   const objHeader = [
-    '# wiki-multi-structure-render',
+    '# web-structure-renderer',
     '# mode=connected; componentGather => neighbor cull + voxel quad cluster + source-over atlas',
     `# voxels_non_air=${stats.nonAirVoxelCount} skipped_unmapped_voxels=${stats.skippedUnmappedCount}`,
   ]

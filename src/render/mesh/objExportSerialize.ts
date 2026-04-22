@@ -157,7 +157,7 @@ function sanitizeObjName(s: string): string {
 }
 
 export function serializeMtl(entries: MtlSerializedEntry[]): string {
-  const lines: string[] = ['# wiki-multi-structure-render', '']
+  const lines: string[] = ['# web-structure-renderer', '']
   for (const e of entries) {
     lines.push(`newmtl ${sanitizeObjName(e.name)}`)
     const ka = e.ka ?? [1, 1, 1]

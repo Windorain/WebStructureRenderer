@@ -151,7 +151,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       loadStatus.value = 'error'
       statusBarTone.value = 'error'
       statusMessage.value = formatError(e)
-      console.error('[WikiMultiStructureRender]', e)
+      console.error('[StructureRenderer]', e)
     }
   }
 
@@ -201,7 +201,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     } catch (e) {
       statusBarTone.value = 'error'
       statusMessage.value = `网格构建失败: ${formatError(e)}`
-      console.error('[WikiMultiStructureRender] buildBlockMesh', e)
+      console.error('[StructureRenderer] buildBlockMesh', e)
     } finally {
       if (seq === meshBuildSeq) meshBusy.value = false
     }

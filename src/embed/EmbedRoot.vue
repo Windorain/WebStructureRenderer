@@ -23,7 +23,7 @@ async function load() {
     mergedConfig.value = await resolveBootstrapToPreviewConfig(props.bootstrap)
   } catch (e) {
     loadError.value = formatUnknownError(e)
-    console.error('[WikiMultiStructureRender] resolveBootstrapToPreviewConfig', e)
+    console.error('[StructureRenderer] resolveBootstrapToPreviewConfig', e)
   }
 }
 

@@ -16,14 +16,14 @@ export default defineConfig({
   build: {
     lib: {
       entry: fileURLToPath(new URL('./src/main.ts', import.meta.url)),
-      name: 'WikiMultiStructureRender',
-      fileName: 'wiki-multi-structure-render',
+      name: 'StructureRenderer',
+      fileName: 'web-structure-renderer',
       formats: ['iife'],
     },
     rollupOptions: {
       external: ['vue'],
       output: {
-        entryFileNames: 'wiki-multi-structure-render.js',
+        entryFileNames: 'web-structure-renderer.js',
         globals: {
           vue: 'cockpitVue',
         },

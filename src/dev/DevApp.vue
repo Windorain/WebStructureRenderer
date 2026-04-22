@@ -11,7 +11,7 @@ const bootError = ref<string | null>(null)
 
 onErrorCaptured((err) => {
   bootError.value = formatUnknownError(err)
-  console.error('[WikiMultiStructureRender] WorkbenchRoot', err)
+  console.error('[StructureRenderer] WorkbenchRoot', err)
   return false
 })
 </script>

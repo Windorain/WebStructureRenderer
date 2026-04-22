@@ -8,4 +8,4 @@ dist-workbench/
 
 # 本地场景 / 资源（体积大，不纳入版本库）
 data/
-.wmr-preview-port
+.wsr-preview-port

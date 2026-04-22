@@ -7,7 +7,7 @@
 
 import '@/styles/nei-tokens.css'
 
-export const MOUNT_SELECTOR = '#wiki-multi-structure-render'
+export const MOUNT_SELECTOR = '#web-structure-renderer'
 
 export { mount } from './embed/mount'
 export type { EmbedBootstrapOptions, EmbedData, EmbedUiOptions, PreviewFeatures } from './embed/embedContract'

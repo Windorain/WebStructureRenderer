@@ -4,14 +4,14 @@
 //使用ES5语法
 //加载CSS和JS文件
 //词条中挂载点示例：
-//<div id="wiki-multi-structure-render" data-wmr-structure="MEControllers5x5"></div>
+//<div id="web-structure-renderer" data-wsr-structure="MEControllers5x5"></div>
 //将加载 https://你的站/wiki/Data:Structures/MEControllers5x5.json?action=raw
-//若无 data-wmr-structure，则仍使用 window.__WMR_EMBED_DOCUMENT__（便于控制台调试）
+//若无 data-wsr-structure，则仍使用 window.__WSR_EMBED_DOCUMENT__（便于控制台调试）
 
 /* global $, mw, document, window, console */
 $(function () {
-  function loadWmrCss() {
-    if (document.querySelector('link[data-wmr-css]')) {
+  function loadWsrCss() {
+    if (document.querySelector('link[data-wsr-css]')) {
       return
     }
     var href = mw.util.getUrl('零件:StructureRender.css', {
@@ -21,19 +21,19 @@ $(function () {
     var link = document.createElement('link')
     link.rel = 'stylesheet'
     link.href = href
-    link.setAttribute('data-wmr-css', '1')
+    link.setAttribute('data-wsr-css', '1')
     document.head.appendChild(link)
   }
 
   /**
-   * 从挂载 div 的 data-wmr-structure 得到 MediaWiki 页面名 Data:Structures/XXX.json
+   * 从挂载 div 的 data-wsr-structure 得到 MediaWiki 页面名 Data:Structures/XXX.json
    * 属性值填 XXX 即可（可带或不带 .json 后缀）
    */
   function structureDataTitleFromMountEl(el) {
     if (!el || !el.getAttribute) {
       return ''
     }
-    var v = el.getAttribute('data-wmr-structure')
+    var v = el.getAttribute('data-wsr-structure')
     if (v == null || typeof v !== 'string') {
       return ''
     }
@@ -47,16 +47,16 @@ $(function () {
 
   function onExternalLibsLoaded() {
     window.removeEventListener('externalLibsLoaded', onExternalLibsLoaded, false)
-    loadWmrCss()
+    loadWsrCss()
     var raw = mw.util.getUrl('零件:StructureRender.js', {
       action: 'raw',
       ctype: 'text/javascript',
     })
     $.getScript(raw, function () {
-      if (!window.WikiMultiStructureRender || !window.WikiMultiStructureRender.mount) {
+      if (!window.StructureRenderer || !window.StructureRenderer.mount) {
         return
       }
-      var el = document.getElementById('wiki-multi-structure-render')
+      var el = document.getElementById('web-structure-renderer')
       if (!el) {
         return
       }
@@ -65,21 +65,21 @@ $(function () {
         var jsonUrl = mw.util.getUrl(dataTitle, { action: 'raw' })
         $.getJSON(jsonUrl)
           .done(function (doc) {
-            window.WikiMultiStructureRender.mount(el, {
+            window.StructureRenderer.mount(el, {
               data: { document: doc },
             })
           })
           .fail(function (_jqXHR, textStatus, err) {
-            console.warn('[WMR] 结构数据加载失败', dataTitle, textStatus, err)
+            console.warn('[WSR] 结构数据加载失败', dataTitle, textStatus, err)
           })
         return
       }
-      var doc = window.__WMR_EMBED_DOCUMENT__
+      var doc = window.__WSR_EMBED_DOCUMENT__
       if (!doc) {
-        console.warn('[WMR] 请设置 div 的 data-wmr-structure，或 window.__WMR_EMBED_DOCUMENT__')
+        console.warn('[WSR] 请设置 div 的 data-wsr-structure，或 window.__WSR_EMBED_DOCUMENT__')
         return
       }
-      window.WikiMultiStructureRender.mount(el, {
+      window.StructureRenderer.mount(el, {
         data: { document: doc },
       })
     })

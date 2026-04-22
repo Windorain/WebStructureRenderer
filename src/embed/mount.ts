@@ -14,12 +14,12 @@ export function mount(
 ): void {
   const el =
     target == null
-      ? document.querySelector('#wiki-multi-structure-render')
+      ? document.querySelector('#web-structure-renderer')
       : typeof target === 'string'
         ? document.querySelector(target)
         : target
   if (!el) {
-    console.warn('[WikiMultiStructureRender] mount: 未找到挂载节点', target ?? '#wiki-multi-structure-render')
+    console.warn('[StructureRenderer] mount: 未找到挂载节点', target ?? '#web-structure-renderer')
     return
   }
   createApp(EmbedRoot, { bootstrap: options }).mount(el)

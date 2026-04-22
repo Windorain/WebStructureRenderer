@@ -119,7 +119,7 @@ async function onViewportReady(scene: Scene): Promise<void> {
   try {
     await store.rebuildContentMesh()
   } catch (e) {
-    console.error('[WikiMultiStructureRender] onViewportReady', e)
+    console.error('[StructureRenderer] onViewportReady', e)
   }
 }
 
