@@ -16,8 +16,6 @@ import { buildBlockMesh } from '@/render/mesh/blockMesh'
 /** 四向等轴方位角（度），相邻相差 90° */
 export const ISOMETRIC_EXPORT_YAW_DEG: readonly number[] = [45, 135, 225, 315]
 
-const SNAPSHOT_BG = 0x111827
-
 /**
  * 正交视锥在相机局部 XY 上包住 `box` 的 8 个角（画布为正方形时用 max(半宽,半高) 居中）。
  */
@@ -107,7 +105,7 @@ export async function bakeIsometricStructurePngDataUrl(
   let controls: OrbitControls | null = null
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
-    alpha: false,
+    alpha: true,
     preserveDrawingBuffer: true,
   })
 
@@ -121,9 +119,10 @@ export async function bakeIsometricStructurePngDataUrl(
     renderer.setSize(size, size)
     renderer.setPixelRatio(1)
     renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.setClearColor(0x000000, 0)
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(SNAPSHOT_BG)
+    scene.background = null
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.55)
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.9)

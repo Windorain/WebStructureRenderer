@@ -231,7 +231,7 @@ async function downloadIsoPng(): Promise<void> {
     <section class="wm-panel">
       <h2 class="wm-panel__title">导出图片</h2>
       <p class="wm-muted wm-export-hint">
-        标准等轴、正交投影离屏烘焙（无透视缩短）；方位与俯仰同主预览对角线，「切换»」绕竖轴每次 90°，共四向。
+        标准等轴、正交投影离屏烘焙（无透视缩短）；PNG 透明背景。方位与俯仰同主预览对角线，「切换»」绕竖轴每次 90°，共四向。
       </p>
       <div class="wm-iso-layout">
         <div class="wm-iso-frame">
