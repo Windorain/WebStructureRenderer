@@ -13,7 +13,7 @@ import {
 } from '@/render/interaction/initialCamera'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
-import { pickBlockIdFromPointer } from '@/render/interaction/voxelPick'
+import { pickVoxelFromPointer } from '@/render/interaction/voxelPick'
 import type { StructureDefinition } from '@/render/schema/types'
 import {
   RenderViewport,
@@ -43,6 +43,7 @@ const emit = defineEmits<{
       clientX: number
       clientY: number
       source: 'viewport'
+      voxel: { column: number; row: number; zSlice: number }
     } | null,
   ]
 }>()
@@ -72,7 +73,7 @@ function runPick(): void {
   const dom = canvasEl
   if (!vp || !g || !dom || !lastPointer) return
 
-  const id = pickBlockIdFromPointer({
+  const picked = pickVoxelFromPointer({
     clientX: lastPointer.clientX,
     clientY: lastPointer.clientY,
     domElement: dom,
@@ -82,12 +83,14 @@ function runPick(): void {
     layerPreview: props.layerPreviewMode,
   })
 
-  if (id) {
+  if (picked) {
+    const { blockId, column, row, zSlice } = picked
     emit('hover-block', {
-      blockId: id,
+      blockId,
       clientX: lastPointer.clientX,
       clientY: lastPointer.clientY,
       source: 'viewport',
+      voxel: { column, row, zSlice },
     })
   } else {
     emit('hover-block', null)

@@ -225,6 +225,12 @@ export interface StructureDataScan {
   worldGrid: unknown
 }
 
+/**
+ * 与 `cellGrid` 同下标 `cellGrid[zSlice][row][column]` 时，`cellTooltipGrid` 也按 `[zSlice][row][column]` 对齐。
+ * 值为在根级/World 级 `tooltipPalette` 中的下标；`TOOLTIP_GRID_NONE` 表示该格不显示 ToolTip。
+ */
+export const TOOLTIP_GRID_NONE = -1
+
 /** 可渲染终态（palette + cellGrid） */
 export interface StructureDataBaked {
   geometryPhase: 'baked'
@@ -248,6 +254,14 @@ export interface StructureDataBaked {
   blockPalette: BlockPaletteEntry[]
   materialPalette: MaterialPaletteEntry[]
   cellGrid: number[][][]
+  /**
+   * 与 `cellGrid` 同形、同下标。单文件文档时，配合同对象上的 `tooltipPalette` 或外裹 World 根上的 `tooltipPalette`。
+   */
+  cellTooltipGrid?: number[][][]
+  /**
+   * 单文件 baked 根上的 ToolTip 文案池；`World` 文档时见根级 `World.tooltipPalette`（帧内 `structure` 不重复此字段亦可）。
+   */
+  tooltipPalette?: string[]
   scanBounds?: { minX: number; maxY: number; minZ: number }
   initialCamera?: InitialCameraDef
 }
@@ -344,6 +358,8 @@ export interface World {
   globalConfig?: Record<string, unknown>
   /** 各帧内嵌 structure 的 materialPalette 共用此池 */
   textureBlobs?: string[]
+  /** 各帧内 `cellTooltipGrid` 中索引用到的 ToolTip 文案；与 `materialPalette` 独立 */
+  tooltipPalette?: string[]
   frames: Frame[]
   playback?: { loop?: boolean; defaultFrameIndex?: number }
 }

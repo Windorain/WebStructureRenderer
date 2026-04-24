@@ -14,7 +14,7 @@ import type { PreviewConfig } from '@/preview/previewConfig'
 import { readSceneMetaField } from '@/render/data/compactSceneDocument'
 import { sceneDisplayTitleFromRootDocument } from '@/preview/sceneDisplayTitle'
 import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/sceneStore'
-import { usePreviewTooltip, resolveBlockTooltip } from '@/preview/tooltip'
+import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
@@ -38,6 +38,7 @@ const {
   projectionMode,
   layerPreviewMode,
   contentGroupRef,
+  tooltipPalette,
 } = store
 
 const showLayerBar = computed(() => props.mergedConfig.features.layerBar)
@@ -89,7 +90,7 @@ const tooltipDisplayText = computed(() => {
   const def = structureDefinition.value
   const h = hover.value
   if (!def || !h?.blockId) return ''
-  return resolveBlockTooltip(h.blockId, def)
+  return resolvePreviewTooltipText(def, tooltipPalette.value, h)
 })
 
 /**
@@ -133,6 +134,7 @@ function onViewportHover(
     clientX: number
     clientY: number
     source: 'viewport'
+    voxel: { column: number; row: number; zSlice: number }
   } | null,
 ): void {
   if (payload) setHover(payload)

@@ -148,6 +148,22 @@ export interface RenderBundleResolveResult {
   definition: StructureDefinition
   /** World 时为 `frameIndex:`，与 buildMaterialRegistryFromSceneDocument 的 materialId 前缀一致；单结构为 undefined */
   materialKeyPrefix: string | undefined
+  /** `World.tooltipPalette` 或单文件 `StructureDataBaked.tooltipPalette`；缺省为 `[]` */
+  tooltipPalette: string[]
+}
+
+/**
+ * 从当前 `document` 与已解析的当帧 `StructureDefinition` 取 ToolTip 文案池（不从 `registryId` 回退）。
+ */
+export function tooltipPaletteFromSceneDocument(document: unknown, definition: StructureDefinition): string[] {
+  if (isWorldDocument(document)) {
+    const tp = document.tooltipPalette
+    if (Array.isArray(tp) && tp.every((x) => typeof x === 'string')) return tp
+    return []
+  }
+  const tp = definition.tooltipPalette
+  if (Array.isArray(tp) && tp.every((x) => typeof x === 'string')) return tp
+  return []
 }
 
 export function resolveRenderBundle(bundle: RenderBundle, frameIndex?: number): RenderBundleResolveResult {
@@ -160,7 +176,8 @@ export function resolveRenderBundle(bundle: RenderBundle, frameIndex?: number): 
     materialKeyPrefix = undefined
   }
   const definition = loadStructureOrWorld(doc, frameIndex)
-  return { definition, materialKeyPrefix }
+  const tooltipPalette = tooltipPaletteFromSceneDocument(doc, definition)
+  return { definition, materialKeyPrefix, tooltipPalette }
 }
 
 export type { MaterialRegistryData, RenderBundle } from '../schema/types'

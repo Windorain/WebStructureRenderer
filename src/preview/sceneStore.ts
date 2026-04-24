@@ -23,7 +23,7 @@ import { buildBlockStatsEntries, type BlockStatRow } from '@/render/interaction/
 import { MC_ITEM_SLOT_BAKE_REVISION, summarizeBlocksForCache } from '@/render/interaction/blockSlotBaker'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
-import { resolveRenderBundle } from '@/render/data/bundleResolve'
+import { resolveRenderBundle, type RenderBundleResolveResult } from '@/render/data/bundleResolve'
 import {
   buildBlockMesh,
   formatUndefinedBlockDetailsForStatus,
@@ -55,6 +55,8 @@ export interface PreviewSceneStore {
   blockStatsEntries: ComputedRef<BlockStatRow[]>
   projectionLabel: ComputedRef<string>
   layerPreviewLabel: ComputedRef<string>
+  /** 与当帧 `StructureDefinition` 及拾取 `cellTooltipGrid` 配合；来自 World 或单文件根 */
+  tooltipPalette: ShallowRef<string[]>
   registerScene(scene: THREE.Scene): void
   loadStructureAndResources(): Promise<void>
   rebuildContentMesh(): Promise<void>
@@ -82,6 +84,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
   /** World 多帧时与 buildMaterialRegistryFromSceneDocument / buildBlockMesh 一致 */
   const materialKeyPrefixRef = ref<string | undefined>(undefined)
+  const tooltipPalette = shallowRef<string[]>([])
   const sceneRef = shallowRef<THREE.Scene | null>(null)
   const contentGroupRef = shallowRef<THREE.Group | null>(null)
 
@@ -129,9 +132,10 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     statusBarTone.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
-      const resolved = resolveRenderBundle(config.renderBundle)
+      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle)
       structureDefinition.value = resolved.definition
       materialKeyPrefixRef.value = resolved.materialKeyPrefix
+      tooltipPalette.value = resolved.tooltipPalette
       materialLibrary.value = config.materialLibrary
       const iconCache = new BlockIconCache(config.materialLibrary, {
         ...config.blockIconCacheOptions,
@@ -224,6 +228,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     materialLibrary.value = null
     structureDefinition.value = null
     materialKeyPrefixRef.value = undefined
+    tooltipPalette.value = []
     sceneRef.value = null
   }
 
@@ -248,6 +253,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     blockStatsEntries,
     projectionLabel,
     layerPreviewLabel,
+    tooltipPalette,
     registerScene,
     loadStructureAndResources,
     rebuildContentMesh,

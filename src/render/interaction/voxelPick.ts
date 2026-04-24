@@ -1,5 +1,6 @@
 /**
  * 视口内鼠标 → 体素 block_registry 键（effectiveBlockId）：Raycaster + 命中点推入体内 + 与 simpleMesh 一致的格点映射。
+ * 格点 `(column,row,zSlice)` 与 `cellGrid[zSlice][row][column]` / `buildVoxelVolume#get` 一致。
  */
 
 import * as THREE from 'three'
@@ -21,6 +22,13 @@ export interface PickBlockIdParams {
   layerPreview: LayerPreviewMode
 }
 
+export interface VoxelPickResult {
+  blockId: string
+  column: number
+  row: number
+  zSlice: number
+}
+
 /**
  * 与 `quadGeometryForFace` 包围盒一致：世界坐标 → 体素索引。
  */
@@ -36,7 +44,10 @@ export function worldPointToVoxelIndices(
   return { column, voxelY, zSlice }
 }
 
-export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null {
+/**
+ * 拾取非空气体素时返回 `blockId` 与 `cellGrid` 同下标的格点（供 `cellTooltipGrid`）。
+ */
+export function pickVoxelFromPointer(params: PickBlockIdParams): VoxelPickResult | null {
   const { clientX, clientY, domElement, camera, contentGroup, def, layerPreview } = params
 
   const rect = domElement.getBoundingClientRect()
@@ -63,15 +74,20 @@ export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null
   const { sizeColumn, sizeRow, sizeZSlice } = volume
 
   let { column, voxelY, zSlice } = worldPointToVoxelIndices(inside, sizeColumn, sizeRow, sizeZSlice)
-  const row = sizeRow - 1 - voxelY
+  let row = sizeRow - 1 - voxelY
 
   let id = effectiveBlockId(volume, column, row, zSlice, sizeRow, layerPreview)
   if (id === AIR) {
     const p2 = hit.point.clone().addScaledVector(normalWorld, -NUDGE * 4)
-      ; ({ column, voxelY, zSlice } = worldPointToVoxelIndices(p2, sizeColumn, sizeRow, sizeZSlice))
-    id = effectiveBlockId(volume, column, sizeRow - 1 - voxelY, zSlice, sizeRow, layerPreview)
+    ;({ column, voxelY, zSlice } = worldPointToVoxelIndices(p2, sizeColumn, sizeRow, sizeZSlice))
+    row = sizeRow - 1 - voxelY
+    id = effectiveBlockId(volume, column, row, zSlice, sizeRow, layerPreview)
   }
 
   if (id === AIR) return null
-  return id
+  return { blockId: id, column, row, zSlice }
+}
+
+export function pickBlockIdFromPointer(params: PickBlockIdParams): string | null {
+  return pickVoxelFromPointer(params)?.blockId ?? null
 }
