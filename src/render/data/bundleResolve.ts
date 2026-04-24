@@ -150,6 +150,8 @@ export interface RenderBundleResolveResult {
   materialKeyPrefix: string | undefined
   /** `World.tooltipPalette` 或单文件 `StructureDataBaked.tooltipPalette`；缺省为 `[]` */
   tooltipPalette: string[]
+  /** World 且 `frames` 非空时，为当前用于解析的 `frames` 下标 */
+  worldFrameIndex?: number
 }
 
 /**
@@ -169,15 +171,17 @@ export function tooltipPaletteFromSceneDocument(document: unknown, definition: S
 export function resolveRenderBundle(bundle: RenderBundle, frameIndex?: number): RenderBundleResolveResult {
   const doc = bundle?.document
   let materialKeyPrefix: string | undefined
-  if (isWorldDocument(doc)) {
+  let worldFrameIndex: number | undefined
+  if (isWorldDocument(doc) && doc.frames.length > 0) {
     const idx = frameIndex !== undefined ? Math.floor(frameIndex) : getDefaultFrameIndex(doc)
     materialKeyPrefix = `${idx}:`
+    worldFrameIndex = idx
   } else {
     materialKeyPrefix = undefined
   }
   const definition = loadStructureOrWorld(doc, frameIndex)
   const tooltipPalette = tooltipPaletteFromSceneDocument(doc, definition)
-  return { definition, materialKeyPrefix, tooltipPalette }
+  return { definition, materialKeyPrefix, tooltipPalette, worldFrameIndex }
 }
 
 export type { MaterialRegistryData, RenderBundle } from '../schema/types'

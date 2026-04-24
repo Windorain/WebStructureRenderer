@@ -2,6 +2,9 @@
 /**
  * 预览页薄壳：previewSceneStore + StructureViewport + 侧栏与分层条。
  * 唯一数据入口为 `mergedConfig: PreviewConfig`；场景与顶栏以 `renderBundle.document` 为准（见 `sceneDisplayTitle`）。
+ *
+ * World 多帧：通过 `provide(PreviewSceneContextKey)` 暴露 `setCurrentWorldFrame`、`worldFrameIndex`、`worldFrameCount` 等；
+ * 子组件 `WorldFramePlayerControls` / `WorldFrameScrubber` 仅消费该 store，不在此重复实现业务。
  */
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import type { Scene } from 'three'
@@ -10,6 +13,8 @@ import BlockStatsSidebar from '@/app/components/BlockStatsSidebar.vue'
 import LayerPreviewBar from '@/app/components/LayerPreviewBar.vue'
 import StructureViewport from '@/app/components/StructureViewport.vue'
 import ToolTipBox from '@/app/components/ToolTipBox.vue'
+import WorldFramePlayerControls from '@/app/components/WorldFramePlayerControls.vue'
+import WorldFrameScrubber from '@/app/components/WorldFrameScrubber.vue'
 import type { PreviewConfig } from '@/preview/previewConfig'
 import { readSceneMetaField } from '@/render/data/compactSceneDocument'
 import { sceneDisplayTitleFromRootDocument } from '@/preview/sceneDisplayTitle'
@@ -39,6 +44,7 @@ const {
   layerPreviewMode,
   contentGroupRef,
   tooltipPalette,
+  hasWorldMultiFrame,
 } = store
 
 const showLayerBar = computed(() => props.mergedConfig.features.layerBar)
@@ -199,6 +205,13 @@ onBeforeUnmount(() => {
           @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"
         />
+        <div
+          v-if="loadStatus === 'ok' && hasWorldMultiFrame"
+          class="wm-world-frame-dock"
+        >
+          <WorldFramePlayerControls />
+          <WorldFrameScrubber />
+        </div>
         <LayerPreviewBar v-if="showLayerBar && loadStatus === 'ok'" />
       </div>
     </div>
@@ -294,6 +307,21 @@ onBeforeUnmount(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+.wm-world-frame-dock {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--nei-inset-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  flex-shrink: 0;
 }
 .wm-status-bar {
   display: flex;

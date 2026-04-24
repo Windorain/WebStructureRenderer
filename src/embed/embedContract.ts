@@ -21,6 +21,8 @@ export interface EmbedUiOptions {
   blockIconCacheOptions?: Partial<BlockIconCacheOptions>
   initialLayerWorldY?: number
   initialProjectionMode?: ProjectionMode
+  /** World 多帧时指定起始帧，缺省为文档默认帧 */
+  initialWorldFrameIndex?: number
   sceneBackground?: number
   loadingMessage?: string
   okMessage?: (modelId: string) => string
@@ -62,6 +64,7 @@ export async function resolveBootstrapToPreviewConfig(
     },
     initialLayerWorldY: ui.initialLayerWorldY ?? defaultEmbedUi.initialLayerWorldY,
     initialProjectionMode: ui.initialProjectionMode ?? defaultEmbedUi.initialProjectionMode,
+    initialWorldFrameIndex: ui.initialWorldFrameIndex,
     sceneBackground: ui.sceneBackground ?? defaultEmbedUi.sceneBackground,
     loadingMessage: ui.loadingMessage ?? defaultEmbedUi.loadingMessage,
     okMessage: ui.okMessage ?? defaultEmbedUi.okMessage,

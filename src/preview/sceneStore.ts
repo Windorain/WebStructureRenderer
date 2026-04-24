@@ -23,12 +23,13 @@ import { buildBlockStatsEntries, type BlockStatRow } from '@/render/interaction/
 import { MC_ITEM_SLOT_BAKE_REVISION, summarizeBlocksForCache } from '@/render/interaction/blockSlotBaker'
 import type { LayerPreviewMode } from '@/render/data/layerPreview'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
-import { resolveRenderBundle, type RenderBundleResolveResult } from '@/render/data/bundleResolve'
+import { isWorldDocument, resolveRenderBundle, type RenderBundleResolveResult } from '@/render/data/bundleResolve'
+import { frameAt } from '@/render/data/worldPlayback'
 import {
   buildBlockMesh,
   formatUndefinedBlockDetailsForStatus,
 } from '@/render/mesh/blockMesh'
-import type { StructureDefinition } from '@/render/schema/types'
+import type { StructureDefinition, World } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { formatUnknownError } from '@/util/formatUnknownError'
 
@@ -63,12 +64,36 @@ export interface PreviewSceneStore {
   detachAndDisposeMesh(): void
   disposeCachesAndLibrary(): void
   contentGroupRef: ShallowRef<THREE.Group | null>
+  /** World 且 `frames.length > 1` 时为真；用于多帧轮播 UI */
+  hasWorldMultiFrame: ComputedRef<boolean>
+  /** 当前 `World.frames` 下标（单结构文档时恒为 0） */
+  worldFrameIndex: Ref<number>
+  /** 多帧时间轴轮播中 */
+  framesPlaybackIsPlaying: Ref<boolean>
+  /** 仅 World 多帧：播放 / 暂停（按每帧 `durationMs`，缺省 1000ms；遇尾帧依 `playback.loop`） */
+  toggleWorldFramesPlayback(): void
+  /** World 文档的 `frames.length`；单结构文档为 0 */
+  worldFrameCount: ComputedRef<number>
+  /** 将当前体素/材质切换到指定 `World.frames` 下标（会重建网格与图标缓存） */
+  setCurrentWorldFrame(index: number): Promise<void>
 }
 
 export const PreviewSceneContextKey: InjectionKey<PreviewSceneStore> = Symbol('PreviewSceneContext')
 
 function formatError(err: unknown): string {
   return formatUnknownError(err)
+}
+
+const DEFAULT_WORLD_FRAME_DWELL_MS = 1000
+
+function normalizeWorldFrameListIndex(w: World, raw: number): number {
+  const n = w.frames.length
+  if (n === 0) return 0
+  let i = Math.floor(raw)
+  if (w.playback?.loop) {
+    return ((i % n) + n) % n
+  }
+  return Math.max(0, Math.min(n - 1, i))
 }
 
 export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStore {
@@ -87,6 +112,20 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const tooltipPalette = shallowRef<string[]>([])
   const sceneRef = shallowRef<THREE.Scene | null>(null)
   const contentGroupRef = shallowRef<THREE.Group | null>(null)
+
+  const worldFrameIndex = ref(0)
+  const framesPlaybackIsPlaying = ref(false)
+  let worldPlaybackTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const worldFrameCount = computed(() => {
+    const doc = config.renderBundle.document
+    if (!isWorldDocument(doc)) {
+      return 0
+    }
+    return doc.frames.length
+  })
+
+  const hasWorldMultiFrame = computed(() => worldFrameCount.value > 1)
 
   let disposeContent: (() => void) | null = null
   let meshBuildSeq = 0
@@ -127,12 +166,128 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     sceneRef.value = scene
   }
 
+  function clearWorldPlaybackSchedule(): void {
+    if (worldPlaybackTimeoutId !== null) {
+      clearTimeout(worldPlaybackTimeoutId)
+      worldPlaybackTimeoutId = null
+    }
+  }
+
+  function dwellMsForCurrentWorldFrame(): number {
+    const doc = config.renderBundle.document
+    if (!isWorldDocument(doc) || doc.frames.length === 0) {
+      return DEFAULT_WORLD_FRAME_DWELL_MS
+    }
+    const f = frameAt(doc, worldFrameIndex.value)
+    const d = f?.durationMs
+    if (typeof d === 'number' && Number.isFinite(d) && d > 0) {
+      return d
+    }
+    return DEFAULT_WORLD_FRAME_DWELL_MS
+  }
+
+  function scheduleNextWorldFrameStep(): void {
+    clearWorldPlaybackSchedule()
+    if (!framesPlaybackIsPlaying.value || !hasWorldMultiFrame.value) {
+      return
+    }
+    const doc = config.renderBundle.document
+    if (!isWorldDocument(doc) || doc.frames.length < 2) {
+      return
+    }
+    const n = doc.frames.length
+    const loop = Boolean(doc.playback?.loop)
+    const delay = dwellMsForCurrentWorldFrame()
+    const fromIndex = worldFrameIndex.value
+    worldPlaybackTimeoutId = setTimeout(() => {
+      worldPlaybackTimeoutId = null
+      if (!framesPlaybackIsPlaying.value) {
+        return
+      }
+      let next = fromIndex + 1
+      if (next >= n) {
+        if (loop) {
+          next = 0
+        } else {
+          framesPlaybackIsPlaying.value = false
+          return
+        }
+      }
+      void setCurrentWorldFrame(next)
+        .then(() => {
+          if (framesPlaybackIsPlaying.value) {
+            scheduleNextWorldFrameStep()
+          }
+        })
+        .catch(() => {
+          framesPlaybackIsPlaying.value = false
+        })
+    }, delay)
+  }
+
+  function toggleWorldFramesPlayback(): void {
+    if (!hasWorldMultiFrame.value) {
+      return
+    }
+    if (framesPlaybackIsPlaying.value) {
+      framesPlaybackIsPlaying.value = false
+      clearWorldPlaybackSchedule()
+      return
+    }
+    framesPlaybackIsPlaying.value = true
+    scheduleNextWorldFrameStep()
+  }
+
+  async function setCurrentWorldFrame(rawNext: number): Promise<void> {
+    const doc = config.renderBundle.document
+    if (!isWorldDocument(doc) || doc.frames.length === 0) {
+      return
+    }
+    const idx = normalizeWorldFrameListIndex(doc, rawNext)
+    if (idx === worldFrameIndex.value && structureDefinition.value) {
+      return
+    }
+    worldFrameIndex.value = idx
+    const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, idx)
+    structureDefinition.value = resolved.definition
+    materialKeyPrefixRef.value = resolved.materialKeyPrefix
+    tooltipPalette.value = resolved.tooltipPalette
+    const lib = config.materialLibrary
+    const iconCache = new BlockIconCache(
+      lib,
+      {
+        ...config.blockIconCacheOptions,
+        materialKeyPrefix: resolved.materialKeyPrefix,
+      },
+      resolved.definition,
+    )
+    iconCache.setRevisionKey(
+      `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey({
+        ...config.blockIconCacheOptions,
+        materialKeyPrefix: resolved.materialKeyPrefix,
+      })}`,
+    )
+    blockIconCache.value = iconCache
+    await rebuildContentMesh()
+  }
+
   async function loadStructureAndResources(): Promise<void> {
+    clearWorldPlaybackSchedule()
+    framesPlaybackIsPlaying.value = false
     loadStatus.value = 'loading'
     statusBarTone.value = 'loading'
     statusMessage.value = config.loadingMessage
     try {
-      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle)
+      const initial =
+        isWorldDocument(config.renderBundle.document) && config.initialWorldFrameIndex !== undefined
+          ? config.initialWorldFrameIndex
+          : undefined
+      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, initial)
+      if (resolved.worldFrameIndex !== undefined) {
+        worldFrameIndex.value = resolved.worldFrameIndex
+      } else {
+        worldFrameIndex.value = 0
+      }
       structureDefinition.value = resolved.definition
       materialKeyPrefixRef.value = resolved.materialKeyPrefix
       tooltipPalette.value = resolved.tooltipPalette
@@ -222,6 +377,8 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   }
 
   function disposeCachesAndLibrary(): void {
+    clearWorldPlaybackSchedule()
+    framesPlaybackIsPlaying.value = false
     blockIconCache.value?.dispose()
     blockIconCache.value = null
     materialLibrary.value?.dispose()
@@ -229,6 +386,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     structureDefinition.value = null
     materialKeyPrefixRef.value = undefined
     tooltipPalette.value = []
+    worldFrameIndex.value = 0
     sceneRef.value = null
   }
 
@@ -260,5 +418,11 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     detachAndDisposeMesh,
     disposeCachesAndLibrary,
     contentGroupRef,
+    hasWorldMultiFrame,
+    worldFrameIndex,
+    framesPlaybackIsPlaying,
+    toggleWorldFramesPlayback,
+    worldFrameCount,
+    setCurrentWorldFrame,
   }
 }

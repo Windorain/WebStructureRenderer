@@ -25,6 +25,8 @@ export interface PreviewConfig {
   blockIconCacheOptions: BlockIconCacheOptions
   initialLayerWorldY: number
   initialProjectionMode: ProjectionMode
+  /** World 文档时：首次加载要展示的 `frames` 下标；缺省按文档 `playback` 解析 */
+  initialWorldFrameIndex?: number
   sceneBackground: number
   loadingMessage: string
   okMessage: (modelId: string) => string
