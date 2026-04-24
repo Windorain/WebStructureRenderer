@@ -18,6 +18,8 @@ export interface MaterialLibraryApi {
   tick(deltaMs: number): void
   getMaterialForBatch(descriptor: BatchDescriptor): Promise<THREE.MeshStandardMaterial>
   dispose(): void
+  /** 一旦为 true，进行中的 buildBlockMesh 应放弃结果，不再挂场景 */
+  isDisposed(): boolean
 }
 
 function createFaceMaterial(
@@ -198,7 +200,14 @@ export class SimpleMaterialLibrary implements MaterialLibraryApi {
     this.tickFns.push(fn)
   }
 
+  isDisposed(): boolean {
+    return this.disposed
+  }
+
   async getMaterialForBatch(descriptor: BatchDescriptor): Promise<THREE.MeshStandardMaterial> {
+    if (this.disposed) {
+      throw new Error('MaterialLibrary 已释放')
+    }
     const key = batchMaterialCacheKey(descriptor)
     const hit = this.materialByBatchKey.get(key)
     if (hit) return hit

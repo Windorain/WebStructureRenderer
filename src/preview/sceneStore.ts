@@ -1,5 +1,8 @@
 /**
  * 预览场景：结构、分层、网格、图标缓存与统计的编排。
+ *
+ * World 多帧：用 `frame:layer` 为键缓存已构建的 Group；切帧只挂场景。所有 mesh 操作经同一 `runMesh` 队列串行，避免并发判错。
+ * 单结构：继续「当前一份 mesh + 独立 dispose」。
  */
 
 import type { InjectionKey } from 'vue'
@@ -28,6 +31,7 @@ import { frameAt } from '@/render/data/worldPlayback'
 import {
   buildBlockMesh,
   formatUndefinedBlockDetailsForStatus,
+  type BlockMeshBuildStats,
 } from '@/render/mesh/blockMesh'
 import type { StructureDefinition, World } from '@/render/schema/types'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
@@ -37,7 +41,6 @@ import type { PreviewConfig } from './previewConfig'
 
 export type LoadStatus = 'loading' | 'ok' | 'error'
 
-/** 状态条色调：空场景但本应有几何时为 warn */
 export type StatusBarTone = 'loading' | 'ok' | 'warn' | 'error'
 
 export interface PreviewSceneStore {
@@ -56,7 +59,6 @@ export interface PreviewSceneStore {
   blockStatsEntries: ComputedRef<BlockStatRow[]>
   projectionLabel: ComputedRef<string>
   layerPreviewLabel: ComputedRef<string>
-  /** 与当帧 `StructureDefinition` 及拾取 `cellTooltipGrid` 配合；来自 World 或单文件根 */
   tooltipPalette: ShallowRef<string[]>
   registerScene(scene: THREE.Scene): void
   loadStructureAndResources(): Promise<void>
@@ -64,17 +66,11 @@ export interface PreviewSceneStore {
   detachAndDisposeMesh(): void
   disposeCachesAndLibrary(): void
   contentGroupRef: ShallowRef<THREE.Group | null>
-  /** World 且 `frames.length > 1` 时为真；用于多帧轮播 UI */
   hasWorldMultiFrame: ComputedRef<boolean>
-  /** 当前 `World.frames` 下标（单结构文档时恒为 0） */
   worldFrameIndex: Ref<number>
-  /** 多帧时间轴轮播中 */
   framesPlaybackIsPlaying: Ref<boolean>
-  /** 仅 World 多帧：播放 / 暂停（按每帧 `durationMs`，缺省 1000ms；遇尾帧依 `playback.loop`） */
   toggleWorldFramesPlayback(): void
-  /** World 文档的 `frames.length`；单结构文档为 0 */
   worldFrameCount: ComputedRef<number>
-  /** 将当前体素/材质切换到指定 `World.frames` 下标（会重建网格与图标缓存） */
   setCurrentWorldFrame(index: number): Promise<void>
 }
 
@@ -96,6 +92,12 @@ function normalizeWorldFrameListIndex(w: World, raw: number): number {
   return Math.max(0, Math.min(n - 1, i))
 }
 
+interface WorldMeshEntry {
+  group: THREE.Group
+  dispose: () => void
+  stats: BlockMeshBuildStats
+}
+
 export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStore {
   const loadStatus = ref<LoadStatus>('loading')
   const statusBarTone = ref<StatusBarTone>('loading')
@@ -107,7 +109,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
   const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
-  /** World 多帧时与 buildMaterialRegistryFromSceneDocument / buildBlockMesh 一致 */
   const materialKeyPrefixRef = ref<string | undefined>(undefined)
   const tooltipPalette = shallowRef<string[]>([])
   const sceneRef = shallowRef<THREE.Scene | null>(null)
@@ -116,6 +117,9 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const worldFrameIndex = ref(0)
   const framesPlaybackIsPlaying = ref(false)
   let worldPlaybackTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const worldMeshCache = new Map<string, WorldMeshEntry>()
+  let nonWorldMeshDispose: (() => void) | null = null
 
   const worldFrameCount = computed(() => {
     const doc = config.renderBundle.document
@@ -126,9 +130,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   })
 
   const hasWorldMultiFrame = computed(() => worldFrameCount.value > 1)
-
-  let disposeContent: (() => void) | null = null
-  let meshBuildSeq = 0
 
   const sizeRow = computed(() => structureDefinition.value?.cellGrid[0]?.length ?? 0)
 
@@ -161,6 +162,140 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     },
     { flush: 'post' },
   )
+
+  /** 所有呈现/建网格操作经此串行，避免竞态。 */
+  let meshPipeline: Promise<unknown> = Promise.resolve()
+  function runMesh<T>(fn: () => Promise<T>): Promise<T> {
+    const p = meshPipeline.then(fn)
+    meshPipeline = p.then(
+      () => {},
+      () => {},
+    ) as Promise<unknown>
+    return p
+  }
+
+  function clearAllMeshStorage(): void {
+    for (const e of worldMeshCache.values()) {
+      e.dispose()
+    }
+    worldMeshCache.clear()
+    nonWorldMeshDispose?.()
+    nonWorldMeshDispose = null
+  }
+
+  function worldMeshKey(): string {
+    const y = layerWorldY.value
+    return `${worldFrameIndex.value}:${y < 0 ? 'a' : `y${y}`}`
+  }
+
+  function applyBuildStatusToBar(def: StructureDefinition, stats: BlockMeshBuildStats, group: THREE.Group): void {
+    const hasMesh = group.children.length > 0
+    const undefinedAppend = formatUndefinedBlockDetailsForStatus(stats.undefinedBlockDetails)
+    const hasUndefined = stats.undefinedBlockDetails.length > 0
+
+    if (hasMesh) {
+      statusBarTone.value = hasUndefined ? 'warn' : 'ok'
+      statusMessage.value = `模型 ${def.id} · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
+    } else if (stats.nonAirVoxelCount === 0) {
+      statusBarTone.value = 'ok'
+      statusMessage.value = '非空气体素 0'
+    } else {
+      statusBarTone.value = 'warn'
+      statusMessage.value = `无可见几何 · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
+    }
+  }
+
+  /**
+   * 从当前 store 的 definition / 分层 / 前缀呈现 mesh。World 走缓存；单结构每次重建。
+   */
+  async function presentContentMesh(): Promise<void> {
+    const def = structureDefinition.value
+    const scene = sceneRef.value
+    if (!def || !scene) {
+      return
+    }
+
+    /** 真源为 `PreviewConfig.materialLibrary`；store 的 ref 可能仍指向已 dispose 实例（与 setFrame 里用的 config 不一致）。 */
+    const fromConfig = config.materialLibrary
+    if (fromConfig && !fromConfig.isDisposed()) {
+      materialLibrary.value = fromConfig
+    }
+
+    const lib = materialLibrary.value
+    if (!lib) {
+      return
+    }
+
+    if (lib.isDisposed()) {
+      return
+    }
+
+    const materialKeyPrefix = materialKeyPrefixRef.value
+    const layerPreview = layerPreviewMode.value
+    const doc = config.renderBundle.document
+    const isW = isWorldDocument(doc)
+
+    meshBusy.value = true
+    try {
+      if (isW) {
+        const k = worldMeshKey()
+        const hit = worldMeshCache.get(k)
+        if (hit) {
+          if (contentGroupRef.value === hit.group && hit.group.parent === scene) {
+            applyBuildStatusToBar(def, hit.stats, hit.group)
+            return
+          }
+          if (contentGroupRef.value) {
+            scene.remove(contentGroupRef.value)
+          }
+          contentGroupRef.value = hit.group
+          scene.add(hit.group)
+          applyBuildStatusToBar(def, hit.stats, hit.group)
+          return
+        }
+        const result = await buildBlockMesh(def, lib, {
+          layerPreview,
+          materialKeyPrefix,
+        })
+        if (lib.isDisposed() || materialLibrary.value !== lib) {
+          result.dispose()
+          return
+        }
+        worldMeshCache.set(k, { group: result.group, dispose: result.dispose, stats: result.stats })
+        if (contentGroupRef.value) {
+          scene.remove(contentGroupRef.value)
+        }
+        contentGroupRef.value = result.group
+        scene.add(result.group)
+        applyBuildStatusToBar(def, result.stats, result.group)
+        return
+      }
+      const result = await buildBlockMesh(def, lib, { layerPreview, materialKeyPrefix })
+      if (lib.isDisposed() || materialLibrary.value !== lib) {
+        result.dispose()
+        return
+      }
+      if (contentGroupRef.value) {
+        scene.remove(contentGroupRef.value)
+        nonWorldMeshDispose?.()
+        nonWorldMeshDispose = null
+      }
+      nonWorldMeshDispose = result.dispose
+      contentGroupRef.value = result.group
+      scene.add(result.group)
+      applyBuildStatusToBar(def, result.stats, result.group)
+    } catch (e) {
+      const fe = formatError(e)
+      if (fe.includes('MaterialLibrary 已释放')) {
+        return
+      }
+      statusBarTone.value = 'error'
+      statusMessage.value = `网格构建失败: ${fe}`
+      console.error('[StructureRenderer] buildBlockMesh', e)
+    } finally {
+      meshBusy.value = false
+    }
+  }
 
   function registerScene(scene: THREE.Scene): void {
     sceneRef.value = scene
@@ -243,37 +378,41 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     if (!isWorldDocument(doc) || doc.frames.length === 0) {
       return
     }
-    const idx = normalizeWorldFrameListIndex(doc, rawNext)
-    if (idx === worldFrameIndex.value && structureDefinition.value) {
-      return
-    }
-    worldFrameIndex.value = idx
-    const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, idx)
-    structureDefinition.value = resolved.definition
-    materialKeyPrefixRef.value = resolved.materialKeyPrefix
-    tooltipPalette.value = resolved.tooltipPalette
-    const lib = config.materialLibrary
-    const iconCache = new BlockIconCache(
-      lib,
-      {
-        ...config.blockIconCacheOptions,
-        materialKeyPrefix: resolved.materialKeyPrefix,
-      },
-      resolved.definition,
-    )
-    iconCache.setRevisionKey(
-      `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey({
-        ...config.blockIconCacheOptions,
-        materialKeyPrefix: resolved.materialKeyPrefix,
-      })}`,
-    )
-    blockIconCache.value = iconCache
-    await rebuildContentMesh()
+    return runMesh(async () => {
+      const idx = normalizeWorldFrameListIndex(doc, rawNext)
+      worldFrameIndex.value = idx
+      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, idx)
+      structureDefinition.value = resolved.definition
+      materialKeyPrefixRef.value = resolved.materialKeyPrefix
+      tooltipPalette.value = resolved.tooltipPalette
+      const lib = config.materialLibrary
+      /** 每帧新建 BlockIconCache 前必须释放旧实例：其内部懒建 WebGLRenderer 烘焙，会占满浏览器 WebGL 上下文上限。 */
+      if (blockIconCache.value) {
+        blockIconCache.value.dispose()
+      }
+      const iconCache = new BlockIconCache(
+        lib,
+        {
+          ...config.blockIconCacheOptions,
+          materialKeyPrefix: resolved.materialKeyPrefix,
+        },
+        resolved.definition,
+      )
+      iconCache.setRevisionKey(
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey({
+          ...config.blockIconCacheOptions,
+          materialKeyPrefix: resolved.materialKeyPrefix,
+        })}`,
+      )
+      blockIconCache.value = iconCache
+      await presentContentMesh()
+    })
   }
 
   async function loadStructureAndResources(): Promise<void> {
     clearWorldPlaybackSchedule()
     framesPlaybackIsPlaying.value = false
+    clearAllMeshStorage()
     loadStatus.value = 'loading'
     statusBarTone.value = 'loading'
     statusMessage.value = config.loadingMessage
@@ -292,6 +431,9 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       materialKeyPrefixRef.value = resolved.materialKeyPrefix
       tooltipPalette.value = resolved.tooltipPalette
       materialLibrary.value = config.materialLibrary
+      if (blockIconCache.value) {
+        blockIconCache.value.dispose()
+      }
       const iconCache = new BlockIconCache(config.materialLibrary, {
         ...config.blockIconCacheOptions,
         materialKeyPrefix: resolved.materialKeyPrefix,
@@ -315,70 +457,27 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   }
 
   async function rebuildContentMesh(): Promise<void> {
-    const def = structureDefinition.value
-    const lib = materialLibrary.value
-    const scene = sceneRef.value
-    if (!def || !lib || !scene) return
-
-    const seq = ++meshBuildSeq
-    meshBusy.value = true
-    try {
-      const prev = contentGroupRef.value
-      if (prev) {
-        scene.remove(prev)
-        disposeContent?.()
-        contentGroupRef.value = null
-        disposeContent = null
-      }
-      const result = await buildBlockMesh(def, lib, {
-        layerPreview: layerPreviewMode.value,
-        materialKeyPrefix: materialKeyPrefixRef.value,
-      })
-      if (seq !== meshBuildSeq) {
-        result.dispose()
-        return
-      }
-      contentGroupRef.value = result.group
-      disposeContent = result.dispose
-      scene.add(result.group)
-
-      const { stats } = result
-      const hasMesh = result.group.children.length > 0
-      const undefinedAppend = formatUndefinedBlockDetailsForStatus(stats.undefinedBlockDetails)
-      const hasUndefined = stats.undefinedBlockDetails.length > 0
-
-      if (hasMesh) {
-        statusBarTone.value = hasUndefined ? 'warn' : 'ok'
-        statusMessage.value = `模型 ${def.id} · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
-      } else if (stats.nonAirVoxelCount === 0) {
-        statusBarTone.value = 'ok'
-        statusMessage.value = '非空气体素 0'
-      } else {
-        statusBarTone.value = 'warn'
-        statusMessage.value = `无可见几何 · 非空气体素 ${stats.nonAirVoxelCount}` + undefinedAppend
-      }
-    } catch (e) {
-      statusBarTone.value = 'error'
-      statusMessage.value = `网格构建失败: ${formatError(e)}`
-      console.error('[StructureRenderer] buildBlockMesh', e)
-    } finally {
-      if (seq === meshBuildSeq) meshBusy.value = false
-    }
+    return runMesh(() => presentContentMesh())
   }
 
   function detachAndDisposeMesh(): void {
-    meshBuildSeq++
     const scene = sceneRef.value
     const g = contentGroupRef.value
-    if (g && scene) scene.remove(g)
-    disposeContent?.()
+    if (g && scene) {
+      scene.remove(g)
+    }
     contentGroupRef.value = null
-    disposeContent = null
+    if (!isWorldDocument(config.renderBundle.document)) {
+      nonWorldMeshDispose?.()
+      nonWorldMeshDispose = null
+    }
   }
 
   function disposeCachesAndLibrary(): void {
     clearWorldPlaybackSchedule()
     framesPlaybackIsPlaying.value = false
+    clearAllMeshStorage()
+    contentGroupRef.value = null
     blockIconCache.value?.dispose()
     blockIconCache.value = null
     materialLibrary.value?.dispose()
@@ -391,8 +490,19 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   }
 
   watch(layerWorldY, () => {
-    if (!structureDefinition.value || !sceneRef.value) return
-    void rebuildContentMesh()
+    if (!structureDefinition.value || !sceneRef.value) {
+      return
+    }
+    void runMesh(async () => {
+      const scene = sceneRef.value
+      const g = contentGroupRef.value
+      if (g && scene) {
+        scene.remove(g)
+      }
+      contentGroupRef.value = null
+      clearAllMeshStorage()
+      await presentContentMesh()
+    })
   })
 
   return {

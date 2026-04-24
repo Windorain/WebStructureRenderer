@@ -48,26 +48,28 @@ class WorldAxesGizmo extends THREE.Object3D {
 
     renderer.getViewport(this.viewportBackup)
     const prevAutoClear = renderer.autoClear
-    renderer.autoClear = false
-    renderer.clearDepth()
+    try {
+      renderer.autoClear = false
+      renderer.clearDepth()
 
-    const margin = 8
-    const x = w - d - margin
-    const y = h - d - margin
+      const margin = 8
+      const x = w - d - margin
+      const y = h - d - margin
 
-    renderer.setViewport(x, y, d, d)
-    renderer.setScissor(x, y, d, d)
-    renderer.setScissorTest(true)
-    renderer.render(this, this.ortho)
-
-    renderer.setScissorTest(false)
-    renderer.autoClear = prevAutoClear
-    renderer.setViewport(
-      this.viewportBackup.x,
-      this.viewportBackup.y,
-      this.viewportBackup.z,
-      this.viewportBackup.w,
-    )
+      renderer.setViewport(x, y, d, d)
+      renderer.setScissor(x, y, d, d)
+      renderer.setScissorTest(true)
+      renderer.render(this, this.ortho)
+    } finally {
+      renderer.setScissorTest(false)
+      renderer.autoClear = prevAutoClear
+      renderer.setViewport(
+        this.viewportBackup.x,
+        this.viewportBackup.y,
+        this.viewportBackup.z,
+        this.viewportBackup.w,
+      )
+    }
   }
 
   dispose(): void {
@@ -205,7 +207,15 @@ export class RenderViewport {
     return this._mode
   }
 
+  private isGlContextUsable(): boolean {
+    const gl = this.renderer.getContext() as WebGLRenderingContext
+    return !gl.isContextLost()
+  }
+
   resize(width: number, height: number): void {
+    if (!this.isGlContextUsable()) {
+      return
+    }
     const w = Math.max(width, 1)
     const h = Math.max(height, 1)
     const aspect = w / h
@@ -222,10 +232,14 @@ export class RenderViewport {
     o.bottom = -fs / 2
     o.updateProjectionMatrix()
 
+    this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.setSize(w, h)
   }
 
   render(scene: THREE.Scene): void {
+    if (!this.isGlContextUsable()) {
+      return
+    }
     this.renderer.render(scene, this.activeCamera)
     this.renderer.getSize(this.rendererCssSize)
     this.worldAxesGizmo.renderOverlay(

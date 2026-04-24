@@ -171,10 +171,13 @@ function onResizeHandleDblClick(): void {
   flex: 1;
   min-height: 0;
 }
+/* 视口在列 flex+min-h-0 链上不能再用 min-h:0，否则常把 canvas 压到 0 高；亦勿用 !important 盖掉子组件的 min-height */
 .wm-preview-embed :deep(.wm-viewport) {
-  flex: 1;
-  min-height: 0 !important;
-  height: 100% !important;
+  flex: 1 1 0;
+  min-height: 240px;
+  min-width: 0;
+  position: relative;
+  height: auto;
 }
 .wm-preview-resize-handle {
   flex-shrink: 0;

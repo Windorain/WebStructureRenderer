@@ -54,8 +54,10 @@ const container = ref<HTMLDivElement | null>(null)
 
 let viewport: RenderViewport | null = null
 let animationId = 0
+let layoutResizeRaf: number | null = null
 let resizeObserver: ResizeObserver | null = null
 let onResize: (() => void) | null = null
+let onVisibilityToGl: (() => void) | null = null
 
 let canvasEl: HTMLElement | null = null
 let rafHoverPending = false
@@ -112,6 +114,49 @@ function onPointerLeave(): void {
   emit('hover-block', null)
 }
 
+/**
+ * 多帧 World：各帧体素在局部坐标中包围盒常不同，仍用首帧/definition 的 initialCamera 或固定 fallback
+ * 时，某些帧的 mesh 会整体落在视锥外（scene 中仍有 group，表现为「全空」与 gizmo 一起像消失）。
+ * 在 content 挂好后按当前 Group 的 AABB 对心并拉远等轴相机。
+ */
+function fitIsometricOrbitToContentGroup(
+  vp: RenderViewport,
+  group: THREE.Group,
+  projection: ProjectionMode,
+): void {
+  group.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(group)
+  if (box.isEmpty() || !Number.isFinite(box.min.x)) {
+    return
+  }
+  const center = new THREE.Vector3()
+  const size = new THREE.Vector3()
+  box.getCenter(center)
+  box.getSize(size)
+  const maxDim = Math.max(size.x, size.y, size.z, 0.1)
+  const dist = Math.max(8, maxDim * 2.2)
+  vp.controls.target.copy(center)
+  applyDiagonalOrbitView(vp.perspectiveCamera, vp.controls, {
+    yawDeg: 225,
+    elevationFromHorizontalDeg: STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG,
+    distance: dist,
+  })
+  vp.syncOrthographicFromPerspective()
+  vp.setMode(projection)
+}
+
+watch(
+  () => props.contentGroup,
+  (g) => {
+    const vp = viewport
+    if (!vp || !g) {
+      return
+    }
+    fitIsometricOrbitToContentGroup(vp, g, props.projectionMode)
+  },
+  { flush: 'post' },
+)
+
 watch(
   () => props.projectionMode,
   (m) => {
@@ -161,14 +206,55 @@ onMounted(() => {
   vp.syncOrthographicFromPerspective()
   vp.setMode(props.projectionMode)
 
-  onResize = () => {
+  /**
+   * 拖动预览高度时 ResizeObserver 会连续触发，若对 WebGL 每事件 setSize 可能触发驱动/context 异常
+   *（白屏、裂图；见用户 div 变化后纯白）。合并到 rAF 并忽略过渡中的极小尺寸。
+   */
+  let lastSafeW = 0
+  let lastSafeH = 0
+  const applySizeFromEl = (): void => {
+    layoutResizeRaf = null
     const w = el.clientWidth
     const h = el.clientHeight
+    if (w < 4 || h < 4) {
+      return
+    }
+    if (w === lastSafeW && h === lastSafeH) {
+      return
+    }
+    lastSafeW = w
+    lastSafeH = h
     vp.resize(w, h)
+  }
+  onResize = () => {
+    if (layoutResizeRaf !== null) {
+      cancelAnimationFrame(layoutResizeRaf)
+    }
+    layoutResizeRaf = requestAnimationFrame(applySizeFromEl)
   }
   window.addEventListener('resize', onResize)
   resizeObserver = new ResizeObserver(() => onResize?.())
   resizeObserver.observe(el)
+  /** 与 Vite 全量 HMR/手动刷新一样：从后台/睡眠回到前台时重同步 drawing buffer，减少「白画直至刷新」的偶发。 */
+  onVisibilityToGl = () => {
+    if (document.hidden) {
+      return
+    }
+    onResize?.()
+  }
+  document.addEventListener('visibilitychange', onVisibilityToGl)
+  const domCanvas = vp.renderer.domElement
+  domCanvas.addEventListener(
+    'webglcontextlost',
+    (ev) => {
+      ev.preventDefault()
+    },
+    false,
+  )
+  domCanvas.addEventListener('webglcontextrestored', () => {
+    onResize?.()
+  })
+  applySizeFromEl()
 
   const clock = new THREE.Clock()
   const tick = () => {
@@ -189,6 +275,10 @@ onBeforeUnmount(() => {
     canvasEl = null
   }
   cancelAnimationFrame(animationId)
+  if (layoutResizeRaf !== null) {
+    cancelAnimationFrame(layoutResizeRaf)
+    layoutResizeRaf = null
+  }
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
@@ -196,6 +286,10 @@ onBeforeUnmount(() => {
   if (onResize) {
     window.removeEventListener('resize', onResize)
     onResize = null
+  }
+  if (onVisibilityToGl) {
+    document.removeEventListener('visibilitychange', onVisibilityToGl)
+    onVisibilityToGl = null
   }
   store?.detachAndDisposeMesh()
   viewport?.dispose()
