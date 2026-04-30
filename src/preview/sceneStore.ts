@@ -44,6 +44,8 @@ export type LoadStatus = 'loading' | 'ok' | 'error'
 export type StatusBarTone = 'loading' | 'ok' | 'warn' | 'error'
 
 export interface PreviewSceneStore {
+  /** 可被外部更新以同步最新配置（工作台 syncPreview 等场景） */
+  config: ShallowRef<PreviewConfig>
   showBlockStatsSidebar: boolean
   loadStatus: Ref<LoadStatus>
   statusBarTone: Ref<StatusBarTone>
@@ -72,6 +74,8 @@ export interface PreviewSceneStore {
   toggleWorldFramesPlayback(): void
   worldFrameCount: ComputedRef<number>
   setCurrentWorldFrame(index: number): Promise<void>
+  /** 清除所有已缓存的 mesh 与 icon 缓存（config 切换时调用） */
+  clearAllMeshStorage(): void
 }
 
 export const PreviewSceneContextKey: InjectionKey<PreviewSceneStore> = Symbol('PreviewSceneContext')
@@ -95,13 +99,14 @@ interface WorldMeshEntry {
   stats: BlockMeshBuildStats
 }
 
-export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStore {
+export function createPreviewSceneStore(initialConfig: PreviewConfig): PreviewSceneStore {
+  const config = shallowRef<PreviewConfig>(initialConfig)
   const loadStatus = ref<LoadStatus>('loading')
   const statusBarTone = ref<StatusBarTone>('loading')
-  const statusMessage = ref(config.loadingMessage)
-  const layerWorldY = ref(config.initialLayerWorldY)
+  const statusMessage = ref(config.value.loadingMessage)
+  const layerWorldY = ref(config.value.initialLayerWorldY)
   const meshBusy = ref(false)
-  const projectionMode = ref<ProjectionMode>(config.initialProjectionMode)
+  const projectionMode = ref<ProjectionMode>(config.value.initialProjectionMode)
 
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
   const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
@@ -118,7 +123,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   let nonWorldMeshDispose: (() => void) | null = null
 
   const worldFrameCount = computed(() => {
-    const doc = config.renderBundle.document
+    const doc = config.value.renderBundle.document
     if (!isWorldDocument(doc)) {
       return 0
     }
@@ -212,7 +217,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     }
 
     /** 真源为 `PreviewConfig.materialLibrary`；store 的 ref 可能仍指向已 dispose 实例（与 setFrame 里用的 config 不一致）。 */
-    const fromConfig = config.materialLibrary
+    const fromConfig = config.value.materialLibrary
     if (fromConfig && !fromConfig.isDisposed()) {
       materialLibrary.value = fromConfig
     }
@@ -227,7 +232,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     }
 
     const layerPreview = layerPreviewMode.value
-    const doc = config.renderBundle.document
+    const doc = config.value.renderBundle.document
     const isW = isWorldDocument(doc)
 
     meshBusy.value = true
@@ -303,7 +308,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   }
 
   function dwellMsForCurrentWorldFrame(): number {
-    const doc = config.renderBundle.document
+    const doc = config.value.renderBundle.document
     if (!isWorldDocument(doc) || doc.frames.length === 0) {
       return DEFAULT_WORLD_FRAME_DWELL_MS
     }
@@ -320,7 +325,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     if (!framesPlaybackIsPlaying.value || !hasWorldMultiFrame.value) {
       return
     }
-    const doc = config.renderBundle.document
+    const doc = config.value.renderBundle.document
     if (!isWorldDocument(doc) || doc.frames.length < 2) {
       return
     }
@@ -368,28 +373,28 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   }
 
   async function setCurrentWorldFrame(rawNext: number): Promise<void> {
-    const doc = config.renderBundle.document
+    const doc = config.value.renderBundle.document
     if (!isWorldDocument(doc) || doc.frames.length === 0) {
       return
     }
     return runMesh(async () => {
       const idx = normalizeWorldFrameListIndex(doc, rawNext)
       worldFrameIndex.value = idx
-      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, idx)
+      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.value.renderBundle, idx)
       structureDefinition.value = resolved.definition
       tooltipPalette.value = resolved.tooltipPalette
-      const lib = config.materialLibrary
+      const lib = config.value.materialLibrary
       /** 每帧新建 BlockIconCache 前必须释放旧实例：其内部懒建 WebGLRenderer 烘焙，会占满浏览器 WebGL 上下文上限。 */
       if (blockIconCache.value) {
         blockIconCache.value.dispose()
       }
       const iconCache = new BlockIconCache(
         lib,
-        config.blockIconCacheOptions,
+        config.value.blockIconCacheOptions,
         resolved.definition,
       )
       iconCache.setRevisionKey(
-        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.value.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       await presentContentMesh()
@@ -402,13 +407,13 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     clearAllMeshStorage()
     loadStatus.value = 'loading'
     statusBarTone.value = 'loading'
-    statusMessage.value = config.loadingMessage
+    statusMessage.value = config.value.loadingMessage
     try {
       const initial =
-        isWorldDocument(config.renderBundle.document) && config.initialWorldFrameIndex !== undefined
-          ? config.initialWorldFrameIndex
+        isWorldDocument(config.value.renderBundle.document) && config.value.initialWorldFrameIndex !== undefined
+          ? config.value.initialWorldFrameIndex
           : undefined
-      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, initial)
+      const resolved: RenderBundleResolveResult = resolveRenderBundle(config.value.renderBundle, initial)
       if (resolved.worldFrameIndex !== undefined) {
         worldFrameIndex.value = resolved.worldFrameIndex
       } else {
@@ -416,13 +421,13 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       }
       structureDefinition.value = resolved.definition
       tooltipPalette.value = resolved.tooltipPalette
-      materialLibrary.value = config.materialLibrary
+      materialLibrary.value = config.value.materialLibrary
       if (blockIconCache.value) {
         blockIconCache.value.dispose()
       }
-      const iconCache = new BlockIconCache(config.materialLibrary, config.blockIconCacheOptions, resolved.definition)
+      const iconCache = new BlockIconCache(config.value.materialLibrary, config.value.blockIconCacheOptions, resolved.definition)
       iconCache.setRevisionKey(
-        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.value.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
@@ -447,7 +452,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       scene.remove(g)
     }
     contentGroupRef.value = null
-    if (!isWorldDocument(config.renderBundle.document)) {
+    if (!isWorldDocument(config.value.renderBundle.document)) {
       nonWorldMeshDispose?.()
       nonWorldMeshDispose = null
     }
@@ -485,7 +490,8 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   })
 
   return {
-    showBlockStatsSidebar: config.features.blockStatsSidebar,
+    config,
+    showBlockStatsSidebar: config.value.features.blockStatsSidebar,
     loadStatus,
     statusBarTone,
     statusMessage,
@@ -506,6 +512,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     rebuildContentMesh,
     detachAndDisposeMesh,
     disposeCachesAndLibrary,
+    clearAllMeshStorage,
     contentGroupRef,
     hasWorldMultiFrame,
     worldFrameIndex,
