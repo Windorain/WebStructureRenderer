@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 
 import WorkbenchShell from '@/workbench/layout/WorkbenchShell.vue'
+import WorkbenchSettingsDrawer from '@/workbench/components/WorkbenchSettingsDrawer.vue'
 import MenuBar from '@/workbench/components_new/MenuBar.vue'
 import WorkspaceTabs from '@/workbench/components_new/WorkspaceTabs.vue'
 import ToolShelf from '@/workbench/components_new/ToolShelf.vue'
@@ -75,4 +76,5 @@ onMounted(async () => {
       <StatusBar />
     </template>
   </WorkbenchShell>
+  <WorkbenchSettingsDrawer />
 </template>
