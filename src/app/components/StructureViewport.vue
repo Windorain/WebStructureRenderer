@@ -402,7 +402,7 @@ onBeforeUnmount(() => {
     class="wm-viewport"
     style="overflow: hidden"
   >
-    <button type="button" class="nei-btn" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup, props.projectionMode) : null">⌂</button>
+    <button type="button" class="wm-reset-btn" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup, props.projectionMode) : null">⟲</button>
   </div>
 </template>
 
@@ -415,5 +415,24 @@ onBeforeUnmount(() => {
   background: var(--nei-viewport-bg);
   overflow: hidden;
   position: relative;
+}
+.wm-reset-btn {
+  position: absolute;
+  top: 6px; right: 6px;
+  z-index: 10;
+  width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  color: var(--nei-text); text-shadow: var(--nei-label-shadow);
+  background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  border-radius: 0; cursor: pointer; user-select: none; box-sizing: border-box;
+}
+.wm-reset-btn:hover { filter: brightness(1.06); }
+.wm-reset-btn:active {
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  padding-top: 1px; padding-left: 1px;
 }
 </style>
