@@ -1,8 +1,10 @@
 /**
  * NEI / MC 式 GUI token（Web 纯 CSS 近似）。
+ * 亮色 = 原版 NEI，暗色 = 末影蓝变体。
  * 槽位逻辑尺寸对应 NEI 18×18，界面使用 2×（36px）以保证可读性。
  */
 :root {
+  /* 亮色 NEI（默认，Embed 兼容） */
   --nei-bg: #c6c6c6;
   --nei-bg-deep: #b0b0b0;
   --nei-viewport-bg: #5a5a5a;
@@ -26,8 +28,84 @@
   --nei-focus-ring: #8080c0;
 
   --nei-bevel-w: 2px;
+
+  /* 新增：亮色补充 token */
+  --nei-accent: #5a8c3e;
+  --nei-accent-hover: #4a7a2e;
+  --nei-accent-text: #ffffff;
+  --nei-accent-shadow: 1px 1px 0 #2a5a1a;
+  --nei-label: #555555;
+  --nei-muted: #707070;
+  --nei-border: #999999;
+  --nei-section-line: #999999;
+  --nei-btn-bg: #8b8b8b;
+  --nei-btn-text: #404040;
+  --nei-panel-hover: #a0a0a0;
+  --nei-dropdown-bg: #b0b0b0;
+  --nei-dropdown-hover: #2563eb;
+  --nei-divider-bg: transparent;
+  --nei-divider-hover: #8080c0;
+  --nei-tab-active-border: #5a8c3e;
+  --nei-tab-text: #707070;
+  --nei-tab-active-text: #303030;
+  --nei-online: #22c55e;
+  --nei-offline: #888;
+  --nei-check: #22c55e;
+  --nei-drawer-backdrop: rgba(2, 6, 23, 0.35);
+  --nei-drawer-shadow: -12px 0 40px rgba(0, 0, 0, 0.2);
+  --nei-seg-off-bg: #b0b0b0;
+  --nei-seg-off-border: #999;
+  --nei-seg-off-text: #303030;
+  --nei-seg-on-bg: #c6d8c0;
+  --nei-seg-on-border: #5a8c3e;
+  --nei-seg-on-text: #2a4a1a;
 }
 
+[data-nei-theme="dark"] {
+  --nei-bg: #1a1e28;
+  --nei-bg-deep: #212636;
+  --nei-viewport-bg: #151920;
+  --nei-highlight: #3a4a5e;
+  --nei-shadow: #0d1119;
+  --nei-inset-bg: #12161e;
+  --nei-inset-bg-mid: #1a2030;
+  --nei-text: #d0d8e8;
+  --nei-text-muted: #8898a8;
+  --nei-text-dark: #d0d8e8;
+  --nei-label-shadow: 1px 1px 0 #0a0e14;
+
+  --nei-accent: #3b5f8a;
+  --nei-accent-hover: #4a72a0;
+  --nei-accent-text: #e0f0ff;
+  --nei-accent-shadow: 1px 1px 0 #0a1a2a;
+  --nei-label: #6a7a8a;
+  --nei-muted: #5a6a7a;
+  --nei-border: #2a3040;
+  --nei-section-line: #2a3040;
+  --nei-btn-bg: #242836;
+  --nei-btn-text: #8898a8;
+  --nei-panel-hover: #2a3040;
+  --nei-dropdown-bg: #212636;
+  --nei-dropdown-hover: #3b5f8a;
+  --nei-divider-bg: transparent;
+  --nei-divider-hover: #3b5f8a;
+  --nei-tab-active-border: #3b5f8a;
+  --nei-tab-text: #5a6a7a;
+  --nei-tab-active-text: #d0d8e8;
+  --nei-online: #22c55e;
+  --nei-offline: #5a6a7a;
+  --nei-check: #22c55e;
+  --nei-drawer-backdrop: rgba(2, 6, 23, 0.55);
+  --nei-drawer-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+  --nei-seg-off-bg: #212636;
+  --nei-seg-off-border: #2a3040;
+  --nei-seg-off-text: #8898a8;
+  --nei-seg-on-bg: #1a2a3a;
+  --nei-seg-on-border: #3b5f8a;
+  --nei-seg-on-text: #d0d8e8;
+}
+
+/* 保留不变的全局类 */
 .nei-bevel-outset {
   border: var(--nei-bevel-w) solid;
   border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
@@ -55,7 +133,6 @@
   position: fixed;
   z-index: 2147483646;
   box-sizing: border-box;
-  /* 横向随内容伸展，避免 max-content 在部分环境下被压成一字宽竖条 */
   width: fit-content;
   max-width: min(22rem, calc(100vw - 24px));
   min-width: 0;
