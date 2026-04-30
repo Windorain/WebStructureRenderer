@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
-import ExportActionsPanel from '@/workbench/components/ExportActionsPanel.vue'
-import MetadataEditor from '@/workbench/components/MetadataEditor.vue'
-import WorkbenchPreviewConfigPanel from '@/workbench/components/WorkbenchPreviewConfigPanel.vue'
-import WorkbenchPreviewPanel from '@/workbench/components/WorkbenchPreviewPanel.vue'
-import WorkbenchSettingsDrawer from '@/workbench/components/WorkbenchSettingsDrawer.vue'
-import WorkbenchSidebar from '@/workbench/components/WorkbenchSidebar.vue'
-import WorkbenchTopbar from '@/workbench/components/WorkbenchTopbar.vue'
+import WorkbenchShell from '@/workbench/layout/WorkbenchShell.vue'
+import MenuBar from '@/workbench/components_new/MenuBar.vue'
+import WorkspaceTabs from '@/workbench/components_new/WorkspaceTabs.vue'
+import ToolShelf from '@/workbench/components_new/ToolShelf.vue'
+import ViewportHost from '@/workbench/components_new/ViewportHost.vue'
+import PropertiesPanel from '@/workbench/components_new/PropertiesPanel.vue'
+import StatusBar from '@/workbench/components_new/StatusBar.vue'
 import { provideWorkbenchContext } from '@/workbench/workbenchContext'
 
 const ctx = provideWorkbenchContext()
 
-const section = computed(() => ctx.mainSection.value)
-const metadataEditorKey = computed(
-  () => `${ctx.sceneLoadEpoch.value}-${ctx.localFileName.value ?? ''}-${ctx.selectedExportName.value ?? ''}`,
-)
+/** 编辑模式 */
+const editMode = ref(false)
+
+/** 选中方块 */
+const selectedBlock = ref<{
+  blockId: string
+  voxel?: { column: number; row: number; zSlice: number }
+} | null>(null)
 
 onMounted(async () => {
   if (ctx.apiBase.value) {
@@ -31,7 +35,7 @@ onMounted(async () => {
       try {
         await ctx.loadLocalScene(sceneId)
       } catch {
-        /* 保持当前模式与空文档 */
+        /* ignore */
       }
     }
   }
@@ -39,55 +43,36 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="dash-app">
-    <WorkbenchSidebar />
+  <WorkbenchShell>
+    <template #menubar>
+      <MenuBar />
+    </template>
 
-    <div class="dash-main">
-      <WorkbenchTopbar />
+    <template #workspace-tabs>
+      <WorkspaceTabs />
+    </template>
 
-      <div class="dash-body">
-        <div v-show="section === 'preview'" class="dash-pane dash-pane--preview">
-          <WorkbenchPreviewPanel />
-          <WorkbenchPreviewConfigPanel />
-        </div>
-        <div v-show="section === 'edit'" class="dash-pane dash-pane--narrow">
-          <MetadataEditor :key="metadataEditorKey" />
-        </div>
-        <div v-show="section === 'export'" class="dash-pane dash-pane--narrow">
-          <ExportActionsPanel />
-        </div>
-      </div>
-    </div>
+    <template #tool-shelf>
+      <ToolShelf :edit-mode="editMode" @update:edit-mode="editMode = $event" />
+    </template>
 
-    <WorkbenchSettingsDrawer />
-  </div>
+    <template #viewport>
+      <ViewportHost
+        :edit-mode="editMode"
+        :selected-block="selectedBlock"
+        @update:selected-block="selectedBlock = $event"
+      />
+    </template>
+
+    <template #properties>
+      <PropertiesPanel
+        :edit-mode="editMode"
+        :selected-block="selectedBlock"
+      />
+    </template>
+
+    <template #statusbar>
+      <StatusBar />
+    </template>
+  </WorkbenchShell>
 </template>
-
-<style scoped>
-.dash-app {
-  display: flex;
-  min-height: 100vh;
-  background: #020617;
-}
-.dash-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.dash-body {
-  flex: 1;
-  padding: 18px 20px 24px;
-  box-sizing: border-box;
-  overflow: auto;
-}
-.dash-pane {
-  min-height: calc(100vh - 52px - 36px);
-}
-.dash-pane--preview {
-  max-width: none;
-}
-.dash-pane--narrow {
-  max-width: 800px;
-}
-</style>
