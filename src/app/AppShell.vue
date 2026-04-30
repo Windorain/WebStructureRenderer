@@ -25,6 +25,7 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 const props = defineProps<{
   mergedConfig: PreviewConfig
   editMode?: boolean
+  selectedVoxel?: { column: number; row: number; zSlice: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -227,6 +228,7 @@ onBeforeUnmount(() => {
           :layer-preview-mode="layerPreviewMode"
           :scene-background="mergedConfig.sceneBackground"
           :edit-mode="props.editMode ?? false"
+          :selected-voxel="props.selectedVoxel ?? null"
           @ready="onViewportReady"
           @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"

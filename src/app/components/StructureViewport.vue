@@ -31,10 +31,13 @@ const props = withDefaults(
     sceneBackground?: number
     /** 编辑模式：pointerdown 触发 select-block 而非仅 hover */
     editMode?: boolean
+    /** 选中的体素坐标，用于渲染高亮线框 */
+    selectedVoxel?: { column: number; row: number; zSlice: number } | null
   }>(),
   {
     sceneBackground: 0x111827,
     editMode: false,
+    selectedVoxel: null,
   },
 )
 
@@ -74,6 +77,7 @@ let onVisibilityToGl: (() => void) | null = null
 let canvasEl: HTMLElement | null = null
 let rafHoverPending = false
 let lastPointer: { clientX: number; clientY: number } | null = null
+let activeScene: THREE.Scene | null = null
 
 function toggleProjection(): void {
   if (!viewport) return
@@ -158,6 +162,51 @@ function onPointerDown(e: PointerEvent): void {
   }
 }
 
+/** 选中体素 → 世界坐标（体素中心） */
+function voxelToWorld(
+  v: { column: number; row: number; zSlice: number },
+  def: StructureDefinition,
+): THREE.Vector3 {
+  const sCol = def.cellGrid[0]?.[0]?.length ?? 1
+  const sRow = def.cellGrid[0]?.length ?? 1
+  const sZ = def.cellGrid.length ?? 1
+  return new THREE.Vector3(
+    v.column - sCol / 2 + 0.5,
+    sRow / 2 - 0.5 - v.row,
+    v.zSlice - sZ / 2 + 0.5,
+  )
+}
+
+let highlightLine: THREE.LineSegments | null = null
+
+function updateHighlight(): void {
+  const scene = activeScene
+  if (!scene) return
+  const sel = props.selectedVoxel
+  if (!sel) {
+    if (highlightLine) {
+      scene.remove(highlightLine)
+      highlightLine.geometry.dispose()
+      ;(highlightLine.material as THREE.Material).dispose()
+      highlightLine = null
+    }
+    return
+  }
+  const pos = voxelToWorld(sel, props.definition)
+  if (highlightLine) {
+    highlightLine.position.copy(pos)
+  } else {
+    const geo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.001, 1.001, 1.001))
+    const mat = new THREE.LineBasicMaterial({ color: 0xfbbf24, linewidth: 2, transparent: true, opacity: 0.9 })
+    highlightLine = new THREE.LineSegments(geo, mat)
+    highlightLine.position.copy(pos)
+    scene.add(highlightLine)
+  }
+}
+
+watch(() => props.selectedVoxel, () => updateHighlight(), { flush: 'post' })
+watch(() => props.definition, () => updateHighlight(), { flush: 'post' })
+
 /**
  * 多帧 World：各帧体素在局部坐标中包围盒常不同，仍用首帧/definition 的 initialCamera 或固定 fallback
  * 时，某些帧的 mesh 会整体落在视锥外（scene 中仍有 group，表现为「全空」与 gizmo 一起像消失）。
@@ -220,6 +269,7 @@ onMounted(() => {
   if (!el) return
 
   const scene = new THREE.Scene()
+  activeScene = scene
   scene.background = new THREE.Color(props.sceneBackground)
 
   /** 回调 IBL 后保持原始偏保守灯光，避免室内/玻璃过曝 */

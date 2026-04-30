@@ -8,7 +8,6 @@ import { computed, ref, type Component } from 'vue'
 import SceneInfoEditor from './SceneInfoEditor.vue'
 import PreviewConfigEditor from './PreviewConfigEditor.vue'
 import BlockInspector from './BlockInspector.vue'
-import ExportQuickActions from './ExportQuickActions.vue'
 
 const props = defineProps<{
   editMode: boolean
@@ -19,7 +18,6 @@ const EDITORS = [
   { id: 'scene' as const, label: 'Scene Info', icon: '📋', comp: SceneInfoEditor },
   { id: 'config' as const, label: 'Preview Config', icon: '⚙', comp: PreviewConfigEditor },
   { id: 'inspector' as const, label: 'Block Inspector', icon: '🔍', comp: BlockInspector },
-  { id: 'export' as const, label: 'Export', icon: '📦', comp: ExportQuickActions },
 ] as const
 
 type EditorId = (typeof EDITORS)[number]['id']

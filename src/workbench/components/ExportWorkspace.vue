@@ -1,0 +1,120 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { loadStructureOrWorld } from '@/render/data/bundleResolve'
+import { normalizeSceneDocumentForWiki, sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
+import { buildCompactEnvelope, copyTextToClipboard, downloadBlob, downloadJson } from '@/workbench/sceneExportKit'
+import { buildStructureBundleZip } from '@/workbench/structureBundleExport'
+import { bakeIsometricStructurePngDataUrl, dataUrlToPngBlob } from '@/workbench/exportIsometricImage'
+import { formatUnknownError } from '@/util/formatUnknownError'
+import { useWorkbenchContext } from '@/workbench/workbenchContext'
+
+const ctx = useWorkbenchContext()
+const doc = computed(() => ctx.scene.value)
+const baseName = computed(() => doc.value ? sceneStableStringIdFromDocument(doc.value) : 'scene')
+const showSdeSave = computed(() => ctx.workspaceMode.value === 'sde' && ctx.apiBase.value.length > 0)
+const feedback = ref('')
+
+function msg(s: string): void { feedback.value = s }
+
+async function downloadRaw(): Promise<void> {
+  if (!doc.value) return
+  try { const raw = await normalizeSceneDocumentForWiki(doc.value); downloadJson(`${baseName.value}-raw`, raw, true); msg('已下载 Raw JSON') } catch (e) { msg(formatUnknownError(e)) }
+}
+async function downloadCompact(): Promise<void> {
+  if (!doc.value) return
+  try { const raw = await normalizeSceneDocumentForWiki(doc.value); downloadJson(`${baseName.value}-compact`, buildCompactEnvelope(raw), true); msg('已下载 Compact JSON') } catch (e) { msg(formatUnknownError(e)) }
+}
+async function copyRawJson(): Promise<void> {
+  if (!doc.value) return
+  try { const raw = await normalizeSceneDocumentForWiki(doc.value); await copyTextToClipboard(JSON.stringify(raw, null, 2)); msg('已复制到剪贴板') } catch (e) { msg(formatUnknownError(e)) }
+}
+async function downloadObjBlock(): Promise<void> {
+  if (!doc.value) return
+  try { const n = await normalizeSceneDocumentForWiki(doc.value); const def = loadStructureOrWorld(n, undefined); const zip = await buildStructureBundleZip(def, n, { mode: 'block' }); downloadBlob(`${baseName.value}-block.zip`, zip); msg('已导出 OBJ (block)') } catch (e) { msg(formatUnknownError(e)) }
+}
+async function downloadObjConnected(): Promise<void> {
+  if (!doc.value) return
+  try { const n = await normalizeSceneDocumentForWiki(doc.value); const def = loadStructureOrWorld(n, undefined); const zip = await buildStructureBundleZip(def, n, { mode: 'connected' }); downloadBlob(`${baseName.value}-connected.zip`, zip); msg('已导出 OBJ (connected)') } catch (e) { msg(formatUnknownError(e)) }
+}
+
+const isoDir = ref(0)
+const isoUrl = ref<string | null>(null)
+const isoBusy = ref(false)
+const isoErr = ref<string | null>(null)
+let isoSeq = 0
+function cycleIso(): void { isoDir.value = (isoDir.value + 1) % 4 }
+async function bakeIso(): Promise<void> {
+  const d = doc.value; if (!d) { isoUrl.value = null; isoErr.value = null; isoBusy.value = false; return }
+  const seq = ++isoSeq; isoBusy.value = true; isoErr.value = null
+  try { const url = await bakeIsometricStructurePngDataUrl(d, isoDir.value); if (seq !== isoSeq) return; isoUrl.value = url }
+  catch (e) { if (seq !== isoSeq) return; isoUrl.value = null; isoErr.value = formatUnknownError(e) }
+  finally { if (seq === isoSeq) isoBusy.value = false }
+}
+watch(() => [doc.value, isoDir.value] as const, () => { void bakeIso() }, { immediate: true })
+async function downloadIso(): Promise<void> {
+  if (!doc.value || !isoUrl.value) return
+  try { downloadBlob(`${baseName.value}-iso-${isoDir.value}.png`, dataUrlToPngBlob(isoUrl.value)); msg(`已下载等轴视角 PNG ${isoDir.value + 1}/4`) } catch (e) { msg(formatUnknownError(e)) }
+}
+</script>
+
+<template>
+  <div class="ew-root">
+    <div class="ew-header">
+      <h2 class="ew-title">Export</h2>
+      <span class="ew-sub">{{ baseName }}</span>
+    </div>
+
+    <div class="ew-grid">
+      <section class="ew-card">
+        <h3>JSON</h3>
+        <p class="ew-desc">Raw 为完整明文 JSON；Compact 为 gzip+Base64 信封。</p>
+        <div class="ew-row"><button class="ew-btn" @click="void downloadRaw()">Download Raw</button><button class="ew-btn" @click="void downloadCompact()">Download Compact</button><button class="ew-btn" @click="void copyRawJson()">Copy to Clipboard</button></div>
+      </section>
+
+      <section class="ew-card">
+        <h3>OBJ 3D Model</h3>
+        <p class="ew-desc">导出 Wavefront .obj + .mtl + 纹理，zip 打包。</p>
+        <div class="ew-row"><button class="ew-btn" @click="void downloadObjBlock()">Block mode .zip</button><button class="ew-btn" @click="void downloadObjConnected()">Connected mode .zip</button></div>
+      </section>
+
+      <section class="ew-card">
+        <h3>Isometric PNG</h3>
+        <p class="ew-desc">等轴视角渲染，4 个方向可选。</p>
+        <div class="ew-row">
+          <button class="ew-btn ew-btn--sm" @click="cycleIso" :disabled="isoBusy">Direction {{ isoDir + 1 }}/4</button>
+          <button v-if="isoUrl" class="ew-btn ew-btn--primary" @click="void downloadIso()">Download PNG</button>
+        </div>
+        <div v-if="isoBusy" class="ew-fb">Rendering…</div>
+        <img v-else-if="isoUrl" :src="isoUrl" class="ew-iso" alt="Iso preview" />
+        <div v-if="isoErr" class="ew-fb ew-fb--err">{{ isoErr }}</div>
+      </section>
+
+      <section v-if="showSdeSave" class="ew-card">
+        <h3>SDE Sync</h3>
+        <button class="ew-btn ew-btn--primary" @click="void ctx.saveWorkspaceFull().then(() => msg('已同步到 SDE')).catch(e => msg(String(e)))">PUT to SDE</button>
+      </section>
+    </div>
+
+    <div v-if="feedback" class="ew-fb-bar">{{ feedback }}</div>
+  </div>
+</template>
+
+<style scoped>
+.ew-root { padding: 24px 32px; max-width: 900px; height: 100%; overflow-y: auto; box-sizing: border-box; }
+.ew-header { margin-bottom: 20px; }
+.ew-title { font-size: 18px; font-weight: 600; color: #f1f5f9; margin: 0; }
+.ew-sub { font-size: 12px; color: #64748b; }
+.ew-grid { display: flex; flex-direction: column; gap: 14px; }
+.ew-card { padding: 16px; border-radius: 8px; background: #1e293b; border: 1px solid #334155; }
+.ew-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #f1f5f9; }
+.ew-desc { margin: 0 0 10px; font-size: 12px; color: #64748b; }
+.ew-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ew-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #475569; background: #334155; color: #f8fafc; font-size: 12px; cursor: pointer; }
+.ew-btn:hover { background: #3b4f6b; }
+.ew-btn--primary { background: #2563eb; border-color: #1d4ed8; }
+.ew-btn--sm { font-size: 11px; padding: 4px 10px; }
+.ew-iso { max-width: 320px; border-radius: 4px; border: 1px solid #334155; margin-top: 8px; }
+.ew-fb { font-size: 11px; color: #a5b4fc; margin-top: 6px; }
+.ew-fb--err { color: #f87171; }
+.ew-fb-bar { margin-top: 16px; padding: 8px 12px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; font-size: 12px; color: #a5b4fc; }
+</style>

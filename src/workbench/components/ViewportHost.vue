@@ -29,6 +29,7 @@ function onSelectBlock(payload: { blockId: string; voxel?: { column: number; row
       v-if="mergedConfig"
       :merged-config="mergedConfig"
       :edit-mode="props.editMode"
+      :selected-voxel="props.selectedBlock?.voxel ?? null"
       @select-block="onSelectBlock"
     />
     <div v-else class="vh-placeholder">
