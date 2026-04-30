@@ -22,6 +22,12 @@ const selectedBlock = ref<{
   voxel?: { column: number; row: number; zSlice: number }
 } | null>(null)
 
+function openSettings(): void { ctx.settingsOpen.value = true }
+function resetLayout(): void {
+  try { localStorage.removeItem('wsr-wb-left-w'); localStorage.removeItem('wsr-wb-right-w') } catch { /* */ }
+  location.reload()
+}
+
 onMounted(async () => {
   if (ctx.apiBase.value) {
     await ctx.testConnection()
@@ -46,7 +52,7 @@ onMounted(async () => {
 <template>
   <WorkbenchShell>
     <template #menubar>
-      <MenuBar />
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
     </template>
 
     <template #workspace-tabs>

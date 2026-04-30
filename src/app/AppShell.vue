@@ -24,6 +24,16 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
+  editMode?: boolean
+}>()
+
+const emit = defineEmits<{
+  'select-block': [
+    payload: {
+      blockId: string
+      voxel?: { column: number; row: number; zSlice: number }
+    } | null,
+  ]
 }>()
 
 const store = createPreviewSceneStore(props.mergedConfig)
@@ -147,6 +157,21 @@ function onViewportHover(
   else clearHover('viewport')
 }
 
+function onViewportSelect(
+  payload: {
+    blockId: string
+    clientX: number
+    clientY: number
+    voxel: { column: number; row: number; zSlice: number }
+  } | null,
+): void {
+  if (payload) {
+    emit('select-block', { blockId: payload.blockId, voxel: payload.voxel })
+  } else {
+    emit('select-block', null)
+  }
+}
+
 function onSidebarTooltipHover(
   payload: {
     blockId: string
@@ -201,9 +226,11 @@ onBeforeUnmount(() => {
           :content-group="contentGroupRef"
           :layer-preview-mode="layerPreviewMode"
           :scene-background="mergedConfig.sceneBackground"
+          :edit-mode="props.editMode ?? false"
           @ready="onViewportReady"
           @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"
+          @select-block="onViewportSelect"
         />
         <div
           v-if="loadStatus === 'ok' && hasWorldMultiFrame"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
- * Scene + RenderViewport + 灯光 + RAF；悬停拾取 emit 到父级（不持有 tooltip 状态）。
+ * Scene + RenderViewport + 灯光 + RAF；悬停拾取 + 点击选取 emit 到父级（不持有 tooltip 状态）。
+ * 编辑模式下 pointerdown 触发 select-block。
  */
 import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
@@ -28,9 +29,12 @@ const props = withDefaults(
     contentGroup: THREE.Group | null
     layerPreviewMode: LayerPreviewMode
     sceneBackground?: number
+    /** 编辑模式：pointerdown 触发 select-block 而非仅 hover */
+    editMode?: boolean
   }>(),
   {
     sceneBackground: 0x111827,
+    editMode: false,
   },
 )
 
@@ -43,6 +47,14 @@ const emit = defineEmits<{
       clientX: number
       clientY: number
       source: 'viewport'
+      voxel: { column: number; row: number; zSlice: number }
+    } | null,
+  ]
+  'select-block': [
+    payload: {
+      blockId: string
+      clientX: number
+      clientY: number
       voxel: { column: number; row: number; zSlice: number }
     } | null,
   ]
@@ -112,6 +124,38 @@ function onPointerMove(e: PointerEvent): void {
 function onPointerLeave(): void {
   lastPointer = null
   emit('hover-block', null)
+}
+
+/** 编辑模式下点击选取方块 */
+function onPointerDown(e: PointerEvent): void {
+  if (!props.editMode) return
+  lastPointer = { clientX: e.clientX, clientY: e.clientY }
+  const vp = viewport
+  const g = props.contentGroup
+  const dom = canvasEl
+  if (!vp || !g || !dom) return
+
+  const picked = pickVoxelFromPointer({
+    clientX: e.clientX,
+    clientY: e.clientY,
+    domElement: dom,
+    camera: vp.activeCamera,
+    contentGroup: g,
+    def: props.definition,
+    layerPreview: props.layerPreviewMode,
+  })
+
+  if (picked) {
+    const { blockId, column, row, zSlice } = picked
+    emit('select-block', {
+      blockId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      voxel: { column, row, zSlice },
+    })
+  } else {
+    emit('select-block', null)
+  }
 }
 
 /**
@@ -193,6 +237,7 @@ onMounted(() => {
   canvasEl = vp.renderer.domElement
   canvasEl.addEventListener('pointermove', onPointerMove)
   canvasEl.addEventListener('pointerleave', onPointerLeave)
+  canvasEl.addEventListener('pointerdown', onPointerDown)
 
   const def = props.definition
   const fallbackTarget = new THREE.Vector3(0, 2, 0)
@@ -272,6 +317,7 @@ onBeforeUnmount(() => {
   if (canvasEl) {
     canvasEl.removeEventListener('pointermove', onPointerMove)
     canvasEl.removeEventListener('pointerleave', onPointerLeave)
+    canvasEl.removeEventListener('pointerdown', onPointerDown)
     canvasEl = null
   }
   cancelAnimationFrame(animationId)
