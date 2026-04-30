@@ -46,7 +46,7 @@ onMounted(async () => {
 
 <template>
   <!-- Preview Workspace: 3-column Blender layout -->
-  <WorkbenchShell v-if="workspace === 'preview'">
+  <WorkbenchShell v-show="workspace === 'preview'">
     <template #menubar>
       <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
     </template>
@@ -72,7 +72,7 @@ onMounted(async () => {
   </WorkbenchShell>
 
   <!-- Export Workspace: standalone full page -->
-  <div v-else class="wb-standalone">
+  <div v-show="workspace === 'export'" class="wb-standalone">
     <header class="wb-standalone-menubar">
       <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
     </header>

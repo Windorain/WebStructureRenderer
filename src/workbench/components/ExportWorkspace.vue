@@ -101,11 +101,11 @@ async function downloadIso(): Promise<void> {
 </template>
 
 <style scoped>
-.ew-root { padding: 24px 32px; max-width: 900px; height: 100%; overflow-y: auto; box-sizing: border-box; }
+.ew-root { padding: 24px 32px; box-sizing: border-box; }
 .ew-header { margin-bottom: 20px; }
 .ew-title { font-size: 18px; font-weight: 600; color: #f1f5f9; margin: 0; }
 .ew-sub { font-size: 12px; color: #64748b; }
-.ew-grid { display: flex; flex-direction: column; gap: 14px; }
+.ew-grid { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
 .ew-card { padding: 16px; border-radius: 8px; background: #1e293b; border: 1px solid #334155; }
 .ew-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #f1f5f9; }
 .ew-desc { margin: 0 0 10px; font-size: 12px; color: #64748b; }
