@@ -86,10 +86,7 @@ function normalizeWorldFrameListIndex(w: World, raw: number): number {
   const n = w.frames.length
   if (n === 0) return 0
   let i = Math.floor(raw)
-  if (w.playback?.loop !== false) {
-    return ((i % n) + n) % n
-  }
-  return Math.max(0, Math.min(n - 1, i))
+  return ((i % n) + n) % n
 }
 
 interface WorldMeshEntry {
@@ -328,7 +325,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       return
     }
     const n = doc.frames.length
-    const loop = doc.playback?.loop !== false
+    const loop = true
     const delay = dwellMsForCurrentWorldFrame()
     const fromIndex = worldFrameIndex.value
     worldPlaybackTimeoutId = setTimeout(() => {

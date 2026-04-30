@@ -1,19 +1,16 @@
 /**
- * World 多帧：播放索引与内嵌 StructureData 解析（占位；`structureRef` 异步加载待接）。
+ * World 多帧：播放索引与内嵌 StructureData 解析。
  */
 
 import type { Frame, StructureData, World } from '../schema/types'
 
-/** 解析默认帧下标（含 loop 时对帧数取模） */
+/** 解析默认帧下标（始终循环取模） */
 export function getDefaultFrameIndex(world: World): number {
   const n = world.frames.length
   if (n === 0) return 0
   const raw = world.playback?.defaultFrameIndex
   const i = raw === undefined || !Number.isFinite(raw) ? 0 : Math.floor(raw)
-  if (world.playback?.loop !== false) {
-    return ((i % n) + n) % n
-  }
-  return Math.max(0, Math.min(n - 1, i))
+  return ((i % n) + n) % n
 }
 
 export function frameAt(world: World, index: number): Frame | undefined {
@@ -24,7 +21,7 @@ export function embeddedStructure(frame: Frame | undefined): StructureData | und
   return frame?.structure
 }
 
-/** 占位：按时间 tick 选帧；未实现 durationMs 时间轴时等价于 defaultFrameIndex */
+/** 按时间 tick 选帧 */
 export function frameIndexForPlaybackTick(
   world: World,
   frameIndexOverride: number | undefined,
@@ -34,8 +31,7 @@ export function frameIndexForPlaybackTick(
     const n = world.frames.length
     if (n === 0) return 0
     const i = Math.floor(frameIndexOverride)
-    if (world.playback?.loop) return ((i % n) + n) % n
-    return Math.max(0, Math.min(n - 1, i))
+    return ((i % n) + n) % n
   }
   return getDefaultFrameIndex(world)
 }
