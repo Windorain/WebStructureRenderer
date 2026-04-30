@@ -11,25 +11,23 @@ const hasScene = computed(() => ctx.scene.value != null)
 const id = ref('')
 const label = ref('')
 const author = ref('')
-const mode = ref('')
 const gtnhVersion = ref('')
 const structureId = ref('')
 
-// scene → 表单（仅 scene 加载/外部变更时）
+// scene → 表单
 watch(
   () => ctx.scene.value,
   (d) => {
     id.value = d ? readSceneMetaField(d, 'id') : ''
     label.value = d ? readSceneMetaField(d, 'label') : ''
     author.value = d ? readSceneMetaField(d, 'author') : ''
-    mode.value = d ? readSceneMetaField(d, 'mode') : ''
     gtnhVersion.value = d ? readSceneMetaField(d, 'gtnhVersion') : ''
     structureId.value = d ? readSceneMetaField(d, 'structureId') : ''
   },
   { immediate: true },
 )
 
-/** 表单变更 → 原地修改 scene 对象（不建新引用，避免触发 scene watch 回环） */
+// 表单 → scene（300ms debounce，原地修改）
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleSync(): void {
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -38,7 +36,7 @@ function scheduleSync(): void {
     if (!doc) return
     for (const [k, v] of Object.entries({
       id: id.value, label: label.value, author: author.value,
-      mode: mode.value, gtnhVersion: gtnhVersion.value, structureId: structureId.value,
+      gtnhVersion: gtnhVersion.value, structureId: structureId.value,
     })) {
       if (v === '') { delete (doc as any)[k] } else { (doc as any)[k] = v }
     }
@@ -47,7 +45,7 @@ function scheduleSync(): void {
   }, 300)
 }
 
-watch([id, label, author, mode, gtnhVersion, structureId], () => scheduleSync())
+watch([id, label, author, gtnhVersion, structureId], () => scheduleSync())
 </script>
 
 <template>
@@ -61,14 +59,6 @@ watch([id, label, author, mode, gtnhVersion, structureId], () => scheduleSync())
         <label class="se-field"><span>author</span><input v-model="author" placeholder="作者" type="text" autocomplete="off" /></label>
         <label class="se-field"><span>gtnhVersion</span><input v-model="gtnhVersion" placeholder="版本号" type="text" autocomplete="off" /></label>
         <label class="se-field"><span>structureId</span><input v-model="structureId" placeholder="注册名" type="text" autocomplete="off" /></label>
-        <label class="se-field">
-          <span>mode</span>
-          <select v-model="mode">
-            <option value="">(unset)</option>
-            <option value="multiblock">multiblock</option>
-            <option value="simple">simple</option>
-          </select>
-        </label>
       </div>
     </template>
   </div>

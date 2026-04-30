@@ -5,8 +5,6 @@
  */
 import { computed, ref, type Component } from 'vue'
 import { t } from '@/workbench/i18n'
-import SceneInfoEditor from './SceneInfoEditor.vue'
-import PreviewConfigEditor from './PreviewConfigEditor.vue'
 import BlockInspector from './BlockInspector.vue'
 import BlockStatsEditor from './BlockStatsEditor.vue'
 
@@ -15,18 +13,16 @@ const props = defineProps<{
 }>()
 
 const EDITORS = [
-  { id: 'scene' as const, comp: SceneInfoEditor },
-  { id: 'config' as const, comp: PreviewConfigEditor },
   { id: 'inspector' as const, comp: BlockInspector },
   { id: 'stats' as const, comp: BlockStatsEditor },
 ] as const
 
 type EditorId = (typeof EDITORS)[number]['id']
 
-const activeEditorId = ref<EditorId>('scene')
+const activeEditorId = ref<EditorId>('inspector')
 
 const activeEditor = computed<Component>(() => {
-  return EDITORS.find((e) => e.id === activeEditorId.value)?.comp ?? SceneInfoEditor
+  return EDITORS.find((e) => e.id === activeEditorId.value)?.comp ?? BlockInspector
 })
 </script>
 
@@ -35,7 +31,7 @@ const activeEditor = computed<Component>(() => {
     <div class="pp-header">
       <select v-model="activeEditorId" class="pp-editor-select">
         <option v-for="ed in EDITORS" :key="ed.id" :value="ed.id">
-          {{ t(ed.id === 'scene' ? 'sceneInfo' : ed.id === 'config' ? 'previewConfig' : ed.id === 'inspector' ? 'blockInspector' : 'blockStats') }}
+          {{ t(ed.id === 'inspector' ? 'blockInspector' : 'blockStats') }}
         </option>
       </select>
     </div>
