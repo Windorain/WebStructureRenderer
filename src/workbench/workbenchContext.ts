@@ -33,6 +33,11 @@ export type WorkbenchMainSection = 'preview' | 'edit' | 'export'
 /** 内存中的场景包（结构 JSON 根对象） */
 export type WorkbenchScene = Record<string, unknown>
 
+export interface SelectedBlock {
+  blockId: string
+  voxel?: { column: number; row: number; zSlice: number }
+}
+
 export interface WorkbenchContext {
   mainSection: Ref<WorkbenchMainSection>
   settingsOpen: Ref<boolean>
@@ -41,26 +46,28 @@ export interface WorkbenchContext {
   apiBase: Ref<string>
   token: Ref<string>
   connectionOk: Ref<boolean | null>
-  connectionMessage: Ref<string>
+  readonly connectionMessage: Ref<string>
   exportFiles: Ref<ExportFileInfo[]>
   exportsLoading: Ref<boolean>
   selectedExportName: Ref<string | null>
   /** 当前内存中的完整场景数据（所有入口与编辑只改此对象） */
   scene: Ref<WorkbenchScene | null>
-  dirty: Ref<boolean>
+  readonly dirty: Ref<boolean>
   /** 由 `syncPreview` 从 `scene` 派生；成功前保留上一成功帧，避免闪断 */
   previewConfig: ShallowRef<PreviewConfig | null>
   /** 每成功 `syncPreview` 一次 +1，用于 AppShell 与上一配置实例隔离 */
-  previewEpoch: Ref<number>
+  readonly previewEpoch: Ref<number>
   /** 每次从本机/SDE/示例完整载入场景 +1，供元数据表单 `:key` 强制与磁盘快照对齐 */
   sceneLoadEpoch: Ref<number>
-  previewBusy: Ref<boolean>
+  readonly previewBusy: Ref<boolean>
   previewError: Ref<string | null>
+  selectedBlock: Ref<SelectedBlock | null>
   setMainSection(section: WorkbenchMainSection): void
   setSettingsOpen(open: boolean): void
   setWorkspaceMode(mode: WorkbenchWorkspaceMode): void
   setApiBase(raw: string): void
   setToken(raw: string): void
+  setSelectedBlock(v: SelectedBlock | null): void
   testConnection(): Promise<void>
   refreshExportList(): Promise<void>
   loadExportByName(name: string): Promise<void>
@@ -143,6 +150,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
   const sceneLoadEpoch = ref(0)
   const previewBusy = ref(false)
   const previewError = ref<string | null>(null)
+  const selectedBlock = ref<SelectedBlock | null>(null)
   const localFileSaveHandle: ShallowRef<FileSystemFileHandle | null> = shallowRef(null)
 
   /** 写入 `scene`：Compact 强制解压为 Raw 后存储。非空 bump `sceneLoadEpoch`。 */
@@ -188,21 +196,22 @@ export function provideWorkbenchContext(): WorkbenchContext {
   }
 
   async function syncPreview(): Promise<void> {
-    const doc = scene.value
-    previewError.value = null
-    if (!doc) {
-      previewError.value = '无场景数据'
-      previewConfig.value = null
-      previewEpoch.value = 0
-      return
-    }
-    if (!documentLooksPreviewable(doc)) {
-      previewError.value =
-        '当前文档缺少 textureBlobs 或非 geometryPhase=baked，无法内嵌预览（可继续编辑元数据并导出）。'
-      return
-    }
+    if (previewBusy.value) return
     previewBusy.value = true
+    previewError.value = null
     try {
+      const doc = scene.value
+      if (!doc) {
+        previewError.value = '无场景数据'
+        previewConfig.value = null
+        previewEpoch.value = 0
+        return
+      }
+      if (!documentLooksPreviewable(doc)) {
+        previewError.value =
+          '当前文档缺少 textureBlobs 或非 geometryPhase=baked，无法内嵌预览（可继续编辑元数据并导出）。'
+        return
+      }
       const snapshot = { ...doc }
       const cfg = await previewConfigFromDocument(snapshot)
       previewConfig.value = cfg
@@ -220,6 +229,10 @@ export function provideWorkbenchContext(): WorkbenchContext {
 
   function setToken(raw: string): void {
     token.value = raw.trim()
+  }
+
+  function setSelectedBlock(v: SelectedBlock | null): void {
+    selectedBlock.value = v
   }
 
   async function testConnection(): Promise<void> {
@@ -416,11 +429,13 @@ export function provideWorkbenchContext(): WorkbenchContext {
     sceneLoadEpoch,
     previewBusy,
     previewError,
+    selectedBlock,
     setMainSection,
     setSettingsOpen,
     setWorkspaceMode,
     setApiBase,
     setToken,
+    setSelectedBlock,
     testConnection,
     refreshExportList,
     loadExportByName,

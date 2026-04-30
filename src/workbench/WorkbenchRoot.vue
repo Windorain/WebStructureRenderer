@@ -16,10 +16,6 @@ const ctx = provideWorkbenchContext()
 
 const workspace = ref<'preview' | 'wiki' | 'export'>('preview')
 const activeTool = ref('select')
-const selectedBlock = ref<{
-  blockId: string
-  voxel?: { column: number; row: number; zSlice: number }
-} | null>(null)
 
 function openSettings(): void { ctx.settingsOpen.value = true }
 function resetLayout(): void {
@@ -55,14 +51,10 @@ onMounted(async () => {
     </template>
     <template #tool-shelf />
     <template #viewport>
-      <ViewportHost
-        :selected-block="selectedBlock"
-        @update:active-tool="activeTool = $event"
-        @update:selected-block="selectedBlock = $event"
-      />
+      <ViewportHost @update:active-tool="activeTool = $event" />
     </template>
     <template #properties>
-      <PropertiesPanel :selected-block="selectedBlock" />
+      <PropertiesPanel />
     </template>
     <template #statusbar>
       <StatusBar />

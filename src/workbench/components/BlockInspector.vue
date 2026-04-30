@@ -5,19 +5,16 @@ import { useWorkbenchContext } from '@/workbench/workbenchContext'
 import { isWorldDocument } from '@/render/data/bundleResolve'
 import { t } from '@/workbench/i18n'
 
-const props = defineProps<{
-  selectedBlock: { blockId: string; voxel?: { column: number; row: number; zSlice: number } } | null
-}>()
-
 const ctx = useWorkbenchContext()
+const selectedBlock = computed(() => ctx.selectedBlock.value)
 const tooltipText = ref('')
 const saveFeedback = ref('')
 
 /** ctx.scene 始终为 Raw，直接读取 */
 function readCurrentTooltip(): string {
   const doc = ctx.scene.value
-  if (!doc || !props.selectedBlock?.voxel) return ''
-  const { zSlice, row, column } = props.selectedBlock.voxel
+  if (!doc || !selectedBlock.value?.voxel) return ''
+  const { zSlice, row, column } = selectedBlock.value.voxel
   let tp: unknown, ttg: unknown
   if (isWorldDocument(doc)) {
     tp = doc.tooltipPalette
@@ -86,11 +83,12 @@ function setPaletteAndGrid(
 
 async function saveTooltip(): Promise<void> {
   const doc = ctx.scene.value
-  if (!doc || !props.selectedBlock?.voxel) return
-  const { zSlice, row, column } = props.selectedBlock.voxel
+  if (!doc || !selectedBlock.value?.voxel) return
+  const { zSlice, row, column } = selectedBlock.value.voxel
   try {
     setPaletteAndGrid(doc, zSlice, row, column, tooltipText.value)
-    ctx.dirty.value = true
+    ;(ctx as any).dirty.value = true
+    void ctx.syncPreview()
     saveFeedback.value = '已保存并同步预览'
   } catch (e) {
     saveFeedback.value = e instanceof Error ? e.message : String(e)
@@ -102,11 +100,7 @@ const previewHtml = computed(() => {
   return renderTooltipHtml(tooltipText.value)
 })
 
-watch(
-  () => props.selectedBlock,
-  (b) => { tooltipText.value = b ? readCurrentTooltip() : '' },
-  { immediate: true },
-)
+watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurrentTooltip() : '' }, { immediate: true })
 </script>
 
 <template>

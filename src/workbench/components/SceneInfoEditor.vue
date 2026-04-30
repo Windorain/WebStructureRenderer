@@ -31,7 +31,9 @@ watch(
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleSync(): void {
   if (debounceTimer) clearTimeout(debounceTimer)
+  const sceneSnapshot = ctx.scene.value
   debounceTimer = setTimeout(() => {
+    if (ctx.scene.value !== sceneSnapshot) return
     const doc = ctx.scene.value
     if (!doc) return
     for (const [k, v] of Object.entries({

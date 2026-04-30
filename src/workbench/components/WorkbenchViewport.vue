@@ -19,14 +19,15 @@ import {
 import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { t } from '@/workbench/i18n'
+import { useWorkbenchContext } from '@/workbench/workbenchContext'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
-  selectedBlock: { blockId: string; voxel?: { column: number; row: number; zSlice: number } } | null
 }>()
 
+const ctx = useWorkbenchContext()
+
 const emit = defineEmits<{
-  (e: 'update:selectedBlock', v: { blockId: string; voxel?: { column: number; row: number; zSlice: number } } | null): void
   (e: 'update:activeTool', v: string): void
 }>()
 
@@ -77,7 +78,7 @@ function onViewportHover(
 function onViewportSelect(
   p: { blockId: string; voxel: { column: number; row: number; zSlice: number } } | null,
 ): void {
-  emit('update:selectedBlock', p ? { blockId: p.blockId, voxel: p.voxel } : null)
+  ctx.setSelectedBlock(p ? { blockId: p.blockId, voxel: p.voxel } : null)
 }
 
 onMounted(async () => { await store.loadStructureAndResources() })
@@ -97,7 +98,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
       :layer-preview-mode="layerPreviewMode"
       :scene-background="mergedConfig.sceneBackground"
       :edit-mode="true"
-      :selected-voxel="props.selectedBlock?.voxel ?? null"
+      :selected-voxel="ctx.selectedBlock.value?.voxel ?? null"
       @ready="onViewportReady"
       @update:projection-mode="(m: ProjectionMode) => (store.projectionMode.value = m)"
       @hover-block="onViewportHover"

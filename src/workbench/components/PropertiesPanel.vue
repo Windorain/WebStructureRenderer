@@ -8,10 +8,6 @@ import { t } from '@/workbench/i18n'
 import BlockInspector from './BlockInspector.vue'
 import BlockStatsEditor from './BlockStatsEditor.vue'
 
-const props = defineProps<{
-  selectedBlock: { blockId: string; voxel?: { column: number; row: number; zSlice: number } } | null
-}>()
-
 const EDITORS = [
   { id: 'inspector' as const, comp: BlockInspector },
   { id: 'stats' as const, comp: BlockStatsEditor },
@@ -37,7 +33,7 @@ const activeEditor = computed<Component>(() => {
     </div>
     <div class="pp-body">
       <KeepAlive>
-        <component :is="activeEditor" :selected-block="props.selectedBlock" />
+        <component :is="activeEditor" />
       </KeepAlive>
     </div>
   </div>
