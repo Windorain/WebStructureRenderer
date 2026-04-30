@@ -22,17 +22,6 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
-  editMode?: boolean
-  selectedVoxel?: { column: number; row: number; zSlice: number } | null
-}>()
-
-const emit = defineEmits<{
-  'select-block': [
-    payload: {
-      blockId: string
-      voxel?: { column: number; row: number; zSlice: number }
-    } | null,
-  ]
 }>()
 
 const store = createPreviewSceneStore(props.mergedConfig)
@@ -125,12 +114,6 @@ function onViewportHover(
   else clearHover('viewport')
 }
 
-function onViewportSelect(
-  payload: { blockId: string; clientX: number; clientY: number; voxel: { column: number; row: number; zSlice: number } } | null,
-): void {
-  emit('select-block', payload ? { blockId: payload.blockId, voxel: payload.voxel } : null)
-}
-
 function onSidebarTooltipHover(
   payload: { blockId: string; clientX: number; clientY: number; source: 'sidebar' } | null,
 ): void {
@@ -167,9 +150,8 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
           :definition="structureDefinition" :material-library="materialLibrary"
           :projection-mode="projectionMode" :content-group="contentGroupRef"
           :layer-preview-mode="layerPreviewMode" :scene-background="mergedConfig.sceneBackground"
-          :edit-mode="props.editMode ?? false" :selected-voxel="props.selectedVoxel ?? null"
           @ready="onViewportReady" @update:projection-mode="onProjectionUpdate"
-          @hover-block="onViewportHover" @select-block="onViewportSelect"
+          @hover-block="onViewportHover"
         />
         <!-- 多帧播放器 -->
         <div v-if="showFrameCtl && loadStatus === 'ok' && hasWorldMultiFrame" class="wm-world-frame-dock">

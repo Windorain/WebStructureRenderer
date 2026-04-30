@@ -14,7 +14,6 @@ import { provideWorkbenchContext } from '@/workbench/workbenchContext'
 const ctx = provideWorkbenchContext()
 
 const workspace = ref<'preview' | 'export'>('preview')
-const editMode = ref(false)
 const activeTool = ref('select')
 const selectedBlock = ref<{
   blockId: string
@@ -56,15 +55,13 @@ onMounted(async () => {
     <template #tool-shelf />
     <template #viewport>
       <ViewportHost
-        :edit-mode="editMode"
         :selected-block="selectedBlock"
-        @update:edit-mode="editMode = $event"
         @update:active-tool="activeTool = $event"
         @update:selected-block="selectedBlock = $event"
       />
     </template>
     <template #properties>
-      <PropertiesPanel :edit-mode="editMode" :selected-block="selectedBlock" />
+      <PropertiesPanel :selected-block="selectedBlock" />
     </template>
     <template #statusbar>
       <StatusBar />

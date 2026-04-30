@@ -6,7 +6,6 @@ import { isWorldDocument } from '@/render/data/bundleResolve'
 import { t } from '@/workbench/i18n'
 
 const props = defineProps<{
-  editMode: boolean
   selectedBlock: { blockId: string; voxel?: { column: number; row: number; zSlice: number } } | null
 }>()
 
@@ -113,7 +112,7 @@ watch(
 <template>
   <div class="pe-panel">
     <div class="pe-title">{{ t('blockInspector') }}</div>
-    <template v-if="!editMode || !selectedBlock">
+    <template v-if="!selectedBlock">
       <p class="pe-muted">{{ t('enterEditMode') }}</p>
     </template>
     <template v-else>
