@@ -7,6 +7,8 @@ dist-workbench/
 .DS_Store
 .claude
 CLAUDE.md
+.worktrees/
+.superpowers/
 
 # 本地场景 / 资源（体积大，不纳入版本库）
 /data/
