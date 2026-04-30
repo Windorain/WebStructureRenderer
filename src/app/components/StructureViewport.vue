@@ -78,6 +78,7 @@ let canvasEl: HTMLElement | null = null
 let rafHoverPending = false
 let lastPointer: { clientX: number; clientY: number } | null = null
 let activeScene: THREE.Scene | null = null
+let clickDownAt: { x: number; y: number } | null = null
 
 function toggleProjection(): void {
   if (!viewport) return
@@ -130,15 +131,25 @@ function onPointerLeave(): void {
   emit('hover-block', null)
 }
 
-/** 编辑模式下点击选取方块 */
+/** 编辑模式：区分拖拽（旋转）与点击（选取） */
 function onPointerDown(e: PointerEvent): void {
   if (!props.editMode) return
+  clickDownAt = { x: e.clientX, y: e.clientY }
+}
+
+function onPointerUp(e: PointerEvent): void {
+  if (!props.editMode || !clickDownAt) return
+  const dx = e.clientX - clickDownAt.x
+  const dy = e.clientY - clickDownAt.y
+  clickDownAt = null
+  // 移动超过阈值视为拖拽（旋转/平移），不触发选取
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) return
+  // 点击：执行选取
   lastPointer = { clientX: e.clientX, clientY: e.clientY }
   const vp = viewport
   const g = props.contentGroup
   const dom = canvasEl
   if (!vp || !g || !dom) return
-
   const picked = pickVoxelFromPointer({
     clientX: e.clientX,
     clientY: e.clientY,
@@ -148,18 +159,15 @@ function onPointerDown(e: PointerEvent): void {
     def: props.definition,
     layerPreview: props.layerPreviewMode,
   })
-
   if (picked) {
-    const { blockId, column, row, zSlice } = picked
     emit('select-block', {
-      blockId,
+      blockId: picked.blockId,
       clientX: e.clientX,
       clientY: e.clientY,
-      voxel: { column, row, zSlice },
+      voxel: { column: picked.column, row: picked.row, zSlice: picked.zSlice },
     })
-  } else {
-    emit('select-block', null)
   }
+  // 点击空地：不取消已选方块
 }
 
 /** 选中体素 → 世界坐标（体素中心） */
@@ -287,6 +295,7 @@ onMounted(() => {
   canvasEl.addEventListener('pointermove', onPointerMove)
   canvasEl.addEventListener('pointerleave', onPointerLeave)
   canvasEl.addEventListener('pointerdown', onPointerDown)
+  canvasEl.addEventListener('pointerup', onPointerUp)
 
   const def = props.definition
   const fallbackTarget = new THREE.Vector3(0, 2, 0)
@@ -367,6 +376,7 @@ onBeforeUnmount(() => {
     canvasEl.removeEventListener('pointermove', onPointerMove)
     canvasEl.removeEventListener('pointerleave', onPointerLeave)
     canvasEl.removeEventListener('pointerdown', onPointerDown)
+    canvasEl.removeEventListener('pointerup', onPointerUp)
     canvasEl = null
   }
   cancelAnimationFrame(animationId)

@@ -53,25 +53,13 @@ const tooltipDisplayText = computed(() => {
   return resolvePreviewTooltipText(def, tooltipPalette.value, h)
 })
 
-/* ---- ToolShelf state ---- */
-const shelfOpen = ref(true)
+/* ---- ToolShelf ---- */
 const activeTool = ref('select')
 
 function setTool(tool: string): void {
   activeTool.value = tool
   emit('update:activeTool', tool)
 }
-
-function onKey(e: KeyboardEvent): void {
-  if (e.key === 't' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return
-    e.preventDefault()
-    shelfOpen.value = !shelfOpen.value
-  }
-}
-
-onMounted(() => document.addEventListener('keydown', onKey))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 
 /* ---- Viewport events ---- */
 async function onViewportReady(scene: Scene): Promise<void> {
@@ -118,11 +106,8 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
     </div>
 
     <!-- 悬浮 ToolShelf -->
-    <div class="wv-shelf" :class="{ 'wv-shelf--collapsed': !shelfOpen }">
-      <button class="wv-shelf-toggle" @click="shelfOpen = !shelfOpen" :title="shelfOpen ? '收起 (T)' : '展开 (T)'">
-        <span class="wv-shelf-toggle-icon">{{ shelfOpen ? '◀' : '▶' }}</span>
-      </button>
-      <div v-if="shelfOpen" class="wv-shelf-panel">
+    <div class="wv-shelf">
+      <div class="wv-shelf-panel">
         <div class="wv-shelf-title">{{ t('tools') }}</div>
         <button
           v-for="tool in [{ id: 'select', label: t('select') }, { id: 'annotation', label: t('annotation') }]"
@@ -158,23 +143,14 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 
 .wv-shelf {
   position: absolute; top: 8px; left: 4px; z-index: 20;
-  display: flex; flex-direction: row;
 }
-.wv-shelf-toggle {
-  width: 20px; min-height: 40px; padding: 2px 0; border: none;
-  background: rgba(15, 23, 42, 0.88); color: #64748b;
-  font-size: 10px; cursor: pointer; border-radius: 0 4px 4px 0;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.wv-shelf-toggle:hover { color: #e2e8f0; background: rgba(30, 41, 59, 0.92); }
 .wv-shelf-panel {
   padding: 6px;
   background: rgba(15, 23, 42, 0.92);
-  border-radius: 0 6px 6px 0;
+  border-radius: 6px;
   border: 1px solid #1e293b;
-  border-left: none;
-  min-width: 120px;
+  min-width: 72px;
+  width: max-content;
   backdrop-filter: blur(6px);
 }
 .wv-shelf-title {
@@ -182,8 +158,8 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
   color: #64748b; margin-bottom: 4px; padding: 0 4px;
 }
 .wv-tool-btn {
-  display: block; width: 100%; padding: 4px 8px; border: none;
-  background: transparent; color: #94a3b8; font-size: 12px;
+  display: block; padding: 3px 6px; border: none;
+  background: transparent; color: #94a3b8; font-size: 11px;
   text-align: left; cursor: pointer; border-radius: 3px; margin-bottom: 1px;
 }
 .wv-tool-btn:hover { background: #1e293b; color: #e2e8f0; }
