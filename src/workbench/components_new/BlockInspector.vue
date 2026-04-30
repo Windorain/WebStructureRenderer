@@ -3,7 +3,7 @@
  * 方块检查器：编辑模式下选中方块后的 tooltip 编辑器 + Markdown 实时预览。
  */
 import { computed, ref, watch } from 'vue'
-import snarkdown from 'snarkdown'
+import { renderTooltipHtml } from './renderTooltipHtml'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
 import { isWorldDocument } from '@/render/data/bundleResolve'
 
@@ -130,7 +130,7 @@ function buildEmptyTooltipGrid(doc: Record<string, unknown>): number[][][] {
 
 const previewHtml = computed(() => {
   if (!tooltipText.value) return ''
-  return snarkdown(tooltipText.value)
+  return renderTooltipHtml(tooltipText.value)
 })
 
 watch(

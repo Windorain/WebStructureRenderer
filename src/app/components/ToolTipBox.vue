@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import snarkdown from 'snarkdown'
+import { renderTooltipHtml } from '@/workbench/components_new/renderTooltipHtml'
 
 const props = defineProps<{
   text: string
@@ -11,7 +11,7 @@ const props = defineProps<{
 const root = ref<HTMLElement | null>(null)
 const boxStyle = ref<Record<string, string>>({ left: '0px', top: '0px' })
 
-const html = computed(() => snarkdown(props.text))
+const html = computed(() => renderTooltipHtml(props.text))
 
 const PAD = 12
 
