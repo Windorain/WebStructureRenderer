@@ -153,7 +153,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 
 <style scoped>
 .wv-root { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; }
-.wv-viewport-wrap { flex: 1; min-height: 0; position: relative; }
+.wv-viewport-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .wv-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; background: #1a2332; border-top: 1px solid #1e293b; flex-shrink: 0; }
 
 .wv-shelf {

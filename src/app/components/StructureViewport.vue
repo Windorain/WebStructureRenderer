@@ -411,8 +411,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .wm-viewport {
-  width: 100%;
+  flex: 1;
   min-height: 320px;
+  min-width: 0;
   border-radius: 0;
   background: var(--nei-viewport-bg);
   overflow: hidden;
