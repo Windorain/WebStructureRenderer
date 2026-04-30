@@ -159,11 +159,11 @@ async function onDrop(ev: DragEvent): Promise<void> {
 }
 .dash-btn--primary {
   background: var(--nei-accent);
-  border-color: #1d4ed8;
+  border-color: var(--nei-accent);
 }
 .dash-err {
   margin: 12px 0 0;
   font-size: 12px;
-  color: #fecaca;
+  color: var(--nei-error-text);
 }
 </style>

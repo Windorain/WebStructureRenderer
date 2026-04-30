@@ -114,9 +114,9 @@ function onResizeHandleDblClick(): void {
 
 <style scoped>
 .wm-preview {
-  background: #0f172a;
+  background: var(--nei-bg);
   border-radius: 8px;
-  border: 1px solid #334155;
+  border: 1px solid var(--nei-border);
   overflow: hidden;
   position: relative;
 }
@@ -125,9 +125,9 @@ function onResizeHandleDblClick(): void {
   padding: 8px 12px;
   font-size: 12px;
   line-height: 1.45;
-  color: #fecaca;
-  background: #450a0a;
-  border-bottom: 1px solid #7f1d1d;
+  color: var(--nei-error-text);
+  background: var(--nei-error-bg);
+  border-bottom: 1px solid var(--nei-error-border);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -137,9 +137,9 @@ function onResizeHandleDblClick(): void {
   padding: 4px 10px;
   font-size: 12px;
   border-radius: 6px;
-  border: 1px solid #64748b;
-  background: #334155;
-  color: #f8fafc;
+  border: 1px solid var(--nei-muted);
+  background: var(--nei-border);
+  color: var(--nei-text);
   cursor: pointer;
 }
 .wm-preview-resize-root {
@@ -183,8 +183,8 @@ function onResizeHandleDblClick(): void {
   flex-shrink: 0;
   height: 10px;
   cursor: ns-resize;
-  background: linear-gradient(180deg, #1e293b 0%, #334155 45%, #475569 100%);
-  border-top: 1px solid #64748b;
+  background: linear-gradient(180deg, var(--nei-bg-deep) 0%, var(--nei-border) 45%, var(--nei-panel-hover) 100%);
+  border-top: 1px solid var(--nei-muted);
   touch-action: none;
   user-select: none;
 }
@@ -202,32 +202,32 @@ function onResizeHandleDblClick(): void {
 .wm-preview-veil {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.25);
+  background: var(--nei-bg);
   z-index: 2;
   pointer-events: none;
 }
 .wm-boot {
   padding: 16px;
   font-family: system-ui, sans-serif;
-  color: #e2e8f0;
+  color: var(--nei-text-dark);
 }
 .wm-boot--tall {
   min-height: 50vh;
 }
 .wm-boot--err {
-  color: #fecaca;
+  color: var(--nei-error-text);
   white-space: pre-wrap;
 }
 .wm-boot--muted {
-  color: #94a3b8;
+  color: var(--nei-label);
 }
 .wm-btn {
   margin-top: 8px;
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid #64748b;
-  background: #334155;
-  color: #f8fafc;
+  border: 1px solid var(--nei-muted);
+  background: var(--nei-border);
+  color: var(--nei-text);
   cursor: pointer;
   font-size: 12px;
 }

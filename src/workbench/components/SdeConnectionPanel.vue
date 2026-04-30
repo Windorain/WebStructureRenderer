@@ -106,7 +106,7 @@ async function onConnect(): Promise<void> {
 }
 .dash-btn--primary {
   background: var(--nei-accent);
-  border-color: #1d4ed8;
+  border-color: var(--nei-accent);
 }
 .dash-btn:hover {
   filter: brightness(1.06);
@@ -116,9 +116,9 @@ async function onConnect(): Promise<void> {
   color: var(--nei-label);
 }
 .dash-hint--ok {
-  color: #86efac;
+  color: var(--nei-ok-text);
 }
 .dash-hint--err {
-  color: #fecaca;
+  color: var(--nei-error-text);
 }
 </style>

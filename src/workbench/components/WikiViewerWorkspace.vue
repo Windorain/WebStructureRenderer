@@ -48,8 +48,8 @@ const mergedConfig = computed<PreviewConfig | null>(() => {
 
 <style scoped>
 .ww-root { display: flex; height: 100%; overflow: hidden; }
-.ww-panel { flex-shrink: 0; width: 260px; border-left: 1px solid #1e293b; background: #1a2332; overflow-y: auto; }
-.ww-preview-wrap { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow: auto; background: #0a0f19; }
-.ww-preview { border: 1px solid #334155; border-radius: 4px; overflow: hidden; flex-shrink: 0; }
-.ww-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #475569; font-size: 14px; }
+.ww-panel { flex-shrink: 0; width: 260px; border-left: 1px solid var(--nei-border); background: var(--nei-bg-deep); overflow-y: auto; }
+.ww-preview-wrap { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow: auto; background: var(--nei-viewport-bg); }
+.ww-preview { border: 1px solid var(--nei-border); border-radius: 4px; overflow: hidden; flex-shrink: 0; }
+.ww-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--nei-muted); font-size: 14px; }
 </style>

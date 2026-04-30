@@ -115,7 +115,7 @@ async function downloadIsoPng(): Promise<void> {
       </div>
       <div v-if="isoBusy" class="pe-feedback">渲染中…</div>
       <img v-else-if="isoPreviewUrl" :src="isoPreviewUrl" class="eq-iso-preview" alt="Iso preview" />
-      <div v-if="isoError" class="pe-feedback" style="color:#f87171">{{ isoError }}</div>
+      <div v-if="isoError" class="pe-feedback" :style="{ color: 'var(--nei-error-text)' }">{{ isoError }}</div>
       <button v-if="isoPreviewUrl" class="pe-btn" @click="void downloadIsoPng()">Download PNG</button>
     </div>
     <div v-if="showSdeSave" class="eq-section">
@@ -126,15 +126,15 @@ async function downloadIsoPng(): Promise<void> {
 
 <style scoped>
 .pe-panel { padding: 10px; font-size: 12px; }
-.pe-title { font-size: 13px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
+.pe-title { font-size: 13px; font-weight: 600; color: var(--nei-text); margin-bottom: 8px; }
 .eq-section { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.eq-label { width: 100%; font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+.eq-label { width: 100%; font-size: 10px; color: var(--nei-muted); text-transform: uppercase; margin-bottom: 2px; }
 .pe-btn {
-  padding: 4px 10px; border-radius: 4px; border: 1px solid #475569;
-  background: #334155; color: #f8fafc; cursor: pointer; font-size: 11px;
+  padding: 4px 10px; border-radius: 4px; border: 1px solid var(--nei-panel-hover);
+  background: var(--nei-btn-bg); color: var(--nei-text); cursor: pointer; font-size: 11px;
 }
-.pe-btn--primary { background: #2563eb; border-color: #1d4ed8; }
-.pe-btn-sm { padding: 1px 6px; font-size: 10px; border-radius: 3px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer; }
-.eq-iso-preview { max-width: 100%; border-radius: 4px; border: 1px solid #334155; margin-top: 4px; }
-.pe-feedback { font-size: 11px; color: #a5b4fc; }
+.pe-btn--primary { background: var(--nei-accent); border-color: var(--nei-accent); }
+.pe-btn-sm { padding: 1px 6px; font-size: 10px; border-radius: 3px; border: 1px solid var(--nei-panel-hover); background: var(--nei-bg-deep); color: var(--nei-label); cursor: pointer; }
+.eq-iso-preview { max-width: 100%; border-radius: 4px; border: 1px solid var(--nei-border); margin-top: 4px; }
+.pe-feedback { font-size: 11px; color: var(--nei-muted); }
 </style>

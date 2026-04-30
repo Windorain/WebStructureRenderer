@@ -112,12 +112,12 @@ async function load(): Promise<void> {
   opacity: 0.65;
 }
 .dash-btn--primary {
-  background: #4f46e5;
-  border-color: #4338ca;
+  background: var(--nei-accent);
+  border-color: var(--nei-accent);
 }
 .dash-err {
   margin: 12px 0 0;
   font-size: 12px;
-  color: #fecaca;
+  color: var(--nei-error-text);
 }
 </style>

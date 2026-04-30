@@ -140,29 +140,29 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 <style scoped>
 .wv-root { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; }
 .wv-viewport-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.wv-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; background: #1a2332; border-top: 1px solid #1e293b; flex-shrink: 0; }
+.wv-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; background: var(--nei-bg-deep); border-top: 1px solid var(--nei-bg-deep); flex-shrink: 0; }
 
 .wv-shelf {
   position: absolute; top: 8px; left: 4px; z-index: 20;
 }
 .wv-shelf-panel {
   padding: 6px;
-  background: rgba(15, 23, 42, 0.92);
+  background: var(--nei-bg);
   border-radius: 6px;
-  border: 1px solid #1e293b;
+  border: 1px solid var(--nei-panel-hover);
   min-width: 72px;
   width: max-content;
   backdrop-filter: blur(6px);
 }
 .wv-shelf-title {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
-  color: #64748b; margin-bottom: 4px; padding: 0 4px;
+  color: var(--nei-muted); margin-bottom: 4px; padding: 0 4px;
 }
 .wv-tool-btn {
   display: block; padding: 3px 6px; border: none;
-  background: transparent; color: #94a3b8; font-size: 11px;
+  background: transparent; color: var(--nei-label); font-size: 11px;
   text-align: left; cursor: pointer; border-radius: 3px; margin-bottom: 1px;
 }
-.wv-tool-btn:hover { background: #1e293b; color: #e2e8f0; }
-.wv-tool-btn--active { background: #1e3a5f; color: #f8fafc; }
+.wv-tool-btn:hover { background: var(--nei-panel-hover); color: var(--nei-text-dark); }
+.wv-tool-btn--active { background: var(--nei-panel-hover); color: var(--nei-text); }
 </style>

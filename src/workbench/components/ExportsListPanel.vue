@@ -74,7 +74,7 @@ async function onPick(name: string): Promise<void> {
 .wm-link {
   background: none;
   border: none;
-  color: #93c5fd;
+  color: var(--nei-link);
   cursor: pointer;
   text-align: left;
   padding: 0;
@@ -84,7 +84,7 @@ async function onPick(name: string): Promise<void> {
   text-decoration: underline;
 }
 .wm-link--active {
-  color: #fde047;
+  color: var(--nei-warn-text);
 }
 .wm-size {
   color: var(--nei-muted);

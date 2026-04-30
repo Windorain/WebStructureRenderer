@@ -33,7 +33,9 @@
   --nei-ok-text: #86efac;
   --nei-warn-text: #fde047;
   --nei-error-text: #fecaca;
-  --nei-error-bg: #3d1518;
+  --nei-error-bg: #450a0a;
+  --nei-error-border: #7f1d1d;
+  --nei-link: #93c5fd;
   --nei-checkerboard-dark: #6b6b6b;
   --nei-checkerboard-light: #4a4a4a;
 
@@ -111,6 +113,16 @@
   --nei-seg-on-bg: #1a2a3a;
   --nei-seg-on-border: #3b5f8a;
   --nei-seg-on-text: #d0d8e8;
+
+  --nei-loading-text: #fcd34d;
+  --nei-ok-text: #86efac;
+  --nei-warn-text: #fde047;
+  --nei-error-text: #fecaca;
+  --nei-error-bg: #450a0a;
+  --nei-error-border: #7f1d1d;
+  --nei-link: #93c5fd;
+  --nei-checkerboard-dark: #5a5a5a;
+  --nei-checkerboard-light: #3a3a3a;
 }
 
 /* 保留不变的全局类 */
