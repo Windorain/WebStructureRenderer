@@ -9,6 +9,7 @@ import { t } from '@/workbench/i18n'
 import SceneInfoEditor from './SceneInfoEditor.vue'
 import PreviewConfigEditor from './PreviewConfigEditor.vue'
 import BlockInspector from './BlockInspector.vue'
+import BlockStatsEditor from './BlockStatsEditor.vue'
 
 const props = defineProps<{
   editMode: boolean
@@ -19,6 +20,7 @@ const EDITORS = [
   { id: 'scene' as const, comp: SceneInfoEditor },
   { id: 'config' as const, comp: PreviewConfigEditor },
   { id: 'inspector' as const, comp: BlockInspector },
+  { id: 'stats' as const, comp: BlockStatsEditor },
 ] as const
 
 type EditorId = (typeof EDITORS)[number]['id']
@@ -42,7 +44,7 @@ const visibleEditors = computed(() => {
     <div class="pp-header">
       <select v-model="activeEditorId" class="pp-editor-select">
         <option v-for="ed in visibleEditors" :key="ed.id" :value="ed.id">
-          {{ t(ed.id === 'scene' ? 'sceneInfo' : ed.id === 'config' ? 'previewConfig' : 'blockInspector') }}
+          {{ t(ed.id === 'scene' ? 'sceneInfo' : ed.id === 'config' ? 'previewConfig' : ed.id === 'inspector' ? 'blockInspector' : 'blockStats') }}
         </option>
       </select>
     </div>

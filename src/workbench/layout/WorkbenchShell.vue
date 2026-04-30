@@ -6,9 +6,8 @@
 import { provide } from 'vue'
 import { usePanelResize } from './panelResize'
 
-const { leftWidth, rightWidth, startLeftDrag, startRightDrag, dragging } = usePanelResize()
+const { rightWidth, startRightDrag, dragging } = usePanelResize()
 
-provide('wb-left-width', leftWidth)
 provide('wb-right-width', rightWidth)
 provide('wb-dragging', dragging)
 </script>
@@ -24,19 +23,8 @@ provide('wb-dragging', dragging)
     </nav>
 
     <div class="wb-main">
-      <aside class="wb-toolshelf" :style="{ width: `${leftWidth}px` }">
-        <slot name="tool-shelf" />
-      </aside>
-
-      <div
-        class="wb-divider wb-divider--left"
-        @pointerdown="startLeftDrag"
-        role="separator"
-        aria-orientation="vertical"
-        tabindex="-1"
-      />
-
       <main class="wb-viewport">
+        <slot name="tool-shelf" />
         <slot name="viewport" />
       </main>
 
@@ -89,13 +77,6 @@ provide('wb-dragging', dragging)
   min-height: 0;
   display: flex;
   overflow: hidden;
-}
-
-.wb-toolshelf {
-  flex-shrink: 0;
-  overflow-y: auto;
-  background: #1a2332;
-  border-right: 1px solid #1e293b;
 }
 
 .wb-divider {

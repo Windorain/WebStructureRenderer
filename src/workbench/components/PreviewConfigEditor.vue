@@ -71,7 +71,7 @@ async function applyToPreview(): Promise<void> {
     const base = await previewConfigFromDocument(snapshot)
     ctx.previewConfig.value = {
       ...base, debug: debug.value,
-      features: { blockStatsSidebar: blockStatsSidebar.value, layerBar: layerBar.value },
+      features: { ...base.features, blockStatsSidebar: blockStatsSidebar.value, layerBar: layerBar.value },
       initialLayerWorldY: Number.isFinite(layerY) ? Math.round(layerY) : base.initialLayerWorldY,
       initialProjectionMode: initialProjectionMode.value,
       sceneBackground: bg, loadingMessage: loadingMessage.value,

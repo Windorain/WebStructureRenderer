@@ -5,7 +5,6 @@ import WorkbenchShell from '@/workbench/layout/WorkbenchShell.vue'
 import WorkbenchSettingsDrawer from '@/workbench/components/WorkbenchSettingsDrawer.vue'
 import MenuBar from '@/workbench/components/MenuBar.vue'
 import WorkspaceTabs from '@/workbench/components/WorkspaceTabs.vue'
-import ToolShelf from '@/workbench/components/ToolShelf.vue'
 import ViewportHost from '@/workbench/components/ViewportHost.vue'
 import PropertiesPanel from '@/workbench/components/PropertiesPanel.vue'
 import StatusBar from '@/workbench/components/StatusBar.vue'
@@ -54,13 +53,13 @@ onMounted(async () => {
     <template #workspace-tabs>
       <WorkspaceTabs :model-value="workspace" @update:model-value="workspace = $event" />
     </template>
-    <template #tool-shelf>
-      <ToolShelf :edit-mode="editMode" @update:edit-mode="editMode = $event" @update:active-tool="activeTool = $event" />
-    </template>
+    <template #tool-shelf />
     <template #viewport>
       <ViewportHost
         :edit-mode="editMode"
         :selected-block="selectedBlock"
+        @update:edit-mode="editMode = $event"
+        @update:active-tool="activeTool = $event"
         @update:selected-block="selectedBlock = $event"
       />
     </template>

@@ -37,6 +37,7 @@ const dict: Record<string, Record<Lang, string>> = {
   'sceneInfo': { zh: '场景信息', en: 'Scene Info' },
   'previewConfig': { zh: '预览配置', en: 'Preview Config' },
   'blockInspector': { zh: '方块检查器', en: 'Block Inspector' },
+  'blockStats': { zh: '方块统计', en: 'Block Stats' },
   'tools': { zh: '工具', en: 'Tools' },
   'select': { zh: '选取', en: 'Select' },
   'annotation': { zh: '注解', en: 'Annotation' },

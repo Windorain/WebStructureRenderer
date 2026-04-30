@@ -95,8 +95,10 @@ function parseUrlPreviewParams(
 const defaultDevPreviewBase: Omit<PreviewConfig, 'renderBundle' | 'materialLibrary' | 'sceneId'> = {
   ...defaultEmbedUi,
   features: {
+    ...defaultEmbedUi.features,
     blockStatsSidebar: true,
     layerBar: true,
+    debugStatusBar: true,
   },
 }
 

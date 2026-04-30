@@ -1,10 +1,8 @@
 <script setup lang="ts">
 /**
- * 预览页薄壳：previewSceneStore + StructureViewport + 侧栏与分层条。
- * 唯一数据入口为 `mergedConfig: PreviewConfig`；场景与顶栏以 `renderBundle.document` 为准（见 `sceneDisplayTitle`）。
- *
- * World 多帧：通过 `provide(PreviewSceneContextKey)` 暴露 `setCurrentWorldFrame`、`worldFrameIndex`、`worldFrameCount` 等；
- * 子组件 `WorldFramePlayerControls` / `WorldFrameScrubber` 仅消费该 store，不在此重复实现业务。
+ * 预览壳：previewSceneStore + StructureViewport + 可选周边组件。
+ * 所有外围 UI（侧栏、分层条、播放器、标题、状态栏）按 `mergedConfig.features` 开关。
+ * 工作台模式下关闭外围组件，由外围 ViewportHost 提供等价 UI。
  */
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import type { Scene } from 'three'
@@ -43,7 +41,6 @@ provide(PreviewSceneContextKey, store)
 const { hover, setHover, clearHover } = usePreviewTooltip()
 
 const {
-  showBlockStatsSidebar,
   loadStatus,
   statusBarTone,
   statusMessage,
@@ -58,11 +55,15 @@ const {
   hasWorldMultiFrame,
 } = store
 
-const showLayerBar = computed(() => props.mergedConfig.features.layerBar)
+const f = computed(() => props.mergedConfig.features)
+const showLayerBar = computed(() => f.value.layerBar)
+const showFrameCtl = computed(() => f.value.frameControls)
+const showTitle = computed(() => f.value.titleBar)
+const showStats = computed(() => f.value.blockStatsSidebar)
+const showDebugStatus = computed(() => f.value.debugStatusBar && props.mergedConfig.debug)
 
 const sceneDocument = computed(() => props.mergedConfig.renderBundle.document)
 
-/** 标题旁「?」悬停：仅展示非空的作者、版本号（gtnhVersion）。 */
 const metaTooltipText = computed(() => {
   const d = sceneDocument.value
   if (!d || typeof d !== 'object') return ''
@@ -77,31 +78,13 @@ const metaTooltipText = computed(() => {
 })
 
 const showMetaHint = computed(() => metaTooltipText.value.length > 0)
-
 const metaHintPointer = ref<{ clientX: number; clientY: number } | null>(null)
 
-function onMetaHintPointerEnter(e: PointerEvent): void {
-  metaHintPointer.value = { clientX: e.clientX, clientY: e.clientY }
-}
-
-function onMetaHintPointerMove(e: PointerEvent): void {
-  if (!metaHintPointer.value) return
-  metaHintPointer.value = { clientX: e.clientX, clientY: e.clientY }
-}
-
-function onMetaHintPointerLeave(): void {
-  metaHintPointer.value = null
-}
-
-function onMetaHintFocusIn(e: FocusEvent): void {
-  const t = e.currentTarget as HTMLElement
-  const r = t.getBoundingClientRect()
-  metaHintPointer.value = { clientX: r.left + r.width / 2, clientY: r.bottom }
-}
-
-function onMetaHintFocusOut(): void {
-  metaHintPointer.value = null
-}
+function onMetaHintPointerEnter(e: PointerEvent): void { metaHintPointer.value = { clientX: e.clientX, clientY: e.clientY } }
+function onMetaHintPointerMove(e: PointerEvent): void { if (!metaHintPointer.value) return; metaHintPointer.value = { clientX: e.clientX, clientY: e.clientY } }
+function onMetaHintPointerLeave(): void { metaHintPointer.value = null }
+function onMetaHintFocusIn(e: FocusEvent): void { const t = e.currentTarget as HTMLElement; const r = t.getBoundingClientRect(); metaHintPointer.value = { clientX: r.left + r.width / 2, clientY: r.bottom } }
+function onMetaHintFocusOut(): void { metaHintPointer.value = null }
 
 const tooltipDisplayText = computed(() => {
   const def = structureDefinition.value
@@ -110,10 +93,6 @@ const tooltipDisplayText = computed(() => {
   return resolvePreviewTooltipText(def, tooltipPalette.value, h)
 })
 
-/**
- * 顶栏：从 `renderBundle.document` 解析（与 3D 同一数据源；支持根/World 内嵌/数字 id），
- * 再退回已解析的 `StructureDefinition`。
- */
 const previewTitle = computed(() => {
   const fromDoc = sceneDisplayTitleFromRootDocument(props.mergedConfig.renderBundle.document)
   if (fromDoc) return fromDoc
@@ -134,267 +113,97 @@ const statusBarClass = computed(() => {
 
 async function onViewportReady(scene: Scene): Promise<void> {
   store.registerScene(scene)
-  try {
-    await store.rebuildContentMesh()
-  } catch (e) {
-    console.error('[StructureRenderer] onViewportReady', e)
-  }
+  try { await store.rebuildContentMesh() } catch (e) { console.error('[StructureRenderer] onViewportReady', e) }
 }
 
-function onProjectionUpdate(mode: ProjectionMode): void {
-  store.projectionMode.value = mode
-}
+function onProjectionUpdate(mode: ProjectionMode): void { store.projectionMode.value = mode }
 
 function onViewportHover(
-  payload: {
-    blockId: string
-    clientX: number
-    clientY: number
-    source: 'viewport'
-    voxel: { column: number; row: number; zSlice: number }
-  } | null,
+  payload: { blockId: string; clientX: number; clientY: number; source: 'viewport'; voxel: { column: number; row: number; zSlice: number } } | null,
 ): void {
   if (payload) setHover(payload)
   else clearHover('viewport')
 }
 
 function onViewportSelect(
-  payload: {
-    blockId: string
-    clientX: number
-    clientY: number
-    voxel: { column: number; row: number; zSlice: number }
-  } | null,
+  payload: { blockId: string; clientX: number; clientY: number; voxel: { column: number; row: number; zSlice: number } } | null,
 ): void {
-  if (payload) {
-    emit('select-block', { blockId: payload.blockId, voxel: payload.voxel })
-  } else {
-    emit('select-block', null)
-  }
+  emit('select-block', payload ? { blockId: payload.blockId, voxel: payload.voxel } : null)
 }
 
 function onSidebarTooltipHover(
-  payload: {
-    blockId: string
-    clientX: number
-    clientY: number
-    source: 'sidebar'
-  } | null,
+  payload: { blockId: string; clientX: number; clientY: number; source: 'sidebar' } | null,
 ): void {
   if (payload) setHover(payload)
   else clearHover('sidebar')
 }
 
-onMounted(async () => {
-  await store.loadStructureAndResources()
-})
-
-onBeforeUnmount(() => {
-  store.disposeCachesAndLibrary()
-})
+onMounted(async () => { await store.loadStructureAndResources() })
+onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 </script>
 
 <template>
   <div class="wm-root">
-    <p class="wm-title">
+    <!-- 标题栏 -->
+    <p v-if="showTitle" class="wm-title">
       <abbr
-        v-if="showMetaHint"
-        class="wm-title-meta-hint"
-        tabindex="0"
-        aria-label="作者与版本号"
-        title=""
-        @pointerenter="onMetaHintPointerEnter"
-        @pointermove="onMetaHintPointerMove"
-        @pointerleave="onMetaHintPointerLeave"
-        @focusin="onMetaHintFocusIn"
-        @focusout="onMetaHintFocusOut"
+        v-if="showMetaHint" class="wm-title-meta-hint" tabindex="0" aria-label="作者与版本号" title=""
+        @pointerenter="onMetaHintPointerEnter" @pointermove="onMetaHintPointerMove"
+        @pointerleave="onMetaHintPointerLeave" @focusin="onMetaHintFocusIn" @focusout="onMetaHintFocusOut"
       >?</abbr>
       <span class="wm-title-text">{{ previewTitle }}</span>
     </p>
+
     <div class="wm-main-stage">
+      <!-- 方块统计侧栏（嵌入模式） -->
       <BlockStatsSidebar
-        v-if="showBlockStatsSidebar && loadStatus === 'ok' && blockIconCache"
-        :entries="blockStatsEntries"
-        :cache="blockIconCache"
+        v-if="showStats && loadStatus === 'ok' && blockIconCache"
+        :entries="blockStatsEntries" :cache="blockIconCache"
         @tooltip-hover="onSidebarTooltipHover"
       />
       <div class="wm-viewport-column">
         <StructureViewport
           v-if="loadStatus === 'ok' && structureDefinition && materialLibrary"
-          :definition="structureDefinition"
-          :material-library="materialLibrary"
-          :projection-mode="projectionMode"
-          :content-group="contentGroupRef"
-          :layer-preview-mode="layerPreviewMode"
-          :scene-background="mergedConfig.sceneBackground"
-          :edit-mode="props.editMode ?? false"
-          :selected-voxel="props.selectedVoxel ?? null"
-          @ready="onViewportReady"
-          @update:projection-mode="onProjectionUpdate"
-          @hover-block="onViewportHover"
-          @select-block="onViewportSelect"
+          :definition="structureDefinition" :material-library="materialLibrary"
+          :projection-mode="projectionMode" :content-group="contentGroupRef"
+          :layer-preview-mode="layerPreviewMode" :scene-background="mergedConfig.sceneBackground"
+          :edit-mode="props.editMode ?? false" :selected-voxel="props.selectedVoxel ?? null"
+          @ready="onViewportReady" @update:projection-mode="onProjectionUpdate"
+          @hover-block="onViewportHover" @select-block="onViewportSelect"
         />
-        <div
-          v-if="loadStatus === 'ok' && hasWorldMultiFrame"
-          class="wm-world-frame-dock"
-        >
+        <!-- 多帧播放器 -->
+        <div v-if="showFrameCtl && loadStatus === 'ok' && hasWorldMultiFrame" class="wm-world-frame-dock">
           <WorldFramePlayerControls />
           <WorldFrameScrubber />
         </div>
+        <!-- 分层条 -->
         <LayerPreviewBar v-if="showLayerBar && loadStatus === 'ok'" />
       </div>
     </div>
-    <div
-      v-if="mergedConfig.debug"
-      :class="statusBarClass"
-      role="status"
-      aria-live="polite"
-    >
+
+    <!-- 调试状态栏 -->
+    <div v-if="showDebugStatus" :class="statusBarClass" role="status" aria-live="polite">
       <span class="wm-status-dot" aria-hidden="true" />
       <span class="wm-status-text">{{ statusMessage }}</span>
     </div>
-    <ToolTipBox
-      v-if="hover && tooltipDisplayText"
-      :text="tooltipDisplayText"
-      :client-x="hover.clientX"
-      :client-y="hover.clientY"
-    />
-    <ToolTipBox
-      v-if="metaHintPointer && metaTooltipText"
-      :text="metaTooltipText"
-      :client-x="metaHintPointer.clientX"
-      :client-y="metaHintPointer.clientY"
-    />
+
+    <ToolTipBox v-if="hover && tooltipDisplayText" :text="tooltipDisplayText" :client-x="hover.clientX" :client-y="hover.clientY" />
+    <ToolTipBox v-if="metaHintPointer && metaTooltipText" :text="metaTooltipText" :client-x="metaHintPointer.clientX" :client-y="metaHintPointer.clientY" />
   </div>
 </template>
 
 <style scoped>
-.wm-root {
-  font-family: system-ui, 'Segoe UI', sans-serif;
-  color: var(--nei-text-dark);
-  background: var(--nei-bg);
-  padding: 8px;
-  box-sizing: border-box;
-}
-.wm-title {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--nei-text);
-  text-shadow: var(--nei-label-shadow);
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-.wm-title-text {
-  min-width: 0;
-}
-.wm-title-meta-hint {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  text-decoration: none;
-  color: var(--nei-text);
-  text-shadow: var(--nei-label-shadow);
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
-  border-radius: 50%;
-  background: var(--nei-inset-bg);
-  cursor: help;
-  user-select: none;
-}
-.wm-title-meta-hint:hover {
-  filter: brightness(1.08);
-}
-.wm-title-meta-hint:focus-visible {
-  outline: 2px solid var(--nei-focus-ring);
-  outline-offset: 2px;
-}
-.wm-main-stage {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  width: 100%;
-  border-radius: 0;
-  overflow: hidden;
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
-  border-bottom: none;
-  background: var(--nei-bg);
-}
-.wm-viewport-column {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.wm-world-frame-dock {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: var(--nei-inset-bg);
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  border-bottom: none;
-  flex-shrink: 0;
-}
-.wm-status-bar {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 0;
-  padding: 8px 10px;
-  font-size: 12px;
-  line-height: 1.45;
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  border-radius: 0;
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
-  border-top: none;
-  background: var(--nei-inset-bg);
-  color: var(--nei-text-muted);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
-}
-.wm-status-bar--loading {
-  color: #fcd34d;
-}
-.wm-status-bar--ok {
-  color: #86efac;
-}
-.wm-status-bar--warn {
-  color: #fde047;
-}
-.wm-status-bar--err {
-  color: #fecaca;
-  background: #3d1518;
-}
-.wm-status-dot {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  margin-top: 4px;
-  border-radius: 0;
-  background: currentColor;
-  opacity: 0.9;
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
-}
-.wm-status-text {
-  flex: 1;
-  word-break: break-word;
-  white-space: pre-wrap;
-}
+.wm-root { font-family: system-ui, 'Segoe UI', sans-serif; color: var(--nei-text-dark); background: var(--nei-bg); padding: 8px; box-sizing: border-box; }
+.wm-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.wm-title-text { min-width: 0; }
+.wm-title-meta-hint { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin: 0; padding: 0; font-size: 12px; font-weight: 800; line-height: 1; text-decoration: none; color: var(--nei-text); text-shadow: var(--nei-label-shadow); border: var(--nei-bevel-w) solid; border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight); border-radius: 50%; background: var(--nei-inset-bg); cursor: help; user-select: none; }
+.wm-title-meta-hint:hover { filter: brightness(1.08); }
+.wm-title-meta-hint:focus-visible { outline: 2px solid var(--nei-focus-ring); outline-offset: 2px; }
+.wm-main-stage { display: flex; flex-direction: row; align-items: stretch; width: 100%; border-radius: 0; overflow: hidden; border: var(--nei-bevel-w) solid; border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight); border-bottom: none; background: var(--nei-bg); }
+.wm-viewport-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wm-world-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px; background: var(--nei-inset-bg); border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-left: none; border-right: none; border-top: none; border-bottom: none; flex-shrink: 0; }
+.wm-status-bar { display: flex; align-items: flex-start; gap: 8px; margin-top: 0; padding: 8px 10px; font-size: 12px; line-height: 1.45; font-family: ui-monospace, 'Cascadia Code', monospace; border-radius: 0; border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-top: none; background: var(--nei-inset-bg); color: var(--nei-text-muted); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
+.wm-status-bar--loading { color: #fcd34d; } .wm-status-bar--ok { color: #86efac; } .wm-status-bar--warn { color: #fde047; } .wm-status-bar--err { color: #fecaca; background: #3d1518; }
+.wm-status-dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 0; background: currentColor; opacity: 0.9; box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4); }
+.wm-status-text { flex: 1; word-break: break-word; white-space: pre-wrap; }
 </style>

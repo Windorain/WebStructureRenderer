@@ -11,6 +11,17 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 export interface PreviewFeatures {
   blockStatsSidebar: boolean
   layerBar: boolean
+  frameControls: boolean
+  titleBar: boolean
+  debugStatusBar: boolean
+}
+
+export const ALL_FEATURES_OFF: PreviewFeatures = {
+  blockStatsSidebar: false,
+  layerBar: false,
+  frameControls: false,
+  titleBar: false,
+  debugStatusBar: false,
 }
 
 /**
@@ -30,10 +41,7 @@ export interface PreviewConfig {
   sceneBackground: number
   loadingMessage: string
   okMessage: (modelId: string) => string
-  /**
-   * 为 false 时隐藏底部调试状态栏（模型 id、非空气体素数等）。
-   * 默认 false；工作台可在预览区面板中打开。
-   */
+  /** 为 false 时隐藏底部调试状态栏 */
   debug: boolean
 }
 
@@ -41,6 +49,9 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
   features: {
     blockStatsSidebar: false,
     layerBar: false,
+    frameControls: true,
+    titleBar: true,
+    debugStatusBar: false,
   },
   blockIconCacheOptions: {
     sizePx: 128,
@@ -52,7 +63,6 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
   initialProjectionMode: 'orthographic',
   sceneBackground: 0x5a5a5a,
   loadingMessage: '正在加载数据与构建网格…',
-  /** 状态条成功态已改由 sceneStore 拼调试摘要；保留回调供宿主覆盖（极少使用）。 */
   okMessage: () => '',
   debug: false,
 }
