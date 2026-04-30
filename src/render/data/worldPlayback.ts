@@ -10,7 +10,7 @@ export function getDefaultFrameIndex(world: World): number {
   if (n === 0) return 0
   const raw = world.playback?.defaultFrameIndex
   const i = raw === undefined || !Number.isFinite(raw) ? 0 : Math.floor(raw)
-  if (world.playback?.loop) {
+  if (world.playback?.loop !== false) {
     return ((i % n) + n) % n
   }
   return Math.max(0, Math.min(n - 1, i))
