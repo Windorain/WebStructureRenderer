@@ -61,38 +61,38 @@ async function downloadIso(): Promise<void> {
 <template>
   <div class="ew-root">
     <div class="ew-header">
-      <h2 class="ew-title">Export</h2>
+      <h2 class="ew-title">{{ t("export") }}</h2>
       <span class="ew-sub">{{ baseName }}</span>
     </div>
 
     <div class="ew-grid">
       <section class="ew-card">
-        <h3>JSON</h3>
-        <p class="ew-desc">Raw 为完整明文 JSON；Compact 为 gzip+Base64 信封。</p>
-        <div class="ew-row"><button class="ew-btn" @click="void downloadRaw()">Download Raw</button><button class="ew-btn" @click="void downloadCompact()">Download Compact</button><button class="ew-btn" @click="void copyRawJson()">Copy to Clipboard</button></div>
+        <h3>{{ t("json") }}</h3>
+        <p class="ew-desc">{{ t("rawDesc") }}</p>
+        <div class="ew-row"><button class="ew-btn" @click="void downloadRaw()">{{ t("downloadRaw") }}</button><button class="ew-btn" @click="void downloadCompact()">{{ t("downloadCompact") }}</button><button class="ew-btn" @click="void copyRawJson()">{{ t("copyToClipboard") }}</button></div>
       </section>
 
       <section class="ew-card">
-        <h3>OBJ 3D Model</h3>
-        <p class="ew-desc">导出 Wavefront .obj + .mtl + 纹理，zip 打包。</p>
-        <div class="ew-row"><button class="ew-btn" @click="void downloadObjBlock()">Block mode .zip</button><button class="ew-btn" @click="void downloadObjConnected()">Connected mode .zip</button></div>
+        <h3>{{ t("obj") }}</h3>
+        <p class="ew-desc">{{ t("objDesc") }}</p>
+        <div class="ew-row"><button class="ew-btn" @click="void downloadObjBlock()">{{ t("objBlock") }}</button><button class="ew-btn" @click="void downloadObjConnected()">{{ t("objConnected") }}</button></div>
       </section>
 
       <section class="ew-card">
-        <h3>Isometric PNG</h3>
-        <p class="ew-desc">等轴视角渲染，4 个方向可选。</p>
+        <h3>{{ t("isoPng") }}</h3>
+        <p class="ew-desc">{{ t("isoDesc") }}</p>
         <div class="ew-row">
-          <button class="ew-btn ew-btn--sm" @click="cycleIso" :disabled="isoBusy">Direction {{ isoDir + 1 }}/4</button>
-          <button v-if="isoUrl" class="ew-btn ew-btn--primary" @click="void downloadIso()">Download PNG</button>
+          <button class="ew-btn ew-btn--sm" @click="cycleIso" :disabled="isoBusy">{{ t("isoDir") }} {{ isoDir + 1 }}/4</button>
+          <button v-if="isoUrl" class="ew-btn ew-btn--primary" @click="void downloadIso()">{{ t("downloadPng") }}</button>
         </div>
-        <div v-if="isoBusy" class="ew-fb">Rendering…</div>
+        <div v-if="isoBusy" class="ew-fb">{{ t('rendering') }}</div>
         <img v-else-if="isoUrl" :src="isoUrl" class="ew-iso" alt="Iso preview" />
         <div v-if="isoErr" class="ew-fb ew-fb--err">{{ isoErr }}</div>
       </section>
 
       <section v-if="showSdeSave" class="ew-card">
-        <h3>SDE Sync</h3>
-        <button class="ew-btn ew-btn--primary" @click="void ctx.saveWorkspaceFull().then(() => msg('已同步到 SDE')).catch(e => msg(String(e)))">PUT to SDE</button>
+        <h3>{{ t("sdeSync") }}</h3>
+        <button class="ew-btn ew-btn--primary" @click="void ctx.saveWorkspaceFull().then(() => msg('已同步到 SDE')).catch(e => msg(String(e)))">{{ t("putToSde") }}</button>
       </section>
     </div>
 
