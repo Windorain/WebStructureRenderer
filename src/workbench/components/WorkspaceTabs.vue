@@ -2,12 +2,13 @@
 /**
  * 工作空间标签栏。
  */
-defineProps<{ modelValue: 'preview' | 'export' }>()
-const emit = defineEmits<{ (e: 'update:modelValue', v: 'preview' | 'export'): void }>()
+defineProps<{ modelValue: 'preview' | 'wiki' | 'export' }>()
+const emit = defineEmits<{ (e: 'update:modelValue', v: 'preview' | 'wiki' | 'export'): void }>()
 import { t } from '@/workbench/i18n'
 
 const tabs = [
   { id: 'preview' as const },
+  { id: 'wiki' as const },
   { id: 'export' as const },
 ]
 </script>

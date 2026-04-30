@@ -9,11 +9,12 @@ import ViewportHost from '@/workbench/components/ViewportHost.vue'
 import PropertiesPanel from '@/workbench/components/PropertiesPanel.vue'
 import StatusBar from '@/workbench/components/StatusBar.vue'
 import ExportWorkspace from '@/workbench/components/ExportWorkspace.vue'
+import WikiViewerWorkspace from '@/workbench/components/WikiViewerWorkspace.vue'
 import { provideWorkbenchContext } from '@/workbench/workbenchContext'
 
 const ctx = provideWorkbenchContext()
 
-const workspace = ref<'preview' | 'export'>('preview')
+const workspace = ref<'preview' | 'wiki' | 'export'>('preview')
 const activeTool = ref('select')
 const selectedBlock = ref<{
   blockId: string
@@ -68,7 +69,22 @@ onMounted(async () => {
     </template>
   </WorkbenchShell>
 
-  <!-- Export Workspace: standalone full page -->
+  <!-- Wiki Viewer Workspace -->
+  <div v-show="workspace === 'wiki'" class="wb-standalone">
+    <header class="wb-standalone-menubar">
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
+    </header>
+    <header class="wb-standalone-top">
+      <div class="wb-standalone-tabs">
+        <WorkspaceTabs :model-value="workspace" @update:model-value="workspace = $event" />
+      </div>
+    </header>
+    <main class="wb-standalone-body">
+      <WikiViewerWorkspace />
+    </main>
+  </div>
+
+  <!-- Export Workspace -->
   <div v-show="workspace === 'export'" class="wb-standalone">
     <header class="wb-standalone-menubar">
       <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
