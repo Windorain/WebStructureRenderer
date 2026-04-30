@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * 嵌入根：显式 bootstrap → PreviewConfig → AppShell。
+ * 嵌入根：显式 bootstrap → PreviewConfig → EmbedViewer。
  */
 import { ref, watch } from 'vue'
 
-import AppShell from '@/app/AppShell.vue'
+import EmbedViewer from '@/app/EmbedViewer.vue'
 import type { PreviewConfig } from '@/preview/previewConfig'
 import { resolveBootstrapToPreviewConfig, type EmbedBootstrapOptions } from '@/embed/embedContract'
 import { formatUnknownError } from '@/util/formatUnknownError'
@@ -40,7 +40,7 @@ watch(
   <div v-if="loadError" class="wm-boot wm-boot--err">
     {{ loadError }}
   </div>
-  <AppShell v-else-if="mergedConfig" :merged-config="mergedConfig" />
+  <EmbedViewer v-else-if="mergedConfig" :merged-config="mergedConfig" />
   <div v-else class="wm-boot">
     加载中…
   </div>

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 /**
  * 工作台 3D 视口：始终可编辑，点击选取方块，浮动 ToolShelf。
- * 与 AppShell（Wiki 嵌入）分离，不共享 editMode/features 开关。
+ * 与 EmbedViewer（Wiki 嵌入）分离，不共享 editMode/features 开关。
  */
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import type { Scene } from 'three'
 
 import StructureViewport from '@/app/components/StructureViewport.vue'
+import LayerPreviewBar from '@/app/components/LayerPreviewBar.vue'
+import WorldFramePlayerControls from '@/app/components/WorldFramePlayerControls.vue'
+import WorldFrameScrubber from '@/app/components/WorldFrameScrubber.vue'
 import ToolTipBox from '@/app/components/ToolTipBox.vue'
 import type { PreviewConfig } from '@/preview/previewConfig'
 import {
@@ -40,6 +43,7 @@ const {
   layerPreviewMode,
   contentGroupRef,
   tooltipPalette,
+  hasWorldMultiFrame,
 } = store
 
 const tooltipDisplayText = computed(() => {
@@ -95,6 +99,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 <template>
   <div class="wv-root">
     <!-- 3D Viewport -->
+    <div class="wv-viewport-wrap">
     <StructureViewport
       v-if="loadStatus === 'ok' && structureDefinition && materialLibrary"
       :definition="structureDefinition"
@@ -110,6 +115,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
       @hover-block="onViewportHover"
       @select-block="onViewportSelect"
     />
+    </div>
 
     <!-- 悬浮 ToolShelf -->
     <div class="wv-shelf" :class="{ 'wv-shelf--collapsed': !shelfOpen }">
@@ -128,6 +134,13 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
       </div>
     </div>
 
+    <!-- 播放器 + 分层条 -->
+    <div v-if="hasWorldMultiFrame" class="wv-frame-dock">
+      <WorldFramePlayerControls />
+      <WorldFrameScrubber />
+    </div>
+    <LayerPreviewBar />
+
     <!-- ToolTip -->
     <ToolTipBox
       v-if="hover && tooltipDisplayText"
@@ -139,7 +152,9 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 </template>
 
 <style scoped>
-.wv-root { width: 100%; height: 100%; position: relative; }
+.wv-root { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; }
+.wv-viewport-wrap { flex: 1; min-height: 0; position: relative; }
+.wv-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; background: #1a2332; border-top: 1px solid #1e293b; flex-shrink: 0; }
 
 .wv-shelf {
   position: absolute; top: 8px; left: 4px; z-index: 20;
