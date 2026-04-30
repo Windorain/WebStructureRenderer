@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import { renderTooltipHtml } from './renderTooltipHtml'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
 import { isWorldDocument } from '@/render/data/bundleResolve'
+import { t } from '@/workbench/i18n'
 
 const props = defineProps<{
   editMode: boolean
@@ -145,22 +146,22 @@ watch(
 
 <template>
   <div class="pe-panel">
-    <div class="pe-title">Block Inspector</div>
+    <div class="pe-title">{{ t('blockInspector') }}</div>
     <template v-if="!editMode || !selectedBlock">
-      <p class="pe-muted">进入编辑模式并点击方块以查看</p>
+      <p class="pe-muted">{{ t('enterEditMode') }}</p>
     </template>
     <template v-else>
       <div class="bi-field">
-        <span class="bi-label">Block</span>
+        <span class="bi-label">{{ t('block') }}</span>
         <span class="bi-val">{{ selectedBlock.blockId }}</span>
       </div>
       <div v-if="selectedBlock.voxel" class="bi-field">
-        <span class="bi-label">Position</span>
+        <span class="bi-label">{{ t('position') }}</span>
         <span class="bi-val">{{ selectedBlock.voxel.column }}, {{ selectedBlock.voxel.row }}, {{ selectedBlock.voxel.zSlice }}</span>
       </div>
 
       <div class="bi-field">
-        <span class="bi-label">Tooltip (Markdown + MC codes)</span>
+        <span class="bi-label">{{ t('tooltipMd') }}</span>
         <textarea
           v-model="tooltipText"
           class="bi-textarea"
@@ -175,8 +176,8 @@ watch(
       </div>
 
       <div class="bi-row">
-        <button class="pe-btn pe-btn--primary" @click="saveTooltip">Save Tooltip</button>
-        <button class="pe-btn" @click="tooltipText = ''">Clear</button>
+        <button class="pe-btn pe-btn--primary" @click="saveTooltip">{{ t('saveTooltip') }}</button>
+        <button class="pe-btn" @click="tooltipText = ''">{{ t('clear') }}</button>
       </div>
       <p v-if="saveFeedback" class="pe-feedback">{{ saveFeedback }}</p>
     </template>

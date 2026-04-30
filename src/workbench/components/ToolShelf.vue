@@ -3,6 +3,7 @@
  * 左侧工具架：编辑模式下显示 Gizmo + 工具列表。
  */
 import { ref } from 'vue'
+import { t } from '@/workbench/i18n'
 
 defineProps<{
   editMode: boolean
@@ -38,17 +39,17 @@ function setTool(tool: string): void {
       >✏</button>
     </div>
     <div v-if="editMode" class="ts-tools">
-      <div class="ts-tools-title">Tools</div>
+      <div class="ts-tools-title">{{ t('tools') }}</div>
       <button
         class="ts-tool-btn"
         :class="{ 'ts-tool-btn--active': activeTool === 'select' }"
         @click="setTool('select')"
-      >Select</button>
+      >{{ t('select') }}</button>
       <button
         class="ts-tool-btn"
         :class="{ 'ts-tool-btn--active': activeTool === 'annotation' }"
         @click="setTool('annotation')"
-      >Annotation</button>
+      >{{ t('annotation') }}</button>
     </div>
   </div>
 </template>

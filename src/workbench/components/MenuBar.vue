@@ -4,6 +4,7 @@
  */
 import { ref } from 'vue'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { t, setLang, currentLang } from '@/workbench/i18n'
 
 const ctx = useWorkbenchContext()
 
@@ -12,20 +13,13 @@ defineProps<{ editMode?: boolean }>()
 const emit = defineEmits<{
   (e: 'open-settings'): void
   (e: 'reset-layout'): void
-  (e: 'update:lang', v: 'zh' | 'en'): void
 }>()
 
 const openMenu = ref<string | null>(null)
-const lang = ref<'zh' | 'en'>(loadLang())
+const lang = currentLang
 
-function loadLang(): 'zh' | 'en' {
-  try { const v = localStorage.getItem('wsr-wb-lang'); if (v === 'zh' || v === 'en') return v } catch { /* */ }
-  return 'zh'
-}
-function setLang(v: 'zh' | 'en'): void {
-  lang.value = v
-  try { localStorage.setItem('wsr-wb-lang', v) } catch { /* */ }
-  emit('update:lang', v)
+function switchLang(v: 'zh' | 'en'): void {
+  setLang(v)
   closeMenu()
 }
 
@@ -47,43 +41,36 @@ function onMenuAction(action: string): void {
 <template>
   <div class="mb-root" @mouseleave="closeMenu">
     <div class="mb-left">
-      <!-- File -->
       <div class="mb-item" @mouseenter="toggleMenu('file')">
-        <span class="mb-label">File</span>
+        <span class="mb-label">{{ t('file') }}</span>
         <div v-if="openMenu === 'file'" class="mb-dropdown">
-          <button class="mb-dd-item" @click="onMenuAction('open-settings')">Open Scene …</button>
-          <button class="mb-dd-item" @click="onMenuAction('save-file')">Save to File</button>
+          <button class="mb-dd-item" @click="onMenuAction('open-settings')">{{ t('openScene') }}</button>
+          <button class="mb-dd-item" @click="onMenuAction('save-file')">{{ t('saveToFile') }}</button>
         </div>
       </div>
-      <!-- Edit -->
       <div class="mb-item" @mouseenter="toggleMenu('edit')">
-        <span class="mb-label">Edit</span>
+        <span class="mb-label">{{ t('edit') }}</span>
         <div v-if="openMenu === 'edit'" class="mb-dropdown">
-          <div class="mb-dd-section">Language</div>
-          <button
-            class="mb-dd-item"
-            :class="{ 'mb-dd-item--checked': lang === 'zh' }"
-            @click="setLang('zh')"
-          ><span class="mb-check">{{ lang === 'zh' ? '✓' : '' }}</span>中文</button>
-          <button
-            class="mb-dd-item"
-            :class="{ 'mb-dd-item--checked': lang === 'en' }"
-            @click="setLang('en')"
-          ><span class="mb-check">{{ lang === 'en' ? '✓' : '' }}</span>English</button>
+          <div class="mb-dd-section">{{ t('language') }}</div>
+          <button class="mb-dd-item" :class="{ 'mb-dd-item--checked': lang === 'zh' }" @click="switchLang('zh')">
+            <span class="mb-check">{{ lang === 'zh' ? '✓' : '' }}</span>{{ t('chinese') }}
+          </button>
+          <button class="mb-dd-item" :class="{ 'mb-dd-item--checked': lang === 'en' }" @click="switchLang('en')">
+            <span class="mb-check">{{ lang === 'en' ? '✓' : '' }}</span>{{ t('english') }}
+          </button>
         </div>
       </div>
-      <!-- View -->
       <div class="mb-item" @mouseenter="toggleMenu('view')">
-        <span class="mb-label">View</span>
+        <span class="mb-label">{{ t('view') }}</span>
         <div v-if="openMenu === 'view'" class="mb-dropdown">
-          <button class="mb-dd-item" @click="onMenuAction('reset-layout')">Reset Layout</button>
+          <button class="mb-dd-item" @click="onMenuAction('reset-layout')">{{ t('resetLayout') }}</button>
         </div>
       </div>
-      <span class="mb-label mb-disabled">Help</span>
+      <span class="mb-label mb-disabled">{{ t('help') }}</span>
     </div>
     <div class="mb-right">
       <span class="mb-status-dot" :class="ctx.connectionOk.value ? 'mb-online' : 'mb-offline'" />
-      <span class="mb-status-label">{{ ctx.connectionOk.value ? 'SDE Connected' : 'SDE Offline' }}</span>
+      <span class="mb-status-label">{{ ctx.connectionOk.value ? t('connected') : t('offline') }}</span>
     </div>
   </div>
 </template>

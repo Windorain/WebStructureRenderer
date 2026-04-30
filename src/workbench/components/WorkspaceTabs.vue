@@ -4,10 +4,11 @@
  */
 defineProps<{ modelValue: 'preview' | 'export' }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: 'preview' | 'export'): void }>()
+import { t } from '@/workbench/i18n'
 
 const tabs = [
-  { id: 'preview' as const, label: 'Preview' },
-  { id: 'export' as const, label: 'Export' },
+  { id: 'preview' as const },
+  { id: 'export' as const },
 ]
 </script>
 
@@ -20,7 +21,7 @@ const tabs = [
       :class="{ 'wt-tab--active': modelValue === tab.id }"
       @click="emit('update:modelValue', tab.id)"
     >
-      {{ tab.label }}
+      {{ t(tab.id) }}
     </button>
   </div>
 </template>

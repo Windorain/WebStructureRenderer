@@ -4,6 +4,7 @@ import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { formatSdeError } from '@/workbench/sdeApi'
 import { previewConfigFromDocument } from '@/workbench/previewFromDocument'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { t } from '@/workbench/i18n'
 
 const ctx = useWorkbenchContext()
 const cfg = computed(() => ctx.previewConfig.value)
@@ -93,8 +94,8 @@ async function applyToPreview(): Promise<void> {
 
 <template>
   <div class="pe-panel">
-    <div class="pe-title">Preview Config</div>
-    <p v-if="!cfg" class="pe-muted">同步预览成功后可编辑下列项。</p>
+    <div class="pe-title">{{ t('previewConfig') }}</div>
+    <p v-if="!cfg" class="pe-muted">{{ t('noPreviewConfig') }}</p>
     <template v-else>
       <div class="pe-grid">
         <label class="pe-field"><span>debug</span><input v-model="debug" type="checkbox" /></label>
@@ -115,8 +116,8 @@ async function applyToPreview(): Promise<void> {
         <label class="pe-field"><span>图标 clearAlpha</span><input v-model.number="iconClearAlpha" type="number" min="0" max="1" step="0.05" /></label>
       </div>
       <div class="pe-row">
-        <button class="pe-btn pe-btn--primary" @click="void applyToPreview()">应用到预览</button>
-        <button class="pe-btn" @click="syncFormFromConfig">从配置还原</button>
+        <button class="pe-btn pe-btn--primary" @click="void applyToPreview()">{{ t('applyToPreview') }}</button>
+        <button class="pe-btn" @click="syncFormFromConfig">{{ t('restoreFromConfig') }}</button>
       </div>
       <p v-if="applyFeedback" class="pe-feedback">{{ applyFeedback }}</p>
     </template>

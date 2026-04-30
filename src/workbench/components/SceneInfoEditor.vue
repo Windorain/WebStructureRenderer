@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { readSceneMetaField } from '@/render/data/compactSceneDocument'
 import { mergeRootStringFields } from '@/workbench/sceneExportKit'
 import { useWorkbenchContext, type WorkbenchScene } from '@/workbench/workbenchContext'
+import { t } from '@/workbench/i18n'
 
 const ctx = useWorkbenchContext()
 
@@ -97,16 +98,16 @@ async function saveToSde(): Promise<void> {
 
 <template>
   <div class="pe-panel">
-    <div class="pe-title">Scene Info</div>
-    <p v-if="!hasScene" class="pe-muted">无场景数据</p>
+    <div class="pe-title">{{ t('sceneInfo') }}</div>
+    <p v-if="!hasScene" class="pe-muted">{{ t('noScene') }}</p>
     <template v-else>
       <div class="se-grid">
         <label class="se-field" v-for="f in [
-          { key: 'label', v: label, ph: '场景标题' },
-          { key: 'id', v: id, ph: '场景 ID' },
+          { key: 'label', v: label, ph: '标签' },
+          { key: 'id', v: id, ph: 'ID' },
           { key: 'author', v: author, ph: '作者' },
           { key: 'gtnhVersion', v: gtnhVersion, ph: '版本号' },
-          { key: 'structureId', v: structureId, ph: '结构注册名' },
+          { key: 'structureId', v: structureId, ph: '注册名' },
         ]" :key="f.key">
           <span :class="{ 'se-dirty': pendingFields[f.key as keyof typeof pendingFields] }">{{ f.key }}</span>
           <input v-model="f.v" :placeholder="f.ph" type="text" autocomplete="off" />
@@ -122,9 +123,9 @@ async function saveToSde(): Promise<void> {
       </div>
 
       <div class="se-row">
-        <button class="pe-btn pe-btn--primary" @click="void commitAndOpenPreview()">同步预览</button>
-        <button v-if="showSaveToFile" class="pe-btn" @click="void saveToFile()">保存到文件</button>
-        <button v-if="showSdePatch" class="pe-btn" @click="void saveToSde()">同步到 SDE</button>
+        <button class="pe-btn pe-btn--primary" @click="void commitAndOpenPreview()">{{ t('syncPreview') }}</button>
+        <button v-if="showSaveToFile" class="pe-btn" @click="void saveToFile()">{{ t('saveToFile') }}</button>
+        <button v-if="showSdePatch" class="pe-btn" @click="void saveToSde()">{{ t('saveToSde') }}</button>
       </div>
       <p v-if="saveFeedback" class="pe-feedback">{{ saveFeedback }}</p>
     </template>

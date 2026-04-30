@@ -5,6 +5,7 @@
  * 内容随上下文（editMode + selectedBlock）自动切换。
  */
 import { computed, ref, type Component } from 'vue'
+import { t } from '@/workbench/i18n'
 import SceneInfoEditor from './SceneInfoEditor.vue'
 import PreviewConfigEditor from './PreviewConfigEditor.vue'
 import BlockInspector from './BlockInspector.vue'
@@ -15,9 +16,9 @@ const props = defineProps<{
 }>()
 
 const EDITORS = [
-  { id: 'scene' as const, label: 'Scene Info', icon: '📋', comp: SceneInfoEditor },
-  { id: 'config' as const, label: 'Preview Config', icon: '⚙', comp: PreviewConfigEditor },
-  { id: 'inspector' as const, label: 'Block Inspector', icon: '🔍', comp: BlockInspector },
+  { id: 'scene' as const, comp: SceneInfoEditor },
+  { id: 'config' as const, comp: PreviewConfigEditor },
+  { id: 'inspector' as const, comp: BlockInspector },
 ] as const
 
 type EditorId = (typeof EDITORS)[number]['id']
@@ -41,7 +42,7 @@ const visibleEditors = computed(() => {
     <div class="pp-header">
       <select v-model="activeEditorId" class="pp-editor-select">
         <option v-for="ed in visibleEditors" :key="ed.id" :value="ed.id">
-          {{ ed.icon }} {{ ed.label }}
+          {{ t(ed.id === 'scene' ? 'sceneInfo' : ed.id === 'config' ? 'previewConfig' : 'blockInspector') }}
         </option>
       </select>
     </div>

@@ -3,6 +3,7 @@
 import { computed } from 'vue'
 import AppShell from '@/app/AppShell.vue'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { t } from '@/workbench/i18n'
 import type { PreviewConfig } from '@/preview/previewConfig'
 
 const ctx = useWorkbenchContext()
@@ -33,7 +34,7 @@ function onSelectBlock(payload: { blockId: string; voxel?: { column: number; row
       @select-block="onSelectBlock"
     />
     <div v-else class="vh-placeholder">
-      <span class="vh-placeholder-text">No scene loaded — File &gt; Open Scene</span>
+      <span class="vh-placeholder-text">{{ t('noSceneHint') }}</span>
     </div>
   </div>
 </template>

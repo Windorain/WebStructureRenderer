@@ -7,6 +7,7 @@ import { buildStructureBundleZip } from '@/workbench/structureBundleExport'
 import { bakeIsometricStructurePngDataUrl, dataUrlToPngBlob } from '@/workbench/exportIsometricImage'
 import { formatUnknownError } from '@/util/formatUnknownError'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { t } from '@/workbench/i18n'
 
 const ctx = useWorkbenchContext()
 const doc = computed(() => ctx.scene.value)
