@@ -104,19 +104,19 @@ const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tool
 
 <style scoped>
 .pe-panel { padding: 10px; font-size: 12px; }
-.pe-title { font-size: 13px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
-.pe-muted { font-size: 11px; color: #64748b; }
-h3 { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin: 10px 0 4px; }
+.pe-title { font-size: 13px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); margin-bottom: 8px; }
+.pe-muted { font-size: 11px; color: var(--nei-muted); }
+h3 { font-size: 10px; font-weight: 600; color: var(--nei-label); text-transform: uppercase; letter-spacing: 0.3px; margin: 10px 0 4px; }
 .bi-table { width: 100%; border-collapse: collapse; }
 .bi-table td { padding: 2px 6px 2px 0; font-size: 11px; }
-.bi-table td:first-child { color: #64748b; width: 80px; }
-.bi-td-val { font-family: ui-monospace, monospace; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bi-pos { font-family: ui-monospace, monospace; font-size: 12px; color: #e2e8f0; }
-.bi-preview { padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; font-size: 12px; color: #e2e8f0; min-height: 20px; word-break: break-word; }
+.bi-table td:first-child { color: var(--nei-label); width: 80px; }
+.bi-td-val { font-family: ui-monospace, monospace; color: var(--nei-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--nei-bg); padding: 1px 4px; border: 1px solid var(--nei-border); }
+.bi-pos { font-family: ui-monospace, monospace; font-size: 12px; color: var(--nei-text-dark); }
+.bi-preview { padding: 6px; border-radius: 4px; border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); background: var(--nei-inset-bg); font-size: 12px; color: var(--nei-text); min-height: 20px; word-break: break-word; }
 .bi-preview :deep(strong) { font-weight: 700; }
 .bi-preview :deep(em) { font-style: italic; }
 .bi-preview :deep(code) { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.2); padding: 1px 3px; border-radius: 2px; }
 .bi-mat-row { display: flex; gap: 6px; padding: 2px 0; }
-.bi-mat-idx { font-family: ui-monospace, monospace; font-size: 11px; color: #64748b; min-width: 24px; }
-.bi-mat-name { font-family: ui-monospace, monospace; font-size: 11px; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi-mat-idx { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-label); min-width: 24px; }
+.bi-mat-name { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

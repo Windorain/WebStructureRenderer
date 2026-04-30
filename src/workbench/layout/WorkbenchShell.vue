@@ -53,23 +53,23 @@ provide('wb-dragging', dragging)
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--nei-bg);
+  color: var(--nei-text-dark);
 }
 .wb-shell--dragging * { cursor: col-resize !important; }
 
 .wb-menubar {
   flex-shrink: 0;
   height: 28px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
+  background: var(--nei-bg-deep);
+  border-bottom: 1px solid var(--nei-border);
 }
 
 .wb-workspace-tabs {
   flex-shrink: 0;
   height: 32px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
+  background: var(--nei-bg-deep);
+  border-bottom: 1px solid var(--nei-border);
 }
 
 .wb-main {
@@ -83,13 +83,13 @@ provide('wb-dragging', dragging)
   flex-shrink: 0;
   width: 4px;
   cursor: col-resize;
-  background: transparent;
+  background: var(--nei-divider-bg);
   transition: background 0.15s;
   z-index: 10;
 }
 .wb-divider:hover,
 .wb-divider:active {
-  background: #2563eb;
+  background: var(--nei-divider-hover);
 }
 
 .wb-viewport {
@@ -97,25 +97,25 @@ provide('wb-dragging', dragging)
   min-width: 0;
   position: relative;
   overflow: hidden;
-  background: #0a0f19;
+  background: var(--nei-viewport-bg);
 }
 
 .wb-properties {
   flex-shrink: 0;
   overflow-y: auto;
-  background: #1a2332;
-  border-left: 1px solid #1e293b;
+  background: var(--nei-bg-deep);
+  border-left: 1px solid var(--nei-border);
 }
 
 .wb-statusbar {
   flex-shrink: 0;
   height: 24px;
-  background: #1e293b;
-  border-top: 1px solid #334155;
+  background: var(--nei-bg-deep);
+  border-top: 1px solid var(--nei-border);
   font-size: 11px;
   display: flex;
   align-items: center;
   padding: 0 10px;
-  color: #64748b;
+  color: var(--nei-muted);
 }
 </style>

@@ -68,13 +68,15 @@ watch([id, label, author, gtnhVersion, structureId], () => scheduleSync())
 
 <style scoped>
 .pe-panel { padding: 10px; font-size: 12px; }
-.pe-title { font-size: 13px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
-.pe-muted { font-size: 11px; color: #64748b; }
+.pe-title { font-size: 13px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); margin-bottom: 8px; }
+.pe-muted { font-size: 11px; color: var(--nei-muted); }
 .se-grid { display: flex; flex-direction: column; gap: 6px; }
 .se-field { display: flex; flex-direction: column; gap: 3px; }
-.se-field span { font-size: 10px; color: #94a3b8; }
+.se-field span { font-size: 10px; color: var(--nei-label); }
 .se-field input, .se-field select {
-  padding: 4px 6px; border-radius: 4px; border: 1px solid #334155;
-  background: #0f172a; color: #e2e8f0; font-size: 11px;
+  padding: 4px 6px; border-radius: 4px; border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  background: var(--nei-inset-bg); color: var(--nei-text); font-size: 11px;
 }
+.se-field input::placeholder { color: var(--nei-muted); }
 </style>

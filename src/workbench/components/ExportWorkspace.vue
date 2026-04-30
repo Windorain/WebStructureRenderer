@@ -103,19 +103,19 @@ async function downloadIso(): Promise<void> {
 <style scoped>
 .ew-root { padding: 24px 32px; box-sizing: border-box; }
 .ew-header { margin-bottom: 20px; }
-.ew-title { font-size: 18px; font-weight: 600; color: #f1f5f9; margin: 0; }
-.ew-sub { font-size: 12px; color: #64748b; }
+.ew-title { font-size: 18px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); margin: 0; }
+.ew-sub { font-size: 12px; color: var(--nei-muted); }
 .ew-grid { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
-.ew-card { padding: 16px; border-radius: 8px; background: #1e293b; border: 1px solid #334155; }
-.ew-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #f1f5f9; }
-.ew-desc { margin: 0 0 10px; font-size: 12px; color: #64748b; }
+.ew-card { padding: 16px; border-radius: 8px; background: var(--nei-bg-deep); border: 1px solid var(--nei-border); }
+.ew-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); }
+.ew-desc { margin: 0 0 10px; font-size: 12px; color: var(--nei-muted); }
 .ew-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.ew-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #475569; background: #334155; color: #f8fafc; font-size: 12px; cursor: pointer; }
-.ew-btn:hover { background: #3b4f6b; }
-.ew-btn--primary { background: #2563eb; border-color: #1d4ed8; }
+.ew-btn { padding: 6px 14px; border-radius: 6px; border: var(--nei-bevel-w) solid; border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight); background: var(--nei-btn-bg); color: var(--nei-btn-text); font-size: 12px; cursor: pointer; }
+.ew-btn:hover { background: var(--nei-panel-hover); }
+.ew-btn--primary { background: var(--nei-accent); border-color: var(--nei-accent-shadow); color: var(--nei-accent-text); text-shadow: var(--nei-accent-shadow); }
 .ew-btn--sm { font-size: 11px; padding: 4px 10px; }
-.ew-iso { max-width: 320px; border-radius: 4px; border: 1px solid #334155; margin-top: 8px; }
-.ew-fb { font-size: 11px; color: #a5b4fc; margin-top: 6px; }
-.ew-fb--err { color: #f87171; }
-.ew-fb-bar { margin-top: 16px; padding: 8px 12px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; font-size: 12px; color: #a5b4fc; }
+.ew-iso { max-width: 320px; border-radius: 4px; border: 1px solid var(--nei-border); margin-top: 8px; }
+.ew-fb { font-size: 11px; color: var(--nei-muted); margin-top: 6px; }
+.ew-fb--err { color: var(--nei-status-err); }
+.ew-fb-bar { margin-top: 16px; padding: 8px 12px; border-radius: 6px; background: var(--nei-bg); border: 1px solid var(--nei-border); font-size: 12px; color: var(--nei-muted); }
 </style>

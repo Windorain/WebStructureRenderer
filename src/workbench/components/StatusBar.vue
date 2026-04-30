@@ -24,6 +24,7 @@ const store = inject<PreviewSceneStore | null>(PreviewSceneContextKey, null)
   align-items: center;
   width: 100%;
   gap: 16px;
+  color: var(--nei-muted);
 }
 .sb-item { white-space: nowrap; }
 .sb-spacer { flex: 1; }

@@ -48,10 +48,10 @@ defineEmits<{
 
 <style scoped>
 .pe-panel { padding: 10px; font-size: 12px; }
-.pe-title { font-size: 13px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
-.pe-muted { font-size: 11px; color: #64748b; }
+.pe-title { font-size: 13px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); margin-bottom: 8px; }
+.pe-muted { font-size: 11px; color: var(--nei-muted); }
 .bs-list { display: flex; flex-direction: column; gap: 2px; max-height: 360px; overflow-y: auto; }
-.bs-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; border-radius: 3px; background: #0f172a; }
-.bs-id { font-family: ui-monospace, monospace; font-size: 11px; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bs-count { font-family: ui-monospace, monospace; font-size: 11px; color: #64748b; margin-left: 8px; flex-shrink: 0; }
+.bs-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; border-radius: 3px; background: var(--nei-bg); border: 1px solid var(--nei-border); }
+.bs-id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bs-count { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-muted); margin-left: 8px; flex-shrink: 0; }
 </style>

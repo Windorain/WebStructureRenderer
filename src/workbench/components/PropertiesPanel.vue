@@ -57,7 +57,7 @@ const activeEditor = computed<Component>(() => editors.value.find(e => e.id === 
 
 <style scoped>
 .pp-root { display: flex; flex-direction: column; height: 100%; }
-.pp-header { flex-shrink: 0; padding: 6px 8px; border-bottom: 1px solid #1e293b; }
-.pp-editor-select { width: 100%; padding: 4px 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 12px; }
+.pp-header { flex-shrink: 0; padding: 6px 8px; border-bottom: 1px solid var(--nei-border); }
+.pp-editor-select { width: 100%; padding: 4px 6px; border-radius: 4px; border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); background: var(--nei-inset-bg); color: var(--nei-text); font-size: 12px; }
 .pp-body { flex: 1; overflow-y: auto; }
 </style>

@@ -10,9 +10,11 @@ import PropertiesPanel from '@/workbench/components/PropertiesPanel.vue'
 import StatusBar from '@/workbench/components/StatusBar.vue'
 import ExportWorkspace from '@/workbench/components/ExportWorkspace.vue'
 import WikiViewerWorkspace from '@/workbench/components/WikiViewerWorkspace.vue'
+import { useNeiTheme } from '@/workbench/composables/useNeiTheme'
 import { provideWorkbenchContext } from '@/workbench/workbenchContext'
 
 const ctx = provideWorkbenchContext()
+useNeiTheme()
 
 const workspace = ref<'preview' | 'wiki' | 'export'>('preview')
 const activeTool = ref('select')
@@ -99,20 +101,20 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--nei-bg);
+  color: var(--nei-text-dark);
 }
 .wb-standalone-menubar {
   flex-shrink: 0;
   height: 28px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
+  background: var(--nei-bg-deep);
+  border-bottom: 1px solid var(--nei-border);
 }
 .wb-standalone-top {
   flex-shrink: 0;
   height: 32px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
+  background: var(--nei-bg-deep);
+  border-bottom: 1px solid var(--nei-border);
   display: flex;
   align-items: center;
 }

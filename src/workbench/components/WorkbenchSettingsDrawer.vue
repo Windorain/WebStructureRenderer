@@ -107,59 +107,53 @@ onUnmounted(() => {
 .drawer-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(2, 6, 23, 0.55);
+  background: var(--nei-drawer-backdrop);
   pointer-events: auto;
 }
 .drawer-panel {
   position: relative;
   width: min(420px, 100vw);
   height: 100%;
-  background: #0f172a;
-  border-left: 1px solid #1e293b;
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+  background: var(--nei-bg);
+  border-left: 1px solid var(--nei-border);
+  box-shadow: var(--nei-drawer-shadow);
   display: flex;
   flex-direction: column;
   pointer-events: auto;
   animation: drawer-in 0.18s ease-out;
 }
 @keyframes drawer-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0.9;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0.9; }
+  to { transform: translateX(0); opacity: 1; }
 }
 .drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid var(--nei-border);
   flex-shrink: 0;
 }
 .drawer-title {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--nei-text);
 }
 .drawer-close {
   width: 36px;
   height: 36px;
   border: none;
   border-radius: 8px;
-  background: #1e293b;
-  color: #94a3b8;
+  background: var(--nei-bg-deep);
+  color: var(--nei-muted);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
 .drawer-close:hover {
-  background: #334155;
-  color: #f1f5f9;
+  background: var(--nei-panel-hover);
+  color: var(--nei-text);
 }
 .drawer-body {
   flex: 1;
@@ -173,7 +167,7 @@ onUnmounted(() => {
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--nei-label);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -181,7 +175,7 @@ onUnmounted(() => {
   margin: 0 0 12px;
   font-size: 12px;
   line-height: 1.5;
-  color: #64748b;
+  color: var(--nei-muted);
 }
 .seg {
   display: flex;
@@ -193,20 +187,20 @@ onUnmounted(() => {
   min-width: 100px;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid #334155;
-  background: #1e293b;
-  color: #cbd5e1;
+  border: 1px solid var(--nei-seg-off-border);
+  background: var(--nei-seg-off-bg);
+  color: var(--nei-seg-off-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 .seg__btn:hover {
-  border-color: #475569;
+  border-color: var(--nei-border);
 }
 .seg__btn--on {
-  border-color: #3b82f6;
-  background: #1e3a5f;
-  color: #f1f5f9;
+  border-color: var(--nei-seg-on-border);
+  background: var(--nei-seg-on-bg);
+  color: var(--nei-seg-on-text);
 }
 .drawer-stack {
   display: flex;

@@ -34,10 +34,10 @@ const tabs = [
 }
 .wt-tab {
   padding: 0 14px; border: none; background: transparent;
-  color: #64748b; font-size: 12px; cursor: pointer;
+  color: var(--nei-tab-text); font-size: 12px; cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
 }
-.wt-tab:hover { color: #e2e8f0; }
-.wt-tab--active { color: #f8fafc; border-bottom-color: #2563eb; }
+.wt-tab:hover { color: var(--nei-text-dark); }
+.wt-tab--active { color: var(--nei-tab-active-text); border-bottom-color: var(--nei-tab-active-border); }
 </style>
