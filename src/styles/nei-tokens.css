@@ -178,3 +178,80 @@
 .wm-tooltip-body em { font-style: italic; }
 .wm-tooltip-body code { font-family: ui-monospace, 'Cascadia Code', monospace; background: rgba(0,0,0,0.15); padding: 0 2px; border-radius: 2px; }
 .wm-tooltip-body a { color: var(--nei-focus-ring, #60a5fa); }
+
+/* ===== NEI 按钮 ===== */
+.nei-btn {
+  width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  color: var(--nei-text); text-shadow: var(--nei-label-shadow);
+  background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  border-radius: 0; cursor: pointer; user-select: none; box-sizing: border-box;
+}
+.nei-btn:hover { filter: brightness(1.06); }
+.nei-btn:active {
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  padding-top: 1px; padding-left: 1px;
+}
+.nei-btn:focus-visible { outline: 2px solid var(--nei-focus-ring); outline-offset: 2px; }
+
+/* 小号圆形按钮 */
+.nei-btn--circle-sm {
+  width: 18px; height: 18px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; line-height: 1;
+  color: var(--nei-text); text-shadow: var(--nei-label-shadow);
+  background: var(--nei-inset-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  border-radius: 50%; cursor: help; user-select: none; box-sizing: border-box;
+}
+.nei-btn--circle-sm:hover { filter: brightness(1.06); }
+.nei-btn--circle-sm:focus-visible { outline: 2px solid var(--nei-focus-ring); outline-offset: 2px; }
+
+/* ===== NEI 自定义滑块 ===== */
+.nei-slider {
+  position: relative; flex: 1; min-width: 0; height: 28px;
+  display: flex; align-items: center;
+}
+.nei-slider__track {
+  position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px;
+  background: var(--nei-inset-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  box-sizing: border-box; pointer-events: none;
+}
+.nei-slider__fill {
+  position: absolute; left: 0; top: 50%; height: 6px; margin-top: -3px;
+  margin-left: 2px; max-width: calc(100% - 4px);
+  background: var(--nei-accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  pointer-events: none; box-sizing: border-box; z-index: 1;
+}
+.nei-slider__range {
+  position: relative; z-index: 2; width: 100%; height: 28px; margin: 0;
+  background: none; cursor: pointer; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
+}
+.nei-slider__range:disabled { cursor: not-allowed; opacity: 0.55; }
+.nei-slider__range:focus-visible { outline: 2px solid var(--nei-focus-ring); outline-offset: 2px; }
+.nei-slider__range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 16px; border-radius: 0;
+  background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  box-shadow: none;
+}
+.nei-slider__range::-webkit-slider-runnable-track { height: 0; background: transparent; }
+.nei-slider__range::-moz-range-thumb {
+  width: 12px; height: 16px; border-radius: 0;
+  background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  box-shadow: none;
+}
+.nei-slider__range::-moz-range-track { background: transparent; border: none; height: 0; }

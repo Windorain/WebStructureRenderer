@@ -130,7 +130,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
     <!-- 标题栏 -->
     <p v-if="showTitle" class="wm-title">
       <abbr
-        v-if="showMetaHint" class="wm-title-meta-hint" tabindex="0" aria-label="作者与版本号" title=""
+        v-if="showMetaHint" class="nei-btn--circle-sm" tabindex="0" aria-label="作者与版本号" title=""
         @pointerenter="onMetaHintPointerEnter" @pointermove="onMetaHintPointerMove"
         @pointerleave="onMetaHintPointerLeave" @focusin="onMetaHintFocusIn" @focusout="onMetaHintFocusOut"
       >?</abbr>
@@ -178,9 +178,6 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 .wm-root { font-family: system-ui, 'Segoe UI', sans-serif; color: var(--nei-text-dark); background: var(--nei-bg); padding: 8px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column; }
 .wm-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); display: flex; flex-direction: row; align-items: center; gap: 8px; }
 .wm-title-text { min-width: 0; }
-.wm-title-meta-hint { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin: 0; padding: 0; font-size: 12px; font-weight: 800; line-height: 1; text-decoration: none; color: var(--nei-text); text-shadow: var(--nei-label-shadow); border: var(--nei-bevel-w) solid; border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight); border-radius: 50%; background: var(--nei-inset-bg); cursor: help; user-select: none; }
-.wm-title-meta-hint:hover { filter: brightness(1.08); }
-.wm-title-meta-hint:focus-visible { outline: 2px solid var(--nei-focus-ring); outline-offset: 2px; }
 .wm-main-stage { display: flex; flex: 1; flex-direction: row; align-items: stretch; min-height: 0; width: 100%; border-radius: 0; overflow: hidden; border: var(--nei-bevel-w) solid; border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight); border-bottom: none; background: var(--nei-bg); }
 .wm-viewport-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wm-world-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px; background: var(--nei-inset-bg); border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-left: none; border-right: none; border-top: none; border-bottom: none; flex-shrink: 0; }

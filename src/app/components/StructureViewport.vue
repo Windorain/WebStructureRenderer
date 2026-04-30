@@ -402,23 +402,11 @@ onBeforeUnmount(() => {
     class="wm-viewport"
     style="overflow: hidden"
   >
-    <button type="button" class="wm-reset-camera" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup, props.projectionMode) : null">⌂</button>
+    <button type="button" class="nei-btn" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup, props.projectionMode) : null">⌂</button>
   </div>
 </template>
 
 <style scoped>
-.wm-reset-camera {
-  position: absolute; right: 8px; bottom: 8px; z-index: 2;
-  width: 28px; height: 28px; padding: 0;
-  font-size: 14px; line-height: 1; cursor: pointer;
-  color: var(--nei-text); background: var(--nei-bg);
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
-  border-radius: 0; display: flex; align-items: center; justify-content: center;
-}
-.wm-reset-camera:hover { filter: brightness(1.06); }
-.wm-reset-camera:active { border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); }
-
 .wm-viewport {
   flex: 1;
   min-height: 320px;
