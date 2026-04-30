@@ -80,12 +80,6 @@ let lastPointer: { clientX: number; clientY: number } | null = null
 let activeScene: THREE.Scene | null = null
 let clickDownAt: { x: number; y: number } | null = null
 
-function toggleProjection(): void {
-  if (!viewport) return
-  viewport.toggleMode()
-  emit('update:projectionMode', viewport.mode)
-}
-
 function runPick(): void {
   const vp = viewport
   const g = props.contentGroup
@@ -406,20 +400,25 @@ onBeforeUnmount(() => {
   <div
     ref="container"
     class="wm-viewport"
-    style="min-height: 320px; overflow: hidden"
+    style="overflow: hidden"
   >
-    <button
-      type="button"
-      class="wm-projection-toggle"
-      :title="`当前：${projectionMode === 'perspective' ? '透视投影' : '正交投影'}，点击切换`"
-      @click="toggleProjection"
-    >
-      {{ projectionMode === 'perspective' ? '透' : '正' }}
-    </button>
+    <button type="button" class="wm-reset-camera" title="复位视角" @click="viewport?.controls.target.set(0, 2, 0); viewport?.controls.update()">⌂</button>
   </div>
 </template>
 
 <style scoped>
+.wm-reset-camera {
+  position: absolute; right: 8px; bottom: 8px; z-index: 2;
+  width: 28px; height: 28px; padding: 0;
+  font-size: 14px; line-height: 1; cursor: pointer;
+  color: var(--nei-text); background: var(--nei-bg);
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  border-radius: 0; display: flex; align-items: center; justify-content: center;
+}
+.wm-reset-camera:hover { filter: brightness(1.06); }
+.wm-reset-camera:active { border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); }
+
 .wm-viewport {
   flex: 1;
   min-height: 320px;
@@ -428,41 +427,5 @@ onBeforeUnmount(() => {
   background: var(--nei-viewport-bg);
   overflow: hidden;
   position: relative;
-}
-.wm-projection-toggle {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  z-index: 2;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  color: var(--nei-text);
-  text-shadow: var(--nei-label-shadow);
-  background: var(--nei-bg);
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
-  border-radius: 0;
-  cursor: pointer;
-  user-select: none;
-  box-sizing: border-box;
-}
-.wm-projection-toggle:hover {
-  filter: brightness(1.06);
-}
-.wm-projection-toggle:active {
-  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
-  padding-top: 1px;
-  padding-left: 1px;
-}
-.wm-projection-toggle:focus-visible {
-  outline: 2px solid var(--nei-focus-ring);
-  outline-offset: 2px;
 }
 </style>

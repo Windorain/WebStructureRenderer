@@ -2,33 +2,47 @@
 /**
  * 右侧属性面板：Blender 风格的编辑器容器。
  * 顶部下拉切换编辑器类型；KeepAlive 缓存各编辑器状态。
+ * 可通过 editors prop 自定义可用编辑器列表。
  */
 import { computed, ref, type Component } from 'vue'
 import { t } from '@/workbench/i18n'
 import BlockInspector from './BlockInspector.vue'
 import BlockStatsEditor from './BlockStatsEditor.vue'
+import SceneInfoEditor from './SceneInfoEditor.vue'
+import WikiConfigEditor from './WikiConfigEditor.vue'
 
-const EDITORS = [
-  { id: 'inspector' as const, comp: BlockInspector },
-  { id: 'stats' as const, comp: BlockStatsEditor },
-] as const
+interface EditorEntry {
+  id: string
+  comp: Component
+  i18nKey: string
+}
 
-type EditorId = (typeof EDITORS)[number]['id']
+const props = defineProps<{
+  editors?: 'editor' | 'wiki'
+}>()
 
-const activeEditorId = ref<EditorId>('inspector')
+const ALL_EDITORS: Record<string, EditorEntry[]> = {
+  editor: [
+    { id: 'inspector', comp: BlockInspector, i18nKey: 'blockInspector' },
+    { id: 'stats', comp: BlockStatsEditor, i18nKey: 'blockStats' },
+  ],
+  wiki: [
+    { id: 'scene', comp: SceneInfoEditor, i18nKey: 'sceneInfo' },
+    { id: 'config', comp: WikiConfigEditor, i18nKey: 'wikiConfig' },
+    { id: 'stats', comp: BlockStatsEditor, i18nKey: 'blockStats' },
+  ],
+}
 
-const activeEditor = computed<Component>(() => {
-  return EDITORS.find((e) => e.id === activeEditorId.value)?.comp ?? BlockInspector
-})
+const editors = computed(() => ALL_EDITORS[props.editors ?? 'editor'] ?? ALL_EDITORS.editor)
+const activeEditorId = ref(editors.value[0]?.id ?? '')
+const activeEditor = computed<Component>(() => editors.value.find(e => e.id === activeEditorId.value)?.comp ?? editors.value[0]!.comp)
 </script>
 
 <template>
   <div class="pp-root">
     <div class="pp-header">
       <select v-model="activeEditorId" class="pp-editor-select">
-        <option v-for="ed in EDITORS" :key="ed.id" :value="ed.id">
-          {{ t(ed.id === 'inspector' ? 'blockInspector' : 'blockStats') }}
-        </option>
+        <option v-for="ed in editors" :key="ed.id" :value="ed.id">{{ t(ed.i18nKey) }}</option>
       </select>
     </div>
     <div class="pp-body">
