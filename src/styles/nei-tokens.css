@@ -77,3 +77,7 @@
   overflow-wrap: break-word;
   word-break: normal;
 }
+.wm-tooltip-body strong { font-weight: 700; }
+.wm-tooltip-body em { font-style: italic; }
+.wm-tooltip-body code { font-family: ui-monospace, 'Cascadia Code', monospace; background: rgba(0,0,0,0.15); padding: 0 2px; border-radius: 2px; }
+.wm-tooltip-body a { color: var(--nei-focus-ring, #60a5fa); }

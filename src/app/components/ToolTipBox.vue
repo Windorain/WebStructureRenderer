@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
+import snarkdown from 'snarkdown'
 
 const props = defineProps<{
   text: string
@@ -9,6 +10,8 @@ const props = defineProps<{
 
 const root = ref<HTMLElement | null>(null)
 const boxStyle = ref<Record<string, string>>({ left: '0px', top: '0px' })
+
+const html = computed(() => snarkdown(props.text))
 
 const PAD = 12
 
@@ -52,7 +55,8 @@ watch(
 <template>
   <Teleport to="body">
     <div ref="root" class="wm-tooltip-box" role="tooltip" :style="boxStyle">
-      <div class="wm-tooltip-body">{{ text }}</div>
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div class="wm-tooltip-body" v-html="html" />
     </div>
   </Teleport>
 </template>
