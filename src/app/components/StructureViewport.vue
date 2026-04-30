@@ -402,7 +402,7 @@ onBeforeUnmount(() => {
     class="wm-viewport"
     style="overflow: hidden"
   >
-    <button type="button" class="wm-reset-camera" title="复位视角" @click="viewport?.controls.target.set(0, 2, 0); viewport?.controls.update()">⌂</button>
+    <button type="button" class="wm-reset-camera" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup, props.projectionMode) : null">⌂</button>
   </div>
 </template>
 

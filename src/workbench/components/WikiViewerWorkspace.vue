@@ -20,7 +20,7 @@ const mergedConfig = computed<PreviewConfig | null>(() => {
   return {
     ...c,
     features: { ...c.features, ...wikiConfig.features },
-    debug: wikiConfig.debug,
+    debug: wikiConfig.features.debugStatusBar,
     sceneBackground: parseHex6(wikiConfig.sceneBackgroundHex),
     initialProjectionMode: wikiConfig.projectionMode,
     blockIconCacheOptions: {
