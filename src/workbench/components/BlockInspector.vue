@@ -14,15 +14,9 @@ const ctx = useWorkbenchContext()
 const tooltipText = ref('')
 const saveFeedback = ref('')
 
-/** 获取已解压的文档 */
-function resolvedDoc(): Record<string, unknown> | null {
-  const rb = ctx.previewConfig.value?.renderBundle
-  if (!rb) return null
-  return rb.document as Record<string, unknown> | null
-}
-
+/** ctx.scene 始终为 Raw，直接读取 */
 function readCurrentTooltip(): string {
-  const doc = resolvedDoc()
+  const doc = ctx.scene.value
   if (!doc || !props.selectedBlock?.voxel) return ''
   const { zSlice, row, column } = props.selectedBlock.voxel
   let tp: unknown, ttg: unknown
@@ -92,26 +86,12 @@ function setPaletteAndGrid(
 }
 
 async function saveTooltip(): Promise<void> {
-  const rawDoc = ctx.scene.value
-  if (!rawDoc || !props.selectedBlock?.voxel) return
+  const doc = ctx.scene.value
+  if (!doc || !props.selectedBlock?.voxel) return
   const { zSlice, row, column } = props.selectedBlock.voxel
   try {
-    const isCompact = !!(rawDoc as Record<string, unknown>).payloadEncoding
-    let doc: Record<string, unknown>
-    if (isCompact) {
-      const { normalizeSceneDocumentForWiki } = await import('@/render/data/compactSceneDocument')
-      doc = await normalizeSceneDocumentForWiki(rawDoc) as Record<string, unknown>
-    } else {
-      doc = rawDoc as Record<string, unknown>
-    }
     setPaletteAndGrid(doc, zSlice, row, column, tooltipText.value)
-    if (isCompact) {
-      const { buildCompactEnvelope } = await import('@/workbench/sceneExportKit')
-      ctx.scene.value = buildCompactEnvelope(doc) as unknown as Record<string, unknown>
-    }
     ctx.dirty.value = true
-    saveFeedback.value = '已保存，正在同步预览…'
-    await ctx.syncPreview()
     saveFeedback.value = '已保存并同步预览'
   } catch (e) {
     saveFeedback.value = e instanceof Error ? e.message : String(e)

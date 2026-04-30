@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { loadStructureOrWorld } from '@/render/data/bundleResolve'
-import { normalizeSceneDocumentForWiki, sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
+import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
 import { buildCompactEnvelope, copyTextToClipboard, downloadBlob, downloadJson } from '@/workbench/sceneExportKit'
 import { buildStructureBundleZip } from '@/workbench/structureBundleExport'
 import { bakeIsometricStructurePngDataUrl, dataUrlToPngBlob } from '@/workbench/exportIsometricImage'
@@ -19,23 +19,23 @@ function msg(s: string): void { feedback.value = s }
 
 async function downloadRaw(): Promise<void> {
   if (!doc.value) return
-  try { const raw = await normalizeSceneDocumentForWiki(doc.value); downloadJson(`${baseName.value}-raw`, raw, true); msg('已下载 Raw JSON') } catch (e) { msg(formatUnknownError(e)) }
+  try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-raw`, raw, true); msg('已下载 Raw JSON') } catch (e) { msg(formatUnknownError(e)) }
 }
 async function downloadCompact(): Promise<void> {
   if (!doc.value) return
-  try { const raw = await normalizeSceneDocumentForWiki(doc.value); downloadJson(`${baseName.value}-compact`, buildCompactEnvelope(raw), true); msg('已下载 Compact JSON') } catch (e) { msg(formatUnknownError(e)) }
+  try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-compact`, buildCompactEnvelope(raw), true); msg('已下载 Compact JSON') } catch (e) { msg(formatUnknownError(e)) }
 }
 async function copyRawJson(): Promise<void> {
   if (!doc.value) return
-  try { const raw = await normalizeSceneDocumentForWiki(doc.value); await copyTextToClipboard(JSON.stringify(raw, null, 2)); msg('已复制到剪贴板') } catch (e) { msg(formatUnknownError(e)) }
+  try { const raw = doc.value; await copyTextToClipboard(JSON.stringify(raw, null, 2)); msg('已复制到剪贴板') } catch (e) { msg(formatUnknownError(e)) }
 }
 async function downloadObjBlock(): Promise<void> {
   if (!doc.value) return
-  try { const n = await normalizeSceneDocumentForWiki(doc.value); const def = loadStructureOrWorld(n, undefined); const zip = await buildStructureBundleZip(def, n, { mode: 'block' }); downloadBlob(`${baseName.value}-block.zip`, zip); msg('已导出 OBJ (block)') } catch (e) { msg(formatUnknownError(e)) }
+  try { const n = doc.value as Record<string, unknown>; const def = loadStructureOrWorld(n, undefined); const zip = await buildStructureBundleZip(def, n, { mode: 'block' }); downloadBlob(`${baseName.value}-block.zip`, zip); msg('已导出 OBJ (block)') } catch (e) { msg(formatUnknownError(e)) }
 }
 async function downloadObjConnected(): Promise<void> {
   if (!doc.value) return
-  try { const n = await normalizeSceneDocumentForWiki(doc.value); const def = loadStructureOrWorld(n, undefined); const zip = await buildStructureBundleZip(def, n, { mode: 'connected' }); downloadBlob(`${baseName.value}-connected.zip`, zip); msg('已导出 OBJ (connected)') } catch (e) { msg(formatUnknownError(e)) }
+  try { const n = doc.value as Record<string, unknown>; const def = loadStructureOrWorld(n, undefined); const zip = await buildStructureBundleZip(def, n, { mode: 'connected' }); downloadBlob(`${baseName.value}-connected.zip`, zip); msg('已导出 OBJ (connected)') } catch (e) { msg(formatUnknownError(e)) }
 }
 
 const isoDir = ref(0)

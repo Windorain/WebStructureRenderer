@@ -2,10 +2,10 @@
  * 工作台共享状态（provide / inject）。
  *
  * 数据流（单向）：
- * 1. **入口**：本机文件 / SDE 列表或工作区 / 内置示例 → 写入 `scene`（内存中唯一一份场景 JSON）
- * 2. **编辑**：元数据等仅修改 `scene`，不直接改预览配置
- * 3. **预览**：`syncPreview()` 从当前 `scene` 深拷贝后异步构建 `PreviewConfig`；不先抹掉旧配置，成功后再整体替换
- * 4. **导出/落盘**：从 `scene` 读数据，按各面板格式输出（与预览构建独立）
+ * 1. **入口**：本机文件 / SDE 列表或工作区 / 内置示例 → `commitScene` 强制解压 Compact→Raw
+ * 2. **编辑**：所有编辑器直接读写 ctx.scene（Raw），无需格式检测
+ * 3. **预览**：`syncPreview()` 浅拷贝 scene 后构建 PreviewConfig
+ * 4. **导出**：保存直接序列化 Raw；下载 Compact 仅导出时 buildCompactEnvelope
  */
 
 import type { InjectionKey, Ref, ShallowRef } from 'vue'
@@ -25,7 +25,7 @@ import {
   type ExportFileInfo,
 } from '@/workbench/sdeApi'
 import { isCompactSceneEnvelope, normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
-import { canonicalizeCompactInPlace, downloadJson, patchSceneMetadataRoot } from '@/workbench/sceneExportKit'
+import { downloadJson, patchSceneMetadataRoot } from '@/workbench/sceneExportKit'
 import { documentLooksPreviewable, previewConfigFromDocument } from '@/workbench/previewFromDocument'
 
 export type WorkbenchWorkspaceMode = 'sde' | 'local-file' | 'local-bundle'
@@ -145,15 +145,16 @@ export function provideWorkbenchContext(): WorkbenchContext {
   const previewError = ref<string | null>(null)
   const localFileSaveHandle: ShallowRef<FileSystemFileHandle | null> = shallowRef(null)
 
-  /** 写入 `scene`：Compact 先 canonicalize（根键折入 meta + 净化 payload）；非空则 bump `sceneLoadEpoch`。 */
-  function commitScene(next: WorkbenchScene | null): void {
+  /** 写入 `scene`：Compact 强制解压为 Raw 后存储。非空 bump `sceneLoadEpoch`。 */
+  async function commitScene(next: WorkbenchScene | null): Promise<void> {
     if (next && isCompactSceneEnvelope(next)) {
-      canonicalizeCompactInPlace(next)
+      scene.value = (await normalizeSceneDocumentForWiki(next)) as WorkbenchScene
+    } else {
+      scene.value = next
     }
     if (next) {
       sceneLoadEpoch.value += 1
     }
-    scene.value = next
   }
 
   function resetSessionState(): void {
@@ -187,29 +188,22 @@ export function provideWorkbenchContext(): WorkbenchContext {
   }
 
   async function syncPreview(): Promise<void> {
-    const raw = scene.value
+    const doc = scene.value
     previewError.value = null
-    if (!raw) {
+    if (!doc) {
       previewError.value = '无场景数据'
       previewConfig.value = null
       previewEpoch.value = 0
       return
     }
-    let normalizedForCheck: unknown
-    try {
-      normalizedForCheck = await normalizeSceneDocumentForWiki(raw)
-    } catch (e) {
-      previewError.value = formatSdeError(e)
-      return
-    }
-    if (!documentLooksPreviewable(normalizedForCheck)) {
+    if (!documentLooksPreviewable(doc)) {
       previewError.value =
         '当前文档缺少 textureBlobs 或非 geometryPhase=baked，无法内嵌预览（可继续编辑元数据并导出）。'
       return
     }
     previewBusy.value = true
     try {
-      const snapshot = JSON.parse(JSON.stringify(raw)) as unknown
+      const snapshot = { ...doc }
       const cfg = await previewConfigFromDocument(snapshot)
       previewConfig.value = cfg
       previewEpoch.value += 1
@@ -267,7 +261,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     selectedExportName.value = name
     const data = await sdeGetExportFile(apiBase.value, token.value, name)
     const next = cloneDoc(data)
-    commitScene(next)
+    await commitScene(next)
     dirty.value = false
     await syncPreview()
   }
@@ -278,7 +272,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     const data = await sdeGetWorkspaceDocument(apiBase.value, token.value)
     const c = cloneDoc(data)
     if (c && Object.keys(c).length > 0) {
-      commitScene(c)
+      await commitScene(c)
       dirty.value = false
       await syncPreview()
     }
@@ -295,7 +289,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     if (!apiBase.value) return
     const merged = await sdePatchWorkspaceDocument(apiBase.value, token.value, patch)
     const next = cloneDoc(merged)
-    commitScene(next)
+    await commitScene(next)
     dirty.value = false
     await syncPreview()
   }
@@ -315,7 +309,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     localFileSaveHandle.value = null
     selectedExportName.value = null
     const next = cloneDoc(raw)
-    commitScene(next)
+    await commitScene(next)
     localFileName.value = `示例 · ${id}.json`
     dirty.value = false
     await syncPreview()
@@ -339,7 +333,7 @@ export function provideWorkbenchContext(): WorkbenchContext {
     workspaceMode.value = 'local-file'
     selectedExportName.value = null
     localFileSaveHandle.value = options?.saveHandle ?? null
-    commitScene(parsed)
+    await commitScene(parsed)
     localFileName.value = file.name
     dirty.value = false
     await syncPreview()

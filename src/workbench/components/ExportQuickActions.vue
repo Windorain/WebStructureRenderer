@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { loadStructureOrWorld } from '@/render/data/bundleResolve'
-import { normalizeSceneDocumentForWiki, sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
+import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
 import { buildCompactEnvelope, copyTextToClipboard, downloadBlob, downloadJson } from '@/workbench/sceneExportKit'
 import { buildStructureBundleZip } from '@/workbench/structureBundleExport'
 import { bakeIsometricStructurePngDataUrl, dataUrlToPngBlob } from '@/workbench/exportIsometricImage'
@@ -16,7 +16,7 @@ const showSdeSave = computed(() => ctx.workspaceMode.value === 'sde' && ctx.apiB
 async function downloadRaw(): Promise<void> {
   if (!doc.value) return
   try {
-    const raw = await normalizeSceneDocumentForWiki(doc.value)
+    const raw = doc.value
     downloadJson(`${String(baseName.value)}-raw`, raw, true)
     ctx.connectionMessage.value = '已下载 Raw JSON'
   } catch (e) { ctx.connectionMessage.value = formatUnknownError(e) }
@@ -25,7 +25,7 @@ async function downloadRaw(): Promise<void> {
 async function downloadCompact(): Promise<void> {
   if (!doc.value) return
   try {
-    const raw = await normalizeSceneDocumentForWiki(doc.value)
+    const raw = doc.value
     downloadJson(`${String(baseName.value)}-compact`, buildCompactEnvelope(raw), true)
     ctx.connectionMessage.value = '已下载 Compact JSON'
   } catch (e) { ctx.connectionMessage.value = formatUnknownError(e) }
@@ -34,7 +34,7 @@ async function downloadCompact(): Promise<void> {
 async function copyRawJson(): Promise<void> {
   if (!doc.value) return
   try {
-    const raw = await normalizeSceneDocumentForWiki(doc.value)
+    const raw = doc.value
     await copyTextToClipboard(JSON.stringify(raw, null, 2))
     ctx.connectionMessage.value = '已复制 Raw JSON'
   } catch (e) { ctx.connectionMessage.value = formatUnknownError(e) }
@@ -43,7 +43,7 @@ async function copyRawJson(): Promise<void> {
 async function downloadObjBlock(): Promise<void> {
   if (!doc.value) return
   try {
-    const normalized = await normalizeSceneDocumentForWiki(doc.value)
+    const normalized = doc.value
     const def = loadStructureOrWorld(normalized, undefined)
     const zip = await buildStructureBundleZip(def, normalized, { mode: 'block' })
     downloadBlob(`${String(baseName.value)}-block.zip`, zip)
@@ -54,7 +54,7 @@ async function downloadObjBlock(): Promise<void> {
 async function downloadObjConnected(): Promise<void> {
   if (!doc.value) return
   try {
-    const normalized = await normalizeSceneDocumentForWiki(doc.value)
+    const normalized = doc.value
     const def = loadStructureOrWorld(normalized, undefined)
     const zip = await buildStructureBundleZip(def, normalized, { mode: 'connected' })
     downloadBlob(`${String(baseName.value)}-connected.zip`, zip)
