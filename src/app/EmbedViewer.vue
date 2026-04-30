@@ -185,7 +185,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 .wm-viewport-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wm-world-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px; background: var(--nei-inset-bg); border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-left: none; border-right: none; border-top: none; border-bottom: none; flex-shrink: 0; }
 .wm-status-bar { display: flex; align-items: flex-start; gap: 8px; margin-top: 0; padding: 8px 10px; font-size: 12px; line-height: 1.45; font-family: ui-monospace, 'Cascadia Code', monospace; border-radius: 0; border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-top: none; background: var(--nei-inset-bg); color: var(--nei-text-muted); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
-.wm-status-bar--loading { color: #fcd34d; } .wm-status-bar--ok { color: #86efac; } .wm-status-bar--warn { color: #fde047; } .wm-status-bar--err { color: #fecaca; background: #3d1518; }
+.wm-status-bar--loading { color: var(--nei-loading-text); } .wm-status-bar--ok { color: var(--nei-ok-text); } .wm-status-bar--warn { color: var(--nei-warn-text); } .wm-status-bar--err { color: var(--nei-error-text); background: var(--nei-error-bg); }
 .wm-status-dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 0; background: currentColor; opacity: 0.9; box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4); }
 .wm-status-text { flex: 1; word-break: break-word; white-space: pre-wrap; }
 </style>

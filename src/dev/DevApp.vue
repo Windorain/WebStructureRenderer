@@ -27,12 +27,12 @@ onErrorCaptured((err) => {
 .wm-boot {
   padding: 16px;
   font-family: system-ui, sans-serif;
-  color: #e2e8f0;
-  background: #0f172a;
+  color: var(--nei-text);
+  background: var(--nei-viewport-bg);
   min-height: 40vh;
 }
 .wm-boot--err {
-  color: #fecaca;
+  color: var(--nei-error-text);
   white-space: pre-wrap;
 }
 </style>

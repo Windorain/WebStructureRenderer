@@ -80,7 +80,7 @@ watch(
   border: var(--nei-bevel-w) solid;
   border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
   border-radius: 0;
-  background: #8b8b8b;
+  background: var(--nei-btn-bg);
   box-sizing: border-box;
 }
 .wm-slot-icon {
@@ -130,10 +130,10 @@ watch(
   border-radius: 0;
   background: repeating-linear-gradient(
     45deg,
-    #6b6b6b,
-    #6b6b6b 4px,
-    #4a4a4a 4px,
-    #4a4a4a 8px
+    var(--nei-checkerboard-dark),
+    var(--nei-checkerboard-dark) 4px,
+    var(--nei-checkerboard-light) 4px,
+    var(--nei-checkerboard-light) 8px
   );
   pointer-events: none;
 }
@@ -145,7 +145,7 @@ watch(
   line-height: 1;
   font-weight: 600;
   font-family: ui-monospace, 'Cascadia Code', monospace;
-  color: #fff;
+  color: var(--nei-text);
   text-shadow:
     1px 1px 0 #2f2f2f,
     -1px -1px 0 #2f2f2f,

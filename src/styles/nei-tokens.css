@@ -29,6 +29,14 @@
 
   --nei-bevel-w: 2px;
 
+  --nei-loading-text: #fcd34d;
+  --nei-ok-text: #86efac;
+  --nei-warn-text: #fde047;
+  --nei-error-text: #fecaca;
+  --nei-error-bg: #3d1518;
+  --nei-checkerboard-dark: #6b6b6b;
+  --nei-checkerboard-light: #4a4a4a;
+
   /* 新增：亮色补充 token */
   --nei-accent: #5a8c3e;
   --nei-accent-hover: #4a7a2e;
