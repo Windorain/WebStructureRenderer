@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch, type Ref } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { PreviewSceneContextKey } from '@/preview/sceneStore'
 
 const store = inject(PreviewSceneContextKey)
@@ -10,7 +10,7 @@ const { layerPreviewLabel, sizeRow: sizeRowRef, meshBusy } = store
 const localY = ref<number>(store.layerWorldY.value)
 
 // 非 busy 时同步 store 值到本地
-watch(() => store.layerWorldY.value, (v) => {
+watch(() => store!.layerWorldY.value, (v) => {
   if (!meshBusy.value) localY.value = v
 })
 
@@ -23,7 +23,7 @@ function onInput(e: Event): void {
 function onChange(e: Event): void {
   const v = Number((e.target as HTMLInputElement).value)
   localY.value = v
-  store.layerWorldY.value = v
+  store!.layerWorldY.value = v
 }
 </script>
 
