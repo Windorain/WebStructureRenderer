@@ -7,6 +7,7 @@
 import { computed, ref, type Component } from 'vue'
 import { t } from '@/workbench/i18n'
 import BlockInspector from './BlockInspector.vue'
+import TooltipEditor from './TooltipEditor.vue'
 import BlockStatsEditor from './BlockStatsEditor.vue'
 import SceneInfoEditor from './SceneInfoEditor.vue'
 import WikiConfigEditor from './WikiConfigEditor.vue'
@@ -24,6 +25,7 @@ const props = defineProps<{
 const ALL_EDITORS: Record<string, EditorEntry[]> = {
   editor: [
     { id: 'inspector', comp: BlockInspector, i18nKey: 'blockInspector' },
+    { id: 'tooltip', comp: TooltipEditor, i18nKey: 'tooltipEditor' },
     { id: 'stats', comp: BlockStatsEditor, i18nKey: 'blockStats' },
   ],
   wiki: [

@@ -1,17 +1,45 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { renderTooltipHtml } from './renderTooltipHtml'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
-import { isWorldDocument } from '@/render/data/bundleResolve'
-import { t } from '@/workbench/i18n'
+import { isWorldDocument, loadStructureOrWorld } from '@/render/data/bundleResolve'
+import type { BlockPaletteEntry } from '@/render/schema/types'
 
 const ctx = useWorkbenchContext()
 const selectedBlock = computed(() => ctx.selectedBlock.value)
-const tooltipText = ref('')
-const saveFeedback = ref('')
 
-/** ctx.scene 始终为 Raw，直接读取 */
-function readCurrentTooltip(): string {
+const paletteEntry = computed<BlockPaletteEntry | null>(() => {
+  if (!selectedBlock.value) return null
+  const doc = ctx.scene.value
+  if (!doc) return null
+  try {
+    const def = loadStructureOrWorld(doc, undefined)
+    return def.blockPalette.find(e => e.registryId === selectedBlock.value!.blockId) ?? null
+  } catch { return null }
+})
+
+const materialIndices = computed<number[]>(() => {
+  const quads = paletteEntry.value?.geometry?.quads
+  if (!quads || quads.length === 0) return []
+  const seen = new Set<number>()
+  for (const q of quads) seen.add(q.materialIndex)
+  return [...seen].sort((a, c) => a - c)
+})
+
+function materialName(index: number): string {
+  const doc = ctx.scene.value
+  if (!doc) return `#${index}`
+  let pal: unknown
+  if (isWorldDocument(doc)) {
+    pal = doc.materialPalette
+  } else {
+    pal = (doc as Record<string, unknown>).materialPalette
+  }
+  if (!Array.isArray(pal) || !pal[index]) return `#${index}`
+  return (pal[index] as { locator?: string }).locator ?? `#${index}`
+}
+
+const tooltipPreview = computed(() => {
   const doc = ctx.scene.value
   if (!doc || !selectedBlock.value?.voxel) return ''
   const { zSlice, row, column } = selectedBlock.value.voxel
@@ -23,8 +51,8 @@ function readCurrentTooltip(): string {
       ttg = ((frames[0] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined)?.cellTooltipGrid
     }
   } else {
-    tp = doc.tooltipPalette
-    ttg = doc.cellTooltipGrid
+    tp = (doc as Record<string, unknown>).tooltipPalette
+    ttg = (doc as Record<string, unknown>).cellTooltipGrid
   }
   if (!Array.isArray(tp) || tp.length === 0) return ''
   if (!Array.isArray(ttg)) return ''
@@ -33,104 +61,43 @@ function readCurrentTooltip(): string {
   const idx = rArr[column]
   if (typeof idx !== 'number' || idx < 0) return ''
   return String(tp[idx] ?? '')
-}
-
-function buildEmptyTooltipGrid(doc: Record<string, unknown>): number[][][] {
-  const cg = doc.cellGrid
-  if (!Array.isArray(cg) || cg.length === 0) return []
-  const grid: number[][][] = []
-  for (const zArr of cg) {
-    if (!Array.isArray(zArr)) continue
-    const rows: number[][] = []
-    for (const rArr of zArr) {
-      if (!Array.isArray(rArr)) continue
-      rows.push(new Array(rArr.length).fill(-1))
-    }
-    grid.push(rows)
-  }
-  return grid
-}
-
-function setPaletteAndGrid(
-  doc: Record<string, unknown>,
-  zSlice: number, row: number, column: number,
-  text: string,
-): void {
-  if (isWorldDocument(doc)) {
-    if (!Array.isArray(doc.tooltipPalette)) doc.tooltipPalette = []
-    const tp = doc.tooltipPalette as string[]
-    let idx = tp.indexOf(text)
-    if (idx === -1 && text) { idx = tp.length; tp.push(text) }
-    const frames = doc.frames
-    if (Array.isArray(frames) && frames.length > 0) {
-      const st = (frames[0] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined
-      if (st) {
-        if (!Array.isArray(st.cellTooltipGrid)) st.cellTooltipGrid = buildEmptyTooltipGrid(st)
-        const ttg = st.cellTooltipGrid as number[][][]
-        if (ttg[zSlice] && ttg[zSlice][row]) ttg[zSlice][row][column] = text ? idx : -1
-      }
-    }
-  } else {
-    if (!Array.isArray(doc.tooltipPalette)) doc.tooltipPalette = []
-    const tp = doc.tooltipPalette as string[]
-    let idx = tp.indexOf(text)
-    if (idx === -1 && text) { idx = tp.length; tp.push(text) }
-    if (!Array.isArray(doc.cellTooltipGrid)) doc.cellTooltipGrid = buildEmptyTooltipGrid(doc)
-    const ttg = doc.cellTooltipGrid as number[][][]
-    if (ttg[zSlice] && ttg[zSlice][row]) ttg[zSlice][row][column] = text ? idx : -1
-  }
-}
-
-async function saveTooltip(): Promise<void> {
-  const doc = ctx.scene.value
-  if (!doc || !selectedBlock.value?.voxel) return
-  const { zSlice, row, column } = selectedBlock.value.voxel
-  try {
-    setPaletteAndGrid(doc, zSlice, row, column, tooltipText.value)
-    ;(ctx as any).dirty.value = true
-    void ctx.syncPreview()
-    saveFeedback.value = '已保存并同步预览'
-  } catch (e) {
-    saveFeedback.value = e instanceof Error ? e.message : String(e)
-  }
-}
-
-const previewHtml = computed(() => {
-  if (!tooltipText.value) return ''
-  return renderTooltipHtml(tooltipText.value)
 })
 
-watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurrentTooltip() : '' }, { immediate: true })
+const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tooltipPreview.value) : '')
 </script>
 
 <template>
   <div class="pe-panel">
-    <div class="pe-title">{{ t('blockInspector') }}</div>
+    <div class="pe-title">方块检查器</div>
     <template v-if="!selectedBlock">
-      <p class="pe-muted">{{ t('enterEditMode') }}</p>
+      <p class="pe-muted">点击 3D 视口选取方块</p>
     </template>
     <template v-else>
-      <div class="bi-field">
-        <span class="bi-label">{{ t('block') }}</span>
-        <span class="bi-val">{{ selectedBlock.blockId }}</span>
-      </div>
-      <div v-if="selectedBlock.voxel" class="bi-field">
-        <span class="bi-label">{{ t('position') }}</span>
-        <span class="bi-val">{{ selectedBlock.voxel.column }}, {{ selectedBlock.voxel.row }}, {{ selectedBlock.voxel.zSlice }}</span>
-      </div>
-      <div class="bi-field">
-        <span class="bi-label">{{ t('tooltipMd') }}</span>
-        <textarea v-model="tooltipText" class="bi-textarea" rows="5" placeholder="**粗体** *斜体* `代码`" />
-      </div>
-      <div v-if="previewHtml" class="bi-preview">
-        <span class="bi-label">{{ t('preview') }}</span>
-        <div class="bi-preview-box" v-html="previewHtml" />
-      </div>
-      <div class="bi-row">
-        <button class="pe-btn pe-btn--primary" @click="void saveTooltip()">{{ t('saveTooltip') }}</button>
-        <button class="pe-btn" @click="tooltipText = ''">{{ t('clear') }}</button>
-      </div>
-      <p v-if="saveFeedback" class="pe-feedback">{{ saveFeedback }}</p>
+      <h3>身份</h3>
+      <table class="bi-table">
+        <tr><td>registryId</td><td class="bi-td-val">{{ selectedBlock.blockId }}</td></tr>
+        <tr v-if="paletteEntry"><td>meta</td><td class="bi-td-val">{{ paletteEntry.meta }}</td></tr>
+        <tr v-if="paletteEntry?.facing"><td>facing</td><td class="bi-td-val">{{ paletteEntry.facing }}</td></tr>
+        <tr v-if="paletteEntry"><td>renderMode</td><td class="bi-td-val">{{ paletteEntry.renderMode }}</td></tr>
+      </table>
+
+      <template v-if="selectedBlock.voxel">
+        <h3>位置</h3>
+        <span class="bi-pos">{{ selectedBlock.voxel.column }}, {{ selectedBlock.voxel.row }}, {{ selectedBlock.voxel.zSlice }}</span>
+      </template>
+
+      <h3>注解</h3>
+      <div v-if="tooltipHtml" class="bi-preview" v-html="tooltipHtml" />
+      <p v-else class="pe-muted">无注解</p>
+
+      <h3>材质引用</h3>
+      <template v-if="materialIndices.length">
+        <div v-for="mi in materialIndices" :key="mi" class="bi-mat-row">
+          <span class="bi-mat-idx">{{ mi }}</span>
+          <span class="bi-mat-name">{{ materialName(mi) }}</span>
+        </div>
+      </template>
+      <p v-else class="pe-muted">无材质信息</p>
     </template>
   </div>
 </template>
@@ -139,24 +106,17 @@ watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurre
 .pe-panel { padding: 10px; font-size: 12px; }
 .pe-title { font-size: 13px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
 .pe-muted { font-size: 11px; color: #64748b; }
-.bi-field { margin-bottom: 8px; }
-.bi-label { display: block; font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
-.bi-val { font-family: ui-monospace, monospace; font-size: 12px; color: #e2e8f0; }
-.bi-textarea {
-  width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid #334155;
-  background: #0f172a; color: #e2e8f0; font-size: 12px; font-family: ui-monospace, monospace;
-  resize: vertical; box-sizing: border-box;
-}
-.bi-preview { margin: 8px 0; }
-.bi-preview-box {
-  padding: 8px; border-radius: 4px; border: 1px dashed #334155;
-  background: #0f172a; min-height: 24px; font-size: 12px; color: #e2e8f0;
-}
-.bi-row { display: flex; gap: 6px; margin-top: 6px; }
-.pe-btn {
-  padding: 4px 10px; border-radius: 4px; border: 1px solid #475569;
-  background: #334155; color: #f8fafc; cursor: pointer; font-size: 11px;
-}
-.pe-btn--primary { background: #2563eb; border-color: #1d4ed8; }
-.pe-feedback { margin-top: 6px; font-size: 11px; color: #a5b4fc; }
+h3 { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin: 10px 0 4px; }
+.bi-table { width: 100%; border-collapse: collapse; }
+.bi-table td { padding: 2px 6px 2px 0; font-size: 11px; }
+.bi-table td:first-child { color: #64748b; width: 80px; }
+.bi-td-val { font-family: ui-monospace, monospace; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi-pos { font-family: ui-monospace, monospace; font-size: 12px; color: #e2e8f0; }
+.bi-preview { padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; font-size: 12px; color: #e2e8f0; min-height: 20px; word-break: break-word; }
+.bi-preview :deep(strong) { font-weight: 700; }
+.bi-preview :deep(em) { font-style: italic; }
+.bi-preview :deep(code) { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.2); padding: 1px 3px; border-radius: 2px; }
+.bi-mat-row { display: flex; gap: 6px; padding: 2px 0; }
+.bi-mat-idx { font-family: ui-monospace, monospace; font-size: 11px; color: #64748b; min-width: 24px; }
+.bi-mat-name { font-family: ui-monospace, monospace; font-size: 11px; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
