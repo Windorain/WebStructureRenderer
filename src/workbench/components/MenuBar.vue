@@ -5,6 +5,9 @@
 import { ref } from 'vue'
 import { useWorkbenchContext } from '@/workbench/workbenchContext'
 import { t, setLang, currentLang } from '@/workbench/i18n'
+import { useNeiTheme } from '@/workbench/composables/useNeiTheme'
+
+const { theme, toggleTheme } = useNeiTheme()
 
 const ctx = useWorkbenchContext()
 
@@ -69,6 +72,9 @@ function onMenuAction(action: string): void {
       <span class="mb-label mb-disabled">{{ t('help') }}</span>
     </div>
     <div class="mb-right">
+      <button class="mb-theme-btn" :title="theme === 'dark' ? '切换到亮色' : '切换到暗色'" @click="toggleTheme">
+        {{ theme === 'dark' ? '☀' : '☾' }}
+      </button>
       <span class="mb-status-dot" :class="ctx.connectionOk.value ? 'mb-online' : 'mb-offline'" />
       <span class="mb-status-label">{{ ctx.connectionOk.value ? t('connected') : t('offline') }}</span>
     </div>
@@ -84,31 +90,39 @@ function onMenuAction(action: string): void {
 .mb-item { position: relative; }
 .mb-label {
   padding: 3px 10px; border-radius: 4px; cursor: pointer;
-  user-select: none; color: #cbd5e1; display: inline-block;
+  user-select: none; color: var(--nei-label); display: inline-block;
 }
-.mb-label:hover { background: #334155; }
-.mb-disabled { color: #475569; cursor: default; }
+.mb-label:hover { background: var(--nei-panel-hover); }
+.mb-disabled { color: var(--nei-muted); cursor: default; }
 .mb-disabled:hover { background: transparent; }
 .mb-dropdown {
   position: absolute; top: 100%; left: 0; z-index: 1000;
   min-width: 180px; padding: 4px;
-  background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+  background: var(--nei-dropdown-bg); border: 1px solid var(--nei-border); border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 .mb-dd-section {
   padding: 4px 10px 2px; font-size: 10px; text-transform: uppercase;
-  color: #64748b; letter-spacing: 0.5px;
+  color: var(--nei-muted); letter-spacing: 0.5px;
 }
 .mb-dd-item {
   display: flex; align-items: center; gap: 4px;
   width: 100%; padding: 5px 10px; border: none;
-  background: transparent; color: #e2e8f0; font-size: 12px;
+  background: transparent; color: var(--nei-text-dark); font-size: 12px;
   text-align: left; cursor: pointer; border-radius: 3px;
 }
-.mb-dd-item:hover { background: #2563eb; }
-.mb-check { width: 14px; font-size: 10px; color: #22c55e; }
+.mb-dd-item:hover { background: var(--nei-dropdown-hover); color: #fff; }
+.mb-check { width: 14px; font-size: 10px; color: var(--nei-check); }
 .mb-status-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
-.mb-online { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
-.mb-offline { background: #64748b; }
-.mb-status-label { font-size: 11px; color: #94a3b8; }
+.mb-online { background: var(--nei-online); box-shadow: 0 0 4px var(--nei-online); }
+.mb-offline { background: var(--nei-offline); }
+.mb-status-label { font-size: 11px; color: var(--nei-muted); }
+.mb-theme-btn {
+  width: 22px; height: 22px; border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
+  background: var(--nei-bg); color: var(--nei-text-dark); font-size: 12px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border-radius: 2px; margin-right: 8px; padding: 0; line-height: 1;
+}
+.mb-theme-btn:hover { background: var(--nei-panel-hover); }
 </style>
