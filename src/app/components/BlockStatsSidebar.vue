@@ -91,25 +91,19 @@ function onRowPointerLeave(): void {
 <style scoped>
 .wm-block-stats {
   --wm-slot-gap: 3px;
-  /* 槽位网格允许的最高一列高度；超出则换列，避免侧栏被 flex 拉伸铺满视口 */
   --wm-block-stats-max-col-h: min(72vh, 640px);
   display: flex;
   flex-direction: column;
-  align-self: flex-start;
   width: max-content;
   min-width: calc(var(--wm-slot-px) + 8px);
   max-width: 100%;
   flex-shrink: 0;
-  height: auto;
-  background: var(--nei-bg);
-  border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
-  border-top: none;
-  border-left: none;
-  border-radius: 0;
+  background: var(--nei-bg-deep);
   border-right: var(--nei-bevel-w) solid var(--nei-shadow);
+  border-bottom: var(--nei-bevel-w) solid var(--nei-shadow);
   font-size: 12px;
   color: var(--nei-text-dark);
+  overflow-y: auto;
 }
 .wm-block-stats-panel {
   flex: 0 0 auto;
@@ -125,7 +119,6 @@ function onRowPointerLeave(): void {
   font-size: 11px;
   color: var(--nei-text-dark);
 }
-/* 高度随槽位内容收缩；仅受 max-height 限制时再换列，下方不留空 */
 .wm-block-stats-list {
   list-style: none;
   margin: 0;

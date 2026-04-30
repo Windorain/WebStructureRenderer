@@ -42,6 +42,9 @@ const {
   contentGroupRef,
   tooltipPalette,
   hasWorldMultiFrame,
+  worldFrameIndex,
+  worldFrameCount,
+  layerPreviewLabel,
 } = store
 
 const f = computed(() => props.mergedConfig.features)
@@ -50,6 +53,15 @@ const showFrameCtl = computed(() => f.value.frameControls)
 const showTitle = computed(() => f.value.titleBar)
 const showStats = computed(() => f.value.blockStatsSidebar)
 const showDebugStatus = computed(() => f.value.debugStatusBar && props.mergedConfig.debug)
+
+const hasBottomDock = computed(() =>
+  (showFrameCtl.value && hasWorldMultiFrame.value) || showLayerBar.value,
+)
+
+type BottomTab = 'frame' | 'layer'
+const activeTab = ref<BottomTab>(
+  (showFrameCtl.value && hasWorldMultiFrame.value) ? 'frame' : 'layer',
+)
 
 const sceneDocument = computed(() => props.mergedConfig.renderBundle.document)
 
@@ -100,6 +112,16 @@ const statusBarClass = computed(() => {
   return 'wm-status-bar wm-status-bar--ok'
 })
 
+const statusSummary = computed(() => {
+  if (loadStatus.value === 'loading') return '加载中…'
+  if (loadStatus.value === 'error') return statusMessage.value
+  const parts: string[] = ['场景已加载']
+  if (hasWorldMultiFrame.value) {
+    parts.push(`${worldFrameCount.value} Frames`)
+  }
+  return parts.join(' · ')
+})
+
 async function onViewportReady(scene: Scene): Promise<void> {
   store.registerScene(scene)
   try { await store.rebuildContentMesh() } catch (e) { console.error('[StructureRenderer] onViewportReady', e) }
@@ -129,12 +151,12 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
   <div class="wm-root">
     <!-- 标题栏 -->
     <p v-if="showTitle" class="wm-title">
-      <abbr
-        v-if="showMetaHint" class="nei-btn--circle-sm" tabindex="0" aria-label="作者与版本号" title=""
+      <span class="wm-title-text">{{ previewTitle }}</span>
+      <span
+        v-if="showMetaHint" class="wm-title-meta" tabindex="0" aria-label="作者与版本号"
         @pointerenter="onMetaHintPointerEnter" @pointermove="onMetaHintPointerMove"
         @pointerleave="onMetaHintPointerLeave" @focusin="onMetaHintFocusIn" @focusout="onMetaHintFocusOut"
-      >?</abbr>
-      <span class="wm-title-text">{{ previewTitle }}</span>
+      >?</span>
     </p>
 
     <div class="wm-main-stage">
@@ -153,20 +175,42 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
           @ready="onViewportReady" @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"
         />
-        <!-- 多帧播放器 -->
-        <div v-if="showFrameCtl && loadStatus === 'ok' && hasWorldMultiFrame" class="wm-world-frame-dock">
-          <WorldFramePlayerControls />
-          <WorldFrameScrubber />
+      </div>
+    </div>
+
+    <!-- 底部 Tab 控件栏（全宽，在主舞台下方） -->
+    <div v-if="hasBottomDock && loadStatus === 'ok'" class="wm-bottom-dock">
+      <div class="wm-tab-row">
+        <button
+          v-if="showFrameCtl && hasWorldMultiFrame"
+          class="wm-tab"
+          :class="{ 'wm-tab--active': activeTab === 'frame' }"
+          @click="activeTab = 'frame'"
+        >帧控制</button>
+        <button
+          v-if="showLayerBar"
+          class="wm-tab"
+          :class="{ 'wm-tab--active': activeTab === 'layer' }"
+          @click="activeTab = 'layer'"
+        >分层预览</button>
+        <div class="wm-tab-status">
+          <span v-if="showFrameCtl && hasWorldMultiFrame" class="wm-tab-stat">帧 <strong>{{ worldFrameIndex + 1 }}/{{ worldFrameCount }}</strong></span>
+          <span v-if="showLayerBar" class="wm-tab-stat">层 <strong>{{ layerPreviewLabel }}</strong></span>
         </div>
-        <!-- 分层条 -->
-        <LayerPreviewBar v-if="showLayerBar && loadStatus === 'ok'" />
+      </div>
+      <div v-if="showFrameCtl && hasWorldMultiFrame" class="wm-tab-panel" :class="{ 'wm-tab-panel--active': activeTab === 'frame' }">
+        <WorldFramePlayerControls />
+        <WorldFrameScrubber />
+      </div>
+      <div v-if="showLayerBar" class="wm-tab-panel" :class="{ 'wm-tab-panel--active': activeTab === 'layer' }">
+        <LayerPreviewBar />
       </div>
     </div>
 
     <!-- 调试状态栏 -->
     <div v-if="showDebugStatus" :class="statusBarClass" role="status" aria-live="polite">
       <span class="wm-status-dot" aria-hidden="true" />
-      <span class="wm-status-text">{{ statusMessage }}</span>
+      <span class="wm-status-text">{{ statusSummary }}</span>
     </div>
 
     <ToolTipBox v-if="hover && tooltipDisplayText" :text="tooltipDisplayText" :client-x="hover.clientX" :client-y="hover.clientY" />
@@ -176,11 +220,80 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 
 <style scoped>
 .wm-root { font-family: system-ui, 'Segoe UI', sans-serif; color: var(--nei-text-dark); background: var(--nei-bg); padding: 8px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column; }
-.wm-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); display: flex; flex-direction: row; align-items: center; gap: 8px; }
-.wm-title-text { min-width: 0; }
+.wm-title { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--nei-text); text-shadow: var(--nei-label-shadow); display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.wm-title-text { flex: 1; min-width: 0; }
+.wm-title-meta { flex-shrink: 0; font-size: 13px; font-weight: 700; color: var(--nei-text-muted); background: none; border: none; cursor: help; padding: 0 2px; line-height: 1; }
+.wm-title-meta:hover { color: var(--nei-text); }
 .wm-main-stage { display: flex; flex: 1; flex-direction: row; align-items: stretch; min-height: 0; width: 100%; border-radius: 0; overflow: hidden; border: var(--nei-bevel-w) solid; border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight); border-bottom: none; background: var(--nei-bg); }
 .wm-viewport-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.wm-world-frame-dock { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px; background: var(--nei-inset-bg); border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-left: none; border-right: none; border-top: none; border-bottom: none; flex-shrink: 0; }
+
+/* ===== 底部 Tab 控件栏 ===== */
+.wm-bottom-dock {
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border: var(--nei-bevel-w) solid;
+  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
+  border-top: none;
+  background: var(--nei-inset-bg);
+}
+.wm-tab-row {
+  display: flex; align-items: center;
+  gap: 0;
+  padding: 0 4px;
+  background: var(--nei-bg-deep);
+  border-bottom: 1px solid var(--nei-shadow);
+}
+.wm-tab {
+  padding: 6px 14px 5px;
+  font-size: 11px; font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-weight: 600;
+  color: var(--nei-text-muted);
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; user-select: none;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.wm-tab:hover { color: var(--nei-text); }
+.wm-tab--active {
+  color: var(--nei-text);
+  border-bottom-color: var(--nei-accent);
+}
+.wm-tab-status {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 10px;
+  font-size: 11px; font-family: ui-monospace, 'Cascadia Code', monospace;
+  color: var(--nei-text-muted);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+.wm-tab-stat strong {
+  color: var(--nei-text);
+  font-weight: 600;
+}
+.wm-tab-panel {
+  display: none;
+  padding: 6px 10px;
+  align-items: center; gap: 10px;
+  height: 40px;
+  background: var(--nei-inset-bg);
+}
+.wm-tab-panel--active { display: flex; }
+
+/* 子组件嵌入 tab panel 时：拉伸填满，剥除外层边框背景 */
+.wm-tab-panel :deep(.wm-wfs) {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; padding: 0;
+}
+.wm-tab-panel :deep(.wm-wfp-controls) {
+  background: transparent; border: none; padding: 0;
+}
+.wm-tab-panel :deep(.wm-layer-bar) {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; padding: 0;
+}
+
 .wm-status-bar { display: flex; align-items: flex-start; gap: 8px; margin-top: 0; padding: 8px 10px; font-size: 12px; line-height: 1.45; font-family: ui-monospace, 'Cascadia Code', monospace; border-radius: 0; border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); border-top: none; background: var(--nei-inset-bg); color: var(--nei-text-muted); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
 .wm-status-bar--loading { color: var(--nei-loading-text); } .wm-status-bar--ok { color: var(--nei-ok-text); } .wm-status-bar--warn { color: var(--nei-warn-text); } .wm-status-bar--err { color: var(--nei-error-text); background: var(--nei-error-bg); }
 .wm-status-dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 0; background: currentColor; opacity: 0.9; box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4); }
