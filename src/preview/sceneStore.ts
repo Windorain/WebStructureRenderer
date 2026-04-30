@@ -80,7 +80,7 @@ function formatError(err: unknown): string {
   return formatUnknownError(err)
 }
 
-const DEFAULT_WORLD_FRAME_DWELL_MS = 1000
+const DEFAULT_WORLD_FRAME_DWELL_MS = 50
 
 function normalizeWorldFrameListIndex(w: World, raw: number): number {
   const n = w.frames.length
