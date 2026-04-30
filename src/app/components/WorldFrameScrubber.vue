@@ -2,7 +2,7 @@
 /**
  * World 多帧时间轴：拖动时只更新本地显示，松开后才触发帧切换。
  */
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 
 import { PreviewSceneContextKey } from '@/preview/sceneStore'
 
@@ -15,15 +15,11 @@ const meshBusy = computed(() => store?.meshBusy.value ?? false)
 
 const maxIdx = computed(() => Math.max(0, frameCount.value - 1))
 
-const localIdx = ref(0)
+const localIdx = ref(store?.worldFrameIndex.value ?? 0)
 const dragging = ref(false)
 
-// Sync local with store when not dragging
-computed(() => {
-  if (!dragging.value) {
-    localIdx.value = store?.worldFrameIndex.value ?? 0
-  }
-  return store?.worldFrameIndex.value ?? 0
+watch(() => store?.worldFrameIndex.value ?? 0, (v) => {
+  if (!dragging.value) localIdx.value = v
 })
 
 const fillPct = computed(() => {
@@ -45,7 +41,7 @@ function onChange(e: Event): void {
   dragging.value = false
   const v = Number((e.target as HTMLInputElement).value)
   localIdx.value = v
-  void store?.setCurrentWorldFrame(v)
+  store?.setCurrentWorldFrame(v)
 }
 </script>
 

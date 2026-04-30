@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
-
+import { computed, inject, ref, watch, type Ref } from 'vue'
 import { PreviewSceneContextKey } from '@/preview/sceneStore'
 
 const store = inject(PreviewSceneContextKey)
@@ -8,11 +7,11 @@ if (!store) throw new Error('LayerPreviewBar: PreviewSceneContext missing')
 
 const { layerPreviewLabel, sizeRow: sizeRowRef, meshBusy } = store
 
-const localY = ref(store.layerWorldY.value)
+const localY = ref<number>(store.layerWorldY.value)
 
-computed(() => {
-  if (!meshBusy.value) localY.value = store.layerWorldY.value
-  return store.layerWorldY.value
+// 非 busy 时同步 store 值到本地
+watch(() => store.layerWorldY.value, (v) => {
+  if (!meshBusy.value) localY.value = v
 })
 
 const maxY = computed(() => Math.max(0, sizeRowRef.value - 1))
