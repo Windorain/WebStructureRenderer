@@ -418,7 +418,7 @@ onBeforeUnmount(() => {
 }
 .wm-viewport > .nei-btn {
   position: absolute; right: 8px; bottom: 8px; z-index: 2;
-  width: 28px; height: 28px;
+  width: 32px; height: 32px;
   aspect-ratio: auto;
 }
 </style>
