@@ -74,6 +74,9 @@ onMounted(async () => {
 
   <!-- Export Workspace: standalone full page -->
   <div v-else class="wb-standalone">
+    <header class="wb-standalone-menubar">
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
+    </header>
     <header class="wb-standalone-top">
       <div class="wb-standalone-tabs">
         <WorkspaceTabs :model-value="workspace" @update:model-value="workspace = $event" />
@@ -94,6 +97,12 @@ onMounted(async () => {
   height: 100vh;
   background: #0f172a;
   color: #e2e8f0;
+}
+.wb-standalone-menubar {
+  flex-shrink: 0;
+  height: 28px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
 }
 .wb-standalone-top {
   flex-shrink: 0;
