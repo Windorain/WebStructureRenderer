@@ -26,6 +26,7 @@ const mergedConfig = computed<PreviewConfig | null>(() => {
   <div class="vh-root">
     <WorkbenchViewport
       v-if="mergedConfig"
+      :key="ctx.previewEpoch.value"
       :merged-config="mergedConfig"
       :selected-block="selectedBlock"
       @update:selected-block="emit('update:selectedBlock', $event)"

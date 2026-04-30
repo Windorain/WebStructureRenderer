@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { readSceneMetaField } from '@/render/data/compactSceneDocument'
-import { mergeRootStringFields } from '@/workbench/sceneExportKit'
-import { useWorkbenchContext, type WorkbenchScene } from '@/workbench/workbenchContext'
+import { useWorkbenchContext } from '@/workbench/workbenchContext'
 import { t } from '@/workbench/i18n'
 
 const ctx = useWorkbenchContext()
 
 const hasScene = computed(() => ctx.scene.value != null)
-const showSaveToFile = computed(() => {
-  const m = ctx.workspaceMode.value
-  return m === 'local-file' || m === 'local-bundle'
-})
-const showSdePatch = computed(() => ctx.workspaceMode.value === 'sde' && ctx.apiBase.value.length > 0)
 
 const id = ref('')
 const label = ref('')
@@ -20,18 +14,8 @@ const author = ref('')
 const mode = ref('')
 const gtnhVersion = ref('')
 const structureId = ref('')
-const saveFeedback = ref('')
 
-const pendingFields = computed(() => {
-  const d = ctx.scene.value
-  const g = (k: string) => (d ? readSceneMetaField(d, k) : '')
-  return {
-    label: label.value !== g('label'), id: id.value !== g('id'),
-    author: author.value !== g('author'), mode: mode.value !== g('mode'),
-    gtnhVersion: gtnhVersion.value !== g('gtnhVersion'), structureId: structureId.value !== g('structureId'),
-  }
-})
-
+// scene → 表单（仅 scene 加载/外部变更时）
 watch(
   () => ctx.scene.value,
   (d) => {
@@ -45,55 +29,25 @@ watch(
   { immediate: true },
 )
 
-function syncFormToScene(): boolean {
-  saveFeedback.value = ''
-  if (!ctx.scene.value) { saveFeedback.value = '无场景'; return false }
-  try {
-    ctx.scene.value = mergeRootStringFields(ctx.scene.value, {
+/** 表单变更 → 原地修改 scene 对象（不建新引用，避免触发 scene watch 回环） */
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleSync(): void {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    const doc = ctx.scene.value
+    if (!doc) return
+    for (const [k, v] of Object.entries({
       id: id.value, label: label.value, author: author.value,
       mode: mode.value, gtnhVersion: gtnhVersion.value, structureId: structureId.value,
-    }) as WorkbenchScene
+    })) {
+      if (v === '') { delete (doc as any)[k] } else { (doc as any)[k] = v }
+    }
     ctx.dirty.value = true
-    return true
-  } catch (e) {
-    saveFeedback.value = e instanceof Error ? e.message : String(e)
-    return false
-  }
+    void ctx.syncPreview()
+  }, 300)
 }
 
-async function commitAndOpenPreview(): Promise<void> {
-  if (!syncFormToScene()) return
-  await ctx.syncPreview()
-}
-
-async function saveToFile(): Promise<void> {
-  if (!ctx.scene.value) { saveFeedback.value = '无场景可保存'; return }
-  if (!syncFormToScene()) return
-  saveFeedback.value = '正在保存…'
-  try {
-    await ctx.writeSceneToLocalDisk()
-    saveFeedback.value = ctx.connectionMessage.value.trim() || '已完成'
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    ctx.connectionMessage.value = msg
-    saveFeedback.value = msg
-  }
-}
-
-async function saveToSde(): Promise<void> {
-  if (!ctx.apiBase.value) return
-  if (!syncFormToScene()) return
-  saveFeedback.value = '正在保存到 SDE 工作区…'
-  try {
-    await ctx.saveWorkspaceFull()
-    saveFeedback.value = '已保存到 SDE 工作区'
-    ctx.connectionMessage.value = saveFeedback.value
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    ctx.connectionMessage.value = msg
-    saveFeedback.value = msg
-  }
-}
+watch([id, label, author, mode, gtnhVersion, structureId], () => scheduleSync())
 </script>
 
 <template>
@@ -102,18 +56,13 @@ async function saveToSde(): Promise<void> {
     <p v-if="!hasScene" class="pe-muted">{{ t('noScene') }}</p>
     <template v-else>
       <div class="se-grid">
-        <label class="se-field" v-for="f in [
-          { key: 'label', v: label, ph: '标签' },
-          { key: 'id', v: id, ph: 'ID' },
-          { key: 'author', v: author, ph: '作者' },
-          { key: 'gtnhVersion', v: gtnhVersion, ph: '版本号' },
-          { key: 'structureId', v: structureId, ph: '注册名' },
-        ]" :key="f.key">
-          <span :class="{ 'se-dirty': pendingFields[f.key as keyof typeof pendingFields] }">{{ f.key }}</span>
-          <input v-model="f.v" :placeholder="f.ph" type="text" autocomplete="off" />
-        </label>
+        <label class="se-field"><span>label</span><input v-model="label" placeholder="标签" type="text" autocomplete="off" /></label>
+        <label class="se-field"><span>id</span><input v-model="id" placeholder="ID" type="text" autocomplete="off" /></label>
+        <label class="se-field"><span>author</span><input v-model="author" placeholder="作者" type="text" autocomplete="off" /></label>
+        <label class="se-field"><span>gtnhVersion</span><input v-model="gtnhVersion" placeholder="版本号" type="text" autocomplete="off" /></label>
+        <label class="se-field"><span>structureId</span><input v-model="structureId" placeholder="注册名" type="text" autocomplete="off" /></label>
         <label class="se-field">
-          <span :class="{ 'se-dirty': pendingFields.mode }">mode</span>
+          <span>mode</span>
           <select v-model="mode">
             <option value="">(unset)</option>
             <option value="multiblock">multiblock</option>
@@ -121,13 +70,6 @@ async function saveToSde(): Promise<void> {
           </select>
         </label>
       </div>
-
-      <div class="se-row">
-        <button class="pe-btn pe-btn--primary" @click="void commitAndOpenPreview()">{{ t('syncPreview') }}</button>
-        <button v-if="showSaveToFile" class="pe-btn" @click="void saveToFile()">{{ t('saveToFile') }}</button>
-        <button v-if="showSdePatch" class="pe-btn" @click="void saveToSde()">{{ t('saveToSde') }}</button>
-      </div>
-      <p v-if="saveFeedback" class="pe-feedback">{{ saveFeedback }}</p>
     </template>
   </div>
 </template>
@@ -139,16 +81,8 @@ async function saveToSde(): Promise<void> {
 .se-grid { display: flex; flex-direction: column; gap: 6px; }
 .se-field { display: flex; flex-direction: column; gap: 3px; }
 .se-field span { font-size: 10px; color: #94a3b8; }
-.se-field span.se-dirty { color: #f59e0b; }
 .se-field input, .se-field select {
   padding: 4px 6px; border-radius: 4px; border: 1px solid #334155;
   background: #0f172a; color: #e2e8f0; font-size: 11px;
 }
-.se-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-.pe-btn {
-  padding: 4px 10px; border-radius: 4px; border: 1px solid #475569;
-  background: #334155; color: #f8fafc; cursor: pointer; font-size: 11px;
-}
-.pe-btn--primary { background: #2563eb; border-color: #1d4ed8; }
-.pe-feedback { margin: 6px 0 0; font-size: 11px; color: #a5b4fc; }
 </style>
