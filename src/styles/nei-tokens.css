@@ -181,10 +181,10 @@
 
 /* ===== NEI 按钮 ===== */
 .nei-btn {
-  width: 32px; min-height: 32px; height: 100%; padding: 0;
+  width: 28px; min-height: 28px; height: 100%; padding: 0;
   aspect-ratio: 1;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   font-family: ui-monospace, 'Cascadia Code', monospace;
   color: var(--nei-text); text-shadow: var(--nei-label-shadow);
   background: var(--nei-bg);
@@ -215,12 +215,12 @@
 
 /* ===== NEI 自定义滑块 ===== */
 .nei-slider {
-  position: relative; flex: 1; min-width: 0; height: 100%; min-height: 32px;
+  position: relative; flex: 1; min-width: 0; height: 100%; min-height: 28px;
   display: flex; align-items: center;
 }
 .nei-slider--fixed-h {
-  height: 32px;
-  min-height: 32px;
+  height: 28px;
+  min-height: 28px;
 }
 .nei-slider__track {
   position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px;
@@ -245,7 +245,7 @@
 .nei-slider__range:focus-visible { outline: 2px solid var(--nei-focus-ring); outline-offset: 2px; }
 .nei-slider__range::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: 14px; height: 100%; border-radius: 0;
+  width: 12px; height: 100%; border-radius: 0;
   background: var(--nei-bg);
   border: var(--nei-bevel-w) solid;
   border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
@@ -254,7 +254,7 @@
 }
 .nei-slider__range::-webkit-slider-runnable-track { height: 0; background: transparent; }
 .nei-slider__range::-moz-range-thumb {
-  width: 14px; height: 100%; border-radius: 0;
+  width: 12px; height: 100%; border-radius: 0;
   background: var(--nei-bg);
   border: var(--nei-bevel-w) solid;
   border-color: var(--nei-highlight) var(--nei-shadow) var(--nei-shadow) var(--nei-highlight);
