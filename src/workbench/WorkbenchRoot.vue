@@ -16,6 +16,7 @@ const ctx = provideWorkbenchContext()
 
 const workspace = ref<'preview' | 'export'>('preview')
 const editMode = ref(false)
+const activeTool = ref('select')
 const selectedBlock = ref<{
   blockId: string
   voxel?: { column: number; row: number; zSlice: number }
@@ -54,7 +55,7 @@ onMounted(async () => {
       <WorkspaceTabs :model-value="workspace" @update:model-value="workspace = $event" />
     </template>
     <template #tool-shelf>
-      <ToolShelf :edit-mode="editMode" @update:edit-mode="editMode = $event" />
+      <ToolShelf :edit-mode="editMode" @update:edit-mode="editMode = $event" @update:active-tool="activeTool = $event" />
     </template>
     <template #viewport>
       <ViewportHost
