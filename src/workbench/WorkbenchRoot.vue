@@ -3,12 +3,12 @@ import { onMounted, ref } from 'vue'
 
 import WorkbenchShell from '@/workbench/layout/WorkbenchShell.vue'
 import WorkbenchSettingsDrawer from '@/workbench/components/WorkbenchSettingsDrawer.vue'
-import MenuBar from '@/workbench/components_new/MenuBar.vue'
-import WorkspaceTabs from '@/workbench/components_new/WorkspaceTabs.vue'
-import ToolShelf from '@/workbench/components_new/ToolShelf.vue'
-import ViewportHost from '@/workbench/components_new/ViewportHost.vue'
-import PropertiesPanel from '@/workbench/components_new/PropertiesPanel.vue'
-import StatusBar from '@/workbench/components_new/StatusBar.vue'
+import MenuBar from '@/workbench/components/MenuBar.vue'
+import WorkspaceTabs from '@/workbench/components/WorkspaceTabs.vue'
+import ToolShelf from '@/workbench/components/ToolShelf.vue'
+import ViewportHost from '@/workbench/components/ViewportHost.vue'
+import PropertiesPanel from '@/workbench/components/PropertiesPanel.vue'
+import StatusBar from '@/workbench/components/StatusBar.vue'
 import { provideWorkbenchContext } from '@/workbench/workbenchContext'
 
 const ctx = provideWorkbenchContext()
