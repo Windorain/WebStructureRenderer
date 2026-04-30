@@ -56,29 +56,29 @@ async function load(): Promise<void> {
 <style scoped>
 .dash-card {
   padding: 16px;
-  border: 1px solid #334155;
+  border: 1px solid var(--nei-border);
   border-radius: 10px;
-  background: #1e293b;
+  background: var(--nei-bg-deep);
   margin-bottom: 14px;
 }
 .dash-card__title {
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--nei-text);
 }
 .dash-card__desc {
   margin: 0 0 14px;
   font-size: 12px;
   line-height: 1.5;
-  color: #94a3b8;
+  color: var(--nei-label);
 }
 .dash-code {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: #0f172a;
-  color: #cbd5e1;
+  background: var(--nei-bg);
+  color: var(--nei-text-dark);
 }
 .dash-field {
   display: flex;
@@ -88,22 +88,22 @@ async function load(): Promise<void> {
 }
 .dash-field__label {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--nei-label);
 }
 .dash-select {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #475569;
-  background: #0f172a;
-  color: #e2e8f0;
+  border: 1px solid var(--nei-panel-hover);
+  background: var(--nei-bg);
+  color: var(--nei-text-dark);
   font-size: 13px;
 }
 .dash-btn {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid #64748b;
-  background: #334155;
-  color: #f8fafc;
+  border: 1px solid var(--nei-muted);
+  background: var(--nei-border);
+  color: var(--nei-text);
   cursor: pointer;
   font-size: 13px;
 }

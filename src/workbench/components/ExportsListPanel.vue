@@ -45,16 +45,16 @@ async function onPick(name: string): Promise<void> {
 <style scoped>
 .wm-panel {
   padding: 12px;
-  border: 1px solid #334155;
+  border: 1px solid var(--nei-border);
   border-radius: 8px;
-  background: #1e293b;
+  background: var(--nei-bg-deep);
   margin-bottom: 12px;
 }
 .wm-panel__title {
   margin: 0 0 10px;
   font-size: 14px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--nei-text);
 }
 .wm-list {
   list-style: none;
@@ -68,7 +68,7 @@ async function onPick(name: string): Promise<void> {
   justify-content: space-between;
   gap: 8px;
   padding: 4px 0;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--nei-border);
   font-size: 12px;
 }
 .wm-link {
@@ -87,11 +87,11 @@ async function onPick(name: string): Promise<void> {
   color: #fde047;
 }
 .wm-size {
-  color: #64748b;
+  color: var(--nei-muted);
   flex-shrink: 0;
 }
 .wm-muted {
   font-size: 12px;
-  color: #64748b;
+  color: var(--nei-muted);
 }
 </style>
