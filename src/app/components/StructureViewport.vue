@@ -240,12 +240,11 @@ function fitIsometricOrbitToContentGroup(
 
 watch(
   () => props.contentGroup,
-  (g) => {
+  (g, prev) => {
     const vp = viewport
-    if (!vp || !g) {
-      return
-    }
-    fitIsometricOrbitToContentGroup(vp, g, props.projectionMode)
+    if (!vp || !g) return
+    // 仅在首次加载时对焦相机；切帧时不重置视角
+    if (!prev) fitIsometricOrbitToContentGroup(vp, g, props.projectionMode)
   },
   { flush: 'post' },
 )
