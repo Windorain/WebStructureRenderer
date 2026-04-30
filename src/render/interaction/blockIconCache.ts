@@ -26,29 +26,24 @@ export interface BlockIconCacheOptions {
   /** 背景色（与侧栏协调）；alpha 0 可透 */
   clearColor?: number
   clearAlpha?: number
-  /** World 当前帧材质键前缀，如 `"0:"` */
-  materialKeyPrefix?: string
 }
 
 /** 变更 ortho/size 等布局时递增，供 `setRevisionKey` 拼接以重烘 */
 export const BLOCK_ICON_LAYOUT_REVISION = '1'
 
-type ResolvedIconOpts = Required<Omit<BlockIconCacheOptions, 'materialKeyPrefix'>> & {
-  materialKeyPrefix?: string
-}
+type ResolvedIconOpts = Required<BlockIconCacheOptions>
 
 const defaultOpts: ResolvedIconOpts = {
   sizePx: 64,
   orthoHalf: 1.22,
   clearColor: 0x000000,
   clearAlpha: 0,
-  materialKeyPrefix: undefined,
 }
 
 /** 供 `setRevisionKey` 拼接：烘焙参数变化时需重烘 */
 export function blockIconBakeLayoutKey(options?: BlockIconCacheOptions): string {
-  const o = { ...defaultOpts, ...options } as ResolvedIconOpts
-  return `${o.sizePx}:${o.orthoHalf}:${o.clearColor}:${o.clearAlpha}:${o.materialKeyPrefix ?? ''}`
+  const o = { ...defaultOpts, ...options }
+  return `${o.sizePx}:${o.orthoHalf}:${o.clearColor}:${o.clearAlpha}`
 }
 
 /**
@@ -203,7 +198,6 @@ export class BlockIconCache {
         paletteEntry,
         this.structure!.materialPalette,
         this.library,
-        this.opts.materialKeyPrefix,
       )
       group = built.group
       disposeMesh = built.dispose

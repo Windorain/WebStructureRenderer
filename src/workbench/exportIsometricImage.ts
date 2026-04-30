@@ -110,10 +110,9 @@ export async function bakeIsometricStructurePngDataUrl(
   })
 
   try {
-    const { definition, materialKeyPrefix } = resolveRenderBundle(renderBundle)
+    const { definition } = resolveRenderBundle(renderBundle)
     const built = await buildBlockMesh(definition, materialLibrary, {
       layerPreview: 'all',
-      materialKeyPrefix,
     })
 
     renderer.setSize(size, size)

@@ -58,7 +58,6 @@ export async function buildSingleBlockPreviewFromBakedPalette(
   entry: BlockPaletteEntry,
   materialPalette: MaterialPaletteEntry[],
   library: MaterialLibraryApi,
-  materialKeyPrefix?: string,
 ): Promise<SingleBlockBakeResult> {
   const blockPalette: BlockPaletteEntry[] = [
     AIR_ICON_PALETTE,
@@ -74,7 +73,6 @@ export async function buildSingleBlockPreviewFromBakedPalette(
   }
   const built = await buildBlockMesh(miniDef, library, {
     layerPreview: 'all',
-    materialKeyPrefix,
   })
   const { root, meshParent } = createMcItemSlotViewRoot()
   while (built.group.children.length > 0) {

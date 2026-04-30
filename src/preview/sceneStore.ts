@@ -109,7 +109,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
   const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
-  const materialKeyPrefixRef = ref<string | undefined>(undefined)
   const tooltipPalette = shallowRef<string[]>([])
   const sceneRef = shallowRef<THREE.Scene | null>(null)
   const contentGroupRef = shallowRef<THREE.Group | null>(null)
@@ -230,7 +229,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       return
     }
 
-    const materialKeyPrefix = materialKeyPrefixRef.value
     const layerPreview = layerPreviewMode.value
     const doc = config.renderBundle.document
     const isW = isWorldDocument(doc)
@@ -255,7 +253,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
         }
         const result = await buildBlockMesh(def, lib, {
           layerPreview,
-          materialKeyPrefix,
         })
         if (lib.isDisposed() || materialLibrary.value !== lib) {
           result.dispose()
@@ -270,7 +267,7 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
         applyBuildStatusToBar(def, result.stats, result.group)
         return
       }
-      const result = await buildBlockMesh(def, lib, { layerPreview, materialKeyPrefix })
+      const result = await buildBlockMesh(def, lib, { layerPreview })
       if (lib.isDisposed() || materialLibrary.value !== lib) {
         result.dispose()
         return
@@ -383,7 +380,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       worldFrameIndex.value = idx
       const resolved: RenderBundleResolveResult = resolveRenderBundle(config.renderBundle, idx)
       structureDefinition.value = resolved.definition
-      materialKeyPrefixRef.value = resolved.materialKeyPrefix
       tooltipPalette.value = resolved.tooltipPalette
       const lib = config.materialLibrary
       /** 每帧新建 BlockIconCache 前必须释放旧实例：其内部懒建 WebGLRenderer 烘焙，会占满浏览器 WebGL 上下文上限。 */
@@ -392,17 +388,11 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
       }
       const iconCache = new BlockIconCache(
         lib,
-        {
-          ...config.blockIconCacheOptions,
-          materialKeyPrefix: resolved.materialKeyPrefix,
-        },
+        config.blockIconCacheOptions,
         resolved.definition,
       )
       iconCache.setRevisionKey(
-        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey({
-          ...config.blockIconCacheOptions,
-          materialKeyPrefix: resolved.materialKeyPrefix,
-        })}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       await presentContentMesh()
@@ -428,21 +418,14 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
         worldFrameIndex.value = 0
       }
       structureDefinition.value = resolved.definition
-      materialKeyPrefixRef.value = resolved.materialKeyPrefix
       tooltipPalette.value = resolved.tooltipPalette
       materialLibrary.value = config.materialLibrary
       if (blockIconCache.value) {
         blockIconCache.value.dispose()
       }
-      const iconCache = new BlockIconCache(config.materialLibrary, {
-        ...config.blockIconCacheOptions,
-        materialKeyPrefix: resolved.materialKeyPrefix,
-      }, resolved.definition)
+      const iconCache = new BlockIconCache(config.materialLibrary, config.blockIconCacheOptions, resolved.definition)
       iconCache.setRevisionKey(
-        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey({
-          ...config.blockIconCacheOptions,
-          materialKeyPrefix: resolved.materialKeyPrefix,
-        })}`,
+        `${resolved.definition.id}:${summarizeBlocksForCache(resolved.definition)}:${MC_ITEM_SLOT_BAKE_REVISION}:${BLOCK_ICON_LAYOUT_REVISION}:${blockIconBakeLayoutKey(config.blockIconCacheOptions)}`,
       )
       blockIconCache.value = iconCache
       loadStatus.value = 'ok'
@@ -483,7 +466,6 @@ export function createPreviewSceneStore(config: PreviewConfig): PreviewSceneStor
     materialLibrary.value?.dispose()
     materialLibrary.value = null
     structureDefinition.value = null
-    materialKeyPrefixRef.value = undefined
     tooltipPalette.value = []
     worldFrameIndex.value = 0
     sceneRef.value = null

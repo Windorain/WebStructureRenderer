@@ -3,7 +3,6 @@
  */
 
 import type {
-  MaterialEntry,
   MaterialRegistryData,
   RenderBundle,
   StructureData,
@@ -11,7 +10,7 @@ import type {
   StructureDefinition,
   World,
 } from '../schema/types'
-import { indexedRegistryFromMaterialPalette, registryEntryFromPaletteSlot } from './materialPaletteBridge'
+import { indexedRegistryFromMaterialPalette } from './materialPaletteBridge'
 import { toStructureDefinition } from './structureDefinition'
 import { embeddedStructure, frameAt, getDefaultFrameIndex } from './worldPlayback'
 
@@ -27,17 +26,9 @@ export function isBakedStructureData(x: StructureData | undefined | null): x is 
 export function buildMaterialRegistryFromSceneDocument(document: unknown): MaterialRegistryData {
   if (!document || typeof document !== 'object') return { materials: {} }
   if (isWorldDocument(document)) {
-    const materials: Record<string, MaterialEntry> = {}
-    for (let fi = 0; fi < document.frames.length; fi++) {
-      const st = embeddedStructure(document.frames[fi])
-      if (!isBakedStructureData(st)) continue
-      const pal = st.materialPalette
-      if (!pal?.length) continue
-      for (let mi = 0; mi < pal.length; mi++) {
-        materials[`${fi}:${mi}`] = registryEntryFromPaletteSlot(pal[mi])
-      }
-    }
-    return { materials }
+    const pal = document.materialPalette
+    if (!pal?.length) return { materials: {} }
+    return indexedRegistryFromMaterialPalette(pal)
   }
   const d = document as StructureData
   if (isBakedStructureData(d) && Array.isArray(d.materialPalette) && d.materialPalette.length > 0) {
@@ -120,15 +111,9 @@ export function validatePackedSceneDocument(document: unknown): void {
     )
   }
   if (isWorldDocument(document)) {
-    for (let fi = 0; fi < document.frames.length; fi++) {
-      const st = embeddedStructure(document.frames[fi])
-      if (isBakedStructureData(st) && st.materialPalette?.length) {
-        validateMaterialPaletteEntries(
-          blobs,
-          st.materialPalette,
-          `World.frames[${fi}].materialPalette`,
-        )
-      }
+    const pal = document.materialPalette
+    if (pal?.length) {
+      validateMaterialPaletteEntries(blobs, pal, 'materialPalette')
     }
     return
   }
@@ -146,8 +131,6 @@ export function validateRenderBundle(b: RenderBundle): void {
 
 export interface RenderBundleResolveResult {
   definition: StructureDefinition
-  /** World 时为 `frameIndex:`，与 buildMaterialRegistryFromSceneDocument 的 materialId 前缀一致；单结构为 undefined */
-  materialKeyPrefix: string | undefined
   /** `World.tooltipPalette` 或单文件 `StructureDataBaked.tooltipPalette`；缺省为 `[]` */
   tooltipPalette: string[]
   /** World 且 `frames` 非空时，为当前用于解析的 `frames` 下标 */
@@ -170,18 +153,22 @@ export function tooltipPaletteFromSceneDocument(document: unknown, definition: S
 
 export function resolveRenderBundle(bundle: RenderBundle, frameIndex?: number): RenderBundleResolveResult {
   const doc = bundle?.document
-  let materialKeyPrefix: string | undefined
   let worldFrameIndex: number | undefined
   if (isWorldDocument(doc) && doc.frames.length > 0) {
-    const idx = frameIndex !== undefined ? Math.floor(frameIndex) : getDefaultFrameIndex(doc)
-    materialKeyPrefix = `${idx}:`
-    worldFrameIndex = idx
-  } else {
-    materialKeyPrefix = undefined
+    worldFrameIndex = frameIndex !== undefined ? Math.floor(frameIndex) : getDefaultFrameIndex(doc)
   }
   const definition = loadStructureOrWorld(doc, frameIndex)
+  // World 多帧：将根级 palette 注入 definition（帧内 structure 不再携带）
+  if (isWorldDocument(doc)) {
+    if (doc.materialPalette) {
+      definition.materialPalette = doc.materialPalette
+    }
+    if (doc.blockPalette) {
+      definition.blockPalette = doc.blockPalette
+    }
+  }
   const tooltipPalette = tooltipPaletteFromSceneDocument(doc, definition)
-  return { definition, materialKeyPrefix, tooltipPalette, worldFrameIndex }
+  return { definition, tooltipPalette, worldFrameIndex }
 }
 
 export type { MaterialRegistryData, RenderBundle } from '../schema/types'

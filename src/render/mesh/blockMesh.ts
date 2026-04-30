@@ -22,10 +22,7 @@ export type { BlockMeshBuildStats, UndefinedBlockDetail } from './structureGeome
 /** 顶点色批次：`MeshStandardMaterial.color` 保持白，染色仅来自 `geometry.attributes.color` */
 const BATCH_VERTEX_COLOR_TINT = new THREE.Color(0xffffff)
 
-export interface BuildBlockMeshOptions extends StructureGeometryGatherOptions {
-  /** World 当前帧前缀，如 `"2:"`，与 buildMaterialRegistryFromSceneDocument 的 materialId 一致 */
-  materialKeyPrefix?: string
-}
+export interface BuildBlockMeshOptions extends StructureGeometryGatherOptions {}
 
 /** prepare 后应有 blend；`??` 仅防御未走 hydrate 的调用路径 */
 function materialBlendModeFromPaletteEntry(entry: MaterialPaletteEntry): MaterialBlendMode {
@@ -80,14 +77,12 @@ export async function buildBlockMesh(
   library: MaterialLibraryApi,
   options?: BuildBlockMeshOptions,
 ): Promise<BlockMeshResult> {
-  const matPrefix = options?.materialKeyPrefix
   const { workUnits, stats } = gatherQuadWorkUnits(def, options)
 
   const batches = new Map<string, { descriptor: BatchDescriptor; units: QuadWorkUnit[] }>()
   for (const w of workUnits) {
     const descriptor: BatchDescriptor = {
-      materialId:
-        matPrefix !== undefined ? `${matPrefix}${w.materialIndex}` : String(w.materialIndex),
+      materialId: String(w.materialIndex),
       blend: materialBlendModeFromPaletteEntry(w.matPalette),
       tint: BATCH_VERTEX_COLOR_TINT,
       useVertexColor: true,

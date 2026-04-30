@@ -356,10 +356,14 @@ export interface World {
   description?: string | null
   modSource?: string
   globalConfig?: Record<string, unknown>
-  /** 各帧内嵌 structure 的 materialPalette 共用此池 */
+  /** 根级纹理池（Base64 PNG），所有帧共享 */
   textureBlobs?: string[]
-  /** 各帧内 `cellTooltipGrid` 中索引用到的 ToolTip 文案；与 `materialPalette` 独立 */
+  /** 根级 ToolTip 文案池，所有帧共享 */
   tooltipPalette?: string[]
+  /** 根级材质调色盘，所有帧共享；BakedQuad.materialIndex 直接指向此数组 */
+  materialPalette?: MaterialPaletteEntry[]
+  /** 根级方块调色盘，所有帧共享；cellGrid 的值直接指向此数组 */
+  blockPalette?: BlockPaletteEntry[]
   frames: Frame[]
   playback?: { loop?: boolean; defaultFrameIndex?: number }
 }

@@ -8,7 +8,6 @@ import * as THREE from 'three'
 import { inferMaterialBlendModeFromTexture } from '../materials/inferMaterialBlendModeFromTexture'
 import type { MaterialPaletteEntry, StructureData } from '../schema/types'
 import { isBakedStructureData, isWorldDocument } from './bundleResolve'
-import { embeddedStructure } from './worldPlayback'
 
 export interface PaletteTextureDataUrlItem {
   materialId: string
@@ -32,23 +31,19 @@ export function listPaletteTextureDataUrls(document: unknown): PaletteTextureDat
   if (!Array.isArray(blobs)) return []
 
   if (isWorldDocument(document)) {
+    const pal = document.materialPalette
+    if (!pal?.length) return []
     const items: PaletteTextureDataUrlItem[] = []
-    for (let fi = 0; fi < document.frames.length; fi++) {
-      const st = embeddedStructure(document.frames[fi])
-      if (!isBakedStructureData(st)) continue
-      const pal = st.materialPalette
-      if (!pal?.length) continue
-      for (let mi = 0; mi < pal.length; mi++) {
-        const entry = pal[mi]
-        const idx = entry.textureBlobIndex
-        if (typeof idx !== 'number' || !Number.isFinite(idx)) continue
-        const b = blobs[Math.floor(idx)]
-        if (typeof b !== 'string') continue
-        items.push({
-          materialId: `${fi}:${mi}`,
-          dataUrl: base64PngToDataUrl(b),
-        })
-      }
+    for (let i = 0; i < pal.length; i++) {
+      const entry = pal[i]
+      const idx = entry.textureBlobIndex
+      if (typeof idx !== 'number' || !Number.isFinite(idx)) continue
+      const b = blobs[Math.floor(idx)]
+      if (typeof b !== 'string') continue
+      items.push({
+        materialId: String(i),
+        dataUrl: base64PngToDataUrl(b),
+      })
     }
     return items
   }
@@ -76,14 +71,10 @@ function forEachPaletteSlot(
 ): void {
   if (!document || typeof document !== 'object') return
   if (isWorldDocument(document)) {
-    for (let fi = 0; fi < document.frames.length; fi++) {
-      const st = embeddedStructure(document.frames[fi])
-      if (!isBakedStructureData(st)) continue
-      const pal = st.materialPalette
-      if (!pal?.length) continue
-      for (let mi = 0; mi < pal.length; mi++) {
-        fn(pal[mi], `${fi}:${mi}`)
-      }
+    const pal = document.materialPalette
+    if (!pal?.length) return
+    for (let i = 0; i < pal.length; i++) {
+      fn(pal[i], String(i))
     }
     return
   }
