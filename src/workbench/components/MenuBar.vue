@@ -18,6 +18,7 @@ defineProps<{ editMode?: boolean }>()
 const emit = defineEmits<{
   (e: 'open-settings'): void
   (e: 'reset-layout'): void
+  (e: 'open-help'): void
 }>()
 
 const openMenu = ref<string | null>(null)
@@ -57,6 +58,7 @@ function onMenuAction(action: string): void {
   switch (action) {
     case 'save-file': void scene.saveToFile().catch(() => {}); break
     case 'reset-layout': emit('reset-layout'); break
+    case 'open-help': emit('open-help'); break
   }
 }
 </script>
@@ -89,7 +91,12 @@ function onMenuAction(action: string): void {
           <button class="mb-dd-item" @click="onMenuAction('reset-layout')">{{ t('resetLayout') }}</button>
         </div>
       </div>
-      <span class="mb-label mb-disabled">{{ t('help') }}</span>
+      <div class="mb-item" @mouseenter="toggleMenu('help')">
+        <span class="mb-label">{{ t('help') }}</span>
+        <div v-if="openMenu === 'help'" class="mb-dropdown">
+          <button class="mb-dd-item" @click="onMenuAction('open-help')">{{ t('userGuide') }}</button>
+        </div>
+      </div>
     </div>
     <div class="mb-right">
       <button class="mb-theme-btn" :title="theme === 'dark' ? '切换到亮色' : '切换到暗色'" @click="toggleTheme">

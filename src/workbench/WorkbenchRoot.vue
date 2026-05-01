@@ -10,6 +10,7 @@ import PropertiesPanel from '@/workbench/components/PropertiesPanel.vue'
 import StatusBar from '@/workbench/components/StatusBar.vue'
 import ExportWorkspace from '@/workbench/components/ExportWorkspace.vue'
 import WikiViewerWorkspace from '@/workbench/components/WikiViewerWorkspace.vue'
+import HelpWorkspace from '@/workbench/components/HelpWorkspace.vue'
 import { useNeiTheme } from '@/workbench/composables/useNeiTheme'
 import { provideSceneContext } from '@/workbench/sceneContext'
 import { provideConnectionContext } from '@/workbench/connectionContext'
@@ -18,11 +19,12 @@ const scene = provideSceneContext()
 const connection = provideConnectionContext(scene)
 useNeiTheme()
 
-const workspace = ref<'preview' | 'wiki' | 'export'>('preview')
+const workspace = ref<'preview' | 'wiki' | 'export' | 'help'>('preview')
 const settingsOpen = ref(false)
 provide('workbenchSettingsOpen', settingsOpen)
 
 function openSettings(): void { settingsOpen.value = true }
+function openHelp(): void { workspace.value = 'help' }
 function resetLayout(): void {
   try { localStorage.removeItem('wsr-wb-left-w'); localStorage.removeItem('wsr-wb-right-w') } catch { /* */ }
   location.reload()
@@ -49,7 +51,7 @@ onMounted(async () => {
   <!-- Preview Workspace: 3-column Blender layout -->
   <WorkbenchShell v-show="workspace === 'preview'">
     <template #menubar>
-      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" @open-help="openHelp" />
     </template>
     <template #workspace-tabs>
       <WorkspaceTabs :model-value="workspace" @update:model-value="workspace = $event" />
@@ -69,7 +71,7 @@ onMounted(async () => {
   <!-- Wiki Viewer Workspace -->
   <div v-show="workspace === 'wiki'" class="wb-standalone">
     <header class="wb-standalone-menubar">
-      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" @open-help="openHelp" />
     </header>
     <header class="wb-standalone-top">
       <div class="wb-standalone-tabs">
@@ -84,7 +86,7 @@ onMounted(async () => {
   <!-- Export Workspace -->
   <div v-show="workspace === 'export'" class="wb-standalone">
     <header class="wb-standalone-menubar">
-      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" />
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" @open-help="openHelp" />
     </header>
     <header class="wb-standalone-top">
       <div class="wb-standalone-tabs">
@@ -93,6 +95,21 @@ onMounted(async () => {
     </header>
     <main class="wb-standalone-body">
       <ExportWorkspace />
+    </main>
+  </div>
+
+  <!-- Help Workspace -->
+  <div v-show="workspace === 'help'" class="wb-standalone">
+    <header class="wb-standalone-menubar">
+      <MenuBar @open-settings="openSettings" @reset-layout="resetLayout" @open-help="openHelp" />
+    </header>
+    <header class="wb-standalone-top">
+      <div class="wb-standalone-tabs">
+        <WorkspaceTabs :model-value="workspace" @update:model-value="workspace = $event" />
+      </div>
+    </header>
+    <main class="wb-standalone-body">
+      <HelpWorkspace />
     </main>
   </div>
 
