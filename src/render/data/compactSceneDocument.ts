@@ -25,7 +25,7 @@ async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(buf)
 }
 
-/** `canonicalizeCompactInPlace` 会把根上 `documentFormat` 折入 `meta`，此时仍须识别为 Envelope 信封。 */
+/** `canonicalizeEnvelopeInPlace` 会把根上 `documentFormat` 折入 `meta`，此时仍须识别为 Envelope 信封。 */
 function isEnvelopeStructural(doc: Record<string, unknown>): boolean {
   return (
     doc.payloadEncoding === COMPACT_PAYLOAD_ENCODING &&

@@ -20,11 +20,11 @@ const feedback = ref('')
 
 function msg(s: string): void { feedback.value = s }
 
-async function downloadRaw(): Promise<void> {
+async function downloadPlain(): Promise<void> {
   if (!doc.value) return
-  try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-raw`, raw, true); msg('已下载 Raw JSON') } catch (e) { msg(formatUnknownError(e)) }
+  try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-plain`, raw, true); msg('已下载 Plain JSON') } catch (e) { msg(formatUnknownError(e)) }
 }
-async function downloadCompact(): Promise<void> {
+async function downloadEnvelope(): Promise<void> {
   if (!doc.value) return
   try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-envelope`, buildEnvelopePackage(raw), true); msg('已下载 Envelope JSON') } catch (e) { msg(formatUnknownError(e)) }
 }
@@ -71,8 +71,8 @@ async function downloadIso(): Promise<void> {
     <div class="ew-grid">
       <section class="ew-card">
         <h3>{{ t("json") }}</h3>
-        <p class="ew-desc">{{ t("rawDesc") }}</p>
-        <div class="ew-row"><button class="ew-btn" @click="void downloadRaw()">{{ t("downloadRaw") }}</button><button class="ew-btn" @click="void downloadCompact()">{{ t("downloadCompact") }}</button><button class="ew-btn" @click="void copyRawJson()">{{ t("copyToClipboard") }}</button></div>
+        <p class="ew-desc">{{ t("plainDesc") }}</p>
+        <div class="ew-row"><button class="ew-btn" @click="void downloadPlain()">{{ t("downloadPlain") }}</button><button class="ew-btn" @click="void downloadEnvelope()">{{ t("downloadEnvelope") }}</button><button class="ew-btn" @click="void copyRawJson()">{{ t("copyToClipboard") }}</button></div>
       </section>
 
       <section class="ew-card">

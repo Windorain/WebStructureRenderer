@@ -91,7 +91,7 @@ export type DocumentFormat = 'Plain' | 'Envelope'
 export const COMPACT_PAYLOAD_ENCODING = 'gzip+base64' as const
 
 /**
- * Compact 信封：`meta` 为唯一元数据真源；`payload` 解压后为不含 id/label 等元数据键的 Raw 根 JSON（与 meta 合并后得到完整 Raw）。
+ * Envelope：`meta` 为唯一元数据真源；`payload` 解压后为不含 id/label 等元数据键的 Plain 根 JSON（与 meta 合并后得到完整 Plain）。
  */
 export interface EnvelopeDocument {
   documentFormat: 'Envelope'

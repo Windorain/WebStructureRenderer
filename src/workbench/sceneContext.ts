@@ -61,7 +61,7 @@ export interface SceneContext {
   // --- 副作用方法 ---
   /** @side-effect 以 scene 为源重建 PreviewConfig，bump previewEpoch */
   syncPreview(): Promise<void>
-  /** @side-effect 加载任意场景数据（Compact 自动解压），bump sceneLoadEpoch */
+  /** @side-effect 加载任意场景数据（Envelope 自动解压），bump sceneLoadEpoch */
   loadSceneDocument(doc: unknown, opts?: { mode?: WorkbenchWorkspaceMode; fileName?: string }): Promise<void>
   /** @side-effect 从 File 对象读取 JSON 并加载场景 */
   loadSceneFromFile(file: File, opts?: { saveHandle?: FileSystemFileHandle | null }): Promise<void>

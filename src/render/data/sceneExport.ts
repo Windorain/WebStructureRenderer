@@ -26,7 +26,7 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(bin)
 }
 
-/** 合并表单字段到 Raw 文档根级。纯函数，不修改入参。 */
+/** 合并表单字段到 Plain 文档根级。纯函数，不修改入参。 */
 export function mergeRootStringFields(
   document: unknown,
   fields: Record<RootMetaFormKey, string>,
@@ -46,7 +46,7 @@ export function mergeRootStringFields(
   return doc
 }
 
-/** 元数据 patch：浅合并到 Raw 文档根级。纯函数，不修改入参。 */
+/** 元数据 patch：浅合并到 Plain 文档根级。纯函数，不修改入参。 */
 export function patchSceneMetadataRoot(
   document: unknown,
   patch: Record<string, unknown>,
