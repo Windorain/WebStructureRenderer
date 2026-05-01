@@ -195,6 +195,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
           :definition="structureDefinition" :material-library="materialLibrary"
           :projection-mode="projectionMode" :content-group="contentGroupRef"
           :layer-preview-mode="layerPreviewMode" :scene-background="mergedConfig.sceneBackground"
+          :show-axes-gizmo="f.showAxesGizmo"
           @ready="onViewportReady" @update:projection-mode="onProjectionUpdate"
           @hover-block="onViewportHover"
         />

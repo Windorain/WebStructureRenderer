@@ -33,11 +33,14 @@ const props = withDefaults(
     editMode?: boolean
     /** 选中的体素坐标，用于渲染高亮线框 */
     selectedVoxel?: { column: number; row: number; zSlice: number } | null
+    /** 显示右上角世界坐标轴 Gizmo */
+    showAxesGizmo?: boolean
   }>(),
   {
     sceneBackground: 0x111827,
     editMode: false,
     selectedVoxel: null,
+    showAxesGizmo: true,
   },
 )
 
@@ -259,6 +262,13 @@ watch(
 )
 
 watch(
+  () => props.showAxesGizmo,
+  (v) => {
+    if (viewport) viewport.showAxesGizmo = v
+  },
+)
+
+watch(
   [() => props.contentGroup, () => props.layerPreviewMode],
   () => {
     if (lastPointer) runPick()
@@ -285,6 +295,7 @@ onMounted(() => {
     height: el.clientHeight,
   })
   viewport = vp
+  vp.showAxesGizmo = props.showAxesGizmo
   canvasEl = vp.renderer.domElement
   canvasEl.addEventListener('pointermove', onPointerMove)
   canvasEl.addEventListener('pointerleave', onPointerLeave)

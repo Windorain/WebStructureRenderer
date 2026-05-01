@@ -14,6 +14,7 @@ export interface PreviewFeatures {
   frameControls: boolean
   titleBar: boolean
   debugStatusBar: boolean
+  showAxesGizmo: boolean
 }
 
 export const ALL_FEATURES_OFF: PreviewFeatures = {
@@ -22,6 +23,7 @@ export const ALL_FEATURES_OFF: PreviewFeatures = {
   frameControls: false,
   titleBar: false,
   debugStatusBar: false,
+  showAxesGizmo: false,
 }
 
 /**
@@ -52,6 +54,7 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
     frameControls: true,
     titleBar: true,
     debugStatusBar: false,
+    showAxesGizmo: true,
   },
   blockIconCacheOptions: {
     sizePx: 128,

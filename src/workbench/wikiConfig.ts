@@ -7,6 +7,7 @@ export const wikiConfig = reactive({
     frameControls: true,
     layerBar: true,
     debugStatusBar: true,
+    showAxesGizmo: true,
   },
   viewWidth: 800,
   viewHeight: 600,
