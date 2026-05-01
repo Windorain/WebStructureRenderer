@@ -68,6 +68,24 @@ export class BlockIconCache {
 
   private disposed = false
 
+  private loadFromBase64PNG(b64: string): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const s = this.opts.sizePx
+        const canvas = document.createElement('canvas')
+        canvas.width = s
+        canvas.height = s
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { reject(new Error('2D context unavailable')); return }
+        ctx.drawImage(img, 0, 0, s, s)
+        resolve(canvas)
+      }
+      img.onerror = () => reject(new Error('thumbnailPNG 解码失败'))
+      img.src = `data:image/png;base64,${b64}`
+    })
+  }
+
   /** 按 blockId 通知，避免一图就绪时侧栏所有行一起 flush（O(行数×完成次数)） */
   private readonly listenersById = new Map<string, Set<() => void>>()
 
@@ -188,6 +206,18 @@ export class BlockIconCache {
       })
       this.notifyBlock(blockId)
       return
+    }
+
+    // 优先使用 Java 端 renderBlockAsItem 预渲染的缩略图
+    if (paletteEntry.thumbnailPNG) {
+      try {
+        const canvas = await this.loadFromBase64PNG(paletteEntry.thumbnailPNG)
+        this.map.set(blockId, { status: 'ready', canvas })
+        this.notifyBlock(blockId)
+        return
+      } catch {
+        // 回退到 WebGL 烘焙
+      }
     }
 
     let group: THREE.Group | null = null
