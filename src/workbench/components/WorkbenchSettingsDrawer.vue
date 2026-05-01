@@ -1,27 +1,31 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, inject, onMounted, onUnmounted, type Ref } from 'vue'
 
 import ExportsListPanel from '@/workbench/components/ExportsListPanel.vue'
 import LocalBundlePanel from '@/workbench/components/LocalBundlePanel.vue'
 import LocalFilePanel from '@/workbench/components/LocalFilePanel.vue'
 import SdeConnectionPanel from '@/workbench/components/SdeConnectionPanel.vue'
 import { listDevSceneIds } from '@/dev/devScenes'
-import type { WorkbenchWorkspaceMode } from '@/workbench/workbenchContext'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import type { WorkbenchWorkspaceMode } from '@/workbench/sceneContext'
+import { useSceneContext } from '@/workbench/sceneContext'
+import { useConnectionContext } from '@/workbench/connectionContext'
 
-const ctx = useWorkbenchContext()
+const scene = useSceneContext()
+const conn = useConnectionContext()
+const settingsOpen = inject<Ref<boolean>>('workbenchSettingsOpen')!
 
-const open = computed(() => ctx.settingsOpen.value)
-const mode = computed(() => ctx.workspaceMode.value)
+const open = computed(() => settingsOpen.value)
+const mode = computed(() => scene.workspaceMode.value)
 const builtinSceneCount = computed(() => listDevSceneIds().length)
 const showBuiltin = computed(() => builtinSceneCount.value > 0)
 
 function close(): void {
-  ctx.setSettingsOpen(false)
+  settingsOpen.value = false
 }
 
 function pickMode(m: WorkbenchWorkspaceMode): void {
-  ctx.setWorkspaceMode(m)
+  scene.setWorkspaceMode(m)
+  conn.resetConnection()
 }
 
 function onKeydown(e: KeyboardEvent): void {

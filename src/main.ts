@@ -38,9 +38,8 @@ export {
 export {
   patchSceneMetadataRoot,
   buildCompactEnvelope,
-  downloadJson,
-  copyTextToClipboard,
   type BuildCompactOptions,
-} from './workbench/sceneExportKit'
-export { previewConfigFromDocument, documentLooksPreviewable } from './workbench/previewFromDocument'
-export type { PreviewFromDocumentOptions } from './workbench/previewFromDocument'
+} from './render/data/sceneExport'
+export { downloadJson, copyTextToClipboard } from './util/browser'
+export { previewConfigFromDocument, documentLooksPreviewable } from './preview/previewFromDocument'
+export type { PreviewFromDocumentOptions } from './preview/previewFromDocument'

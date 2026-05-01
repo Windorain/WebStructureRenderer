@@ -19,24 +19,25 @@ import {
 import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { t } from '@/workbench/i18n'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
 }>()
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 
 defineEmits<{}>()
 
 const store = createPreviewSceneStore(props.mergedConfig)
 provide(PreviewSceneContextKey, store)
 
-watch(() => props.mergedConfig, (cfg) => {
+watch(() => props.mergedConfig, async (cfg) => {
   store.config.value = cfg
   store.clearAllMeshStorage()
   store.blockIconCache.value?.dispose()
   store.blockIconCache.value = null
+  try { await store.loadStructureAndResources() } catch (e) { console.error('[Workbench] loadStructureAndResources on config change', e) }
 })
 
 const { hover, setHover, clearHover } = usePreviewTooltip()

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { renderTooltipHtml } from './renderTooltipHtml'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 import { isWorldDocument, loadStructureOrWorld } from '@/render/data/bundleResolve'
 import type { BlockPaletteEntry } from '@/render/schema/types'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 const selectedBlock = computed(() => ctx.selectedBlock.value)
 
 const paletteEntry = computed<BlockPaletteEntry | null>(() => {

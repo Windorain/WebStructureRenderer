@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useConnectionContext } from '@/workbench/connectionContext'
+import { useStatusMessage } from '@/workbench/composables/useStatusMessage'
 
-const ctx = useWorkbenchContext()
+const conn = useConnectionContext()
+const { statusMessage } = useStatusMessage()
 
-const connectionOk = computed(() => ctx.connectionOk.value)
-const connectionMessageText = computed(() => ctx.connectionMessage.value)
-const showConnectionHint = computed(() => ctx.connectionOk.value !== null)
+const connectionOk = computed(() => conn.connected.value)
+const connectionMessageText = computed(() => statusMessage.value)
+const showConnectionHint = computed(() => conn.connected.value !== null)
 
 async function onConnect(): Promise<void> {
-  await ctx.testConnection()
-  if (ctx.connectionOk.value && ctx.apiBase.value) {
-    await ctx.refreshExportList()
-    await ctx.loadWorkspaceFromServer()
+  await conn.testConnection()
+  if (conn.connected.value && conn.apiBase.value) {
+    await conn.refreshExportList()
+    await conn.pullFromServer()
   }
 }
 </script>
@@ -24,11 +26,11 @@ async function onConnect(): Promise<void> {
     <p class="dash-card__desc">填写游戏内 <code class="dash-code">/sde web</code> 打印的地址与 Token，与 <code class="dash-code">structure_exports</code> 目录同步。</p>
     <label class="dash-field">
       <span class="dash-field__label">API 基址</span>
-      <input v-model="ctx.apiBase" class="dash-input" type="text" autocomplete="off" placeholder="http://127.0.0.1:37564" />
+      <input v-model="conn.apiBase" class="dash-input" type="text" autocomplete="off" placeholder="http://127.0.0.1:37564" />
     </label>
     <label class="dash-field">
       <span class="dash-field__label">Token</span>
-      <input v-model="ctx.token" class="dash-input" type="password" autocomplete="off" placeholder="Bearer" />
+      <input v-model="conn.token" class="dash-input" type="password" autocomplete="off" placeholder="Bearer" />
     </label>
     <div class="dash-row">
       <button type="button" class="dash-btn dash-btn--primary" @click="onConnect">连接并刷新</button>

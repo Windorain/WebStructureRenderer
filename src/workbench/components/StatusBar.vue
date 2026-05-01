@@ -3,14 +3,16 @@
  * 底栏状态条：模型信息 + 帧信息 + 渲染状态
  */
 import { inject } from 'vue'
-import { PreviewSceneContextKey, type PreviewSceneStore } from '@/preview/sceneStore'
+import { PreviewSceneContextKey } from '@/preview/sceneStore'
+import { useStatusMessage } from '@/workbench/composables/useStatusMessage'
 
-const store = inject<PreviewSceneStore | null>(PreviewSceneContextKey, null)
+const store = inject(PreviewSceneContextKey)
+const { statusMessage } = useStatusMessage()
 </script>
 
 <template>
   <div class="sb-root">
-    <span v-if="store?.statusMessage.value" class="sb-item">{{ store.statusMessage.value }}</span>
+    <span v-if="statusMessage" class="sb-item">{{ statusMessage }}</span>
     <span class="sb-spacer" />
     <span v-if="store?.hasWorldMultiFrame.value" class="sb-item">
       Frame {{ store.worldFrameIndex.value + 1 }} / {{ store.worldFrameCount.value }}

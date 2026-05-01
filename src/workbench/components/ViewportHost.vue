@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import WorkbenchViewport from './WorkbenchViewport.vue'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 import { ALL_FEATURES_OFF, type PreviewConfig } from '@/preview/previewConfig'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 
 const mergedConfig = computed<PreviewConfig | null>(() => {
   const c = ctx.previewConfig.value

@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
+import { useConnectionContext } from '@/workbench/connectionContext'
+import { useStatusMessage } from '@/workbench/composables/useStatusMessage'
 
-const ctx = useWorkbenchContext()
+const scene = useSceneContext()
+const conn = useConnectionContext()
+const { setStatusMessage } = useStatusMessage()
 
-const isSde = computed(() => ctx.workspaceMode.value === 'sde')
-const apiBaseStr = computed(() => ctx.apiBase.value)
-const exportFilesList = computed(() => ctx.exportFiles.value)
-const exportsLoading = computed(() => ctx.exportsLoading.value)
-const selectedName = computed(() => ctx.selectedExportName.value)
+const isSde = computed(() => scene.workspaceMode.value === 'sde')
+const apiBaseStr = computed(() => conn.apiBase.value)
+const exportFilesList = computed(() => conn.exports.value)
+const exportsLoading = computed(() => conn.exportsLoading.value)
+const selectedName = computed(() => conn.selectedExportName.value)
 
 async function onPick(name: string): Promise<void> {
   try {
-    await ctx.loadExportByName(name)
-    ctx.connectionMessage.value = `已加载 ${name}`
+    await conn.loadExport(name)
+    setStatusMessage(`已加载 ${name}`)
   } catch (e) {
-    ctx.connectionMessage.value = String(e instanceof Error ? e.message : e)
+    setStatusMessage(String(e instanceof Error ? e.message : e))
   }
 }
 </script>

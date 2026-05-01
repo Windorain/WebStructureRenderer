@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { readSceneMetaField } from '@/render/data/compactSceneDocument'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 import { t } from '@/workbench/i18n'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 
 const hasScene = computed(() => ctx.scene.value != null)
 

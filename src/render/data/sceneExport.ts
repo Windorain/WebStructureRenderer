@@ -1,6 +1,5 @@
 /**
- * 与 UI 解耦的导出/变换：ctx.scene 始终为 Raw 格式。
- * Compact 仅在 buildCompactEnvelope（下载 Compact）时构建。
+ * Compact 信封构建与元数据 patch（纯函数，不依赖浏览器 API）。
  */
 
 import pako from 'pako'
@@ -27,7 +26,7 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(bin)
 }
 
-/** 合并表单字段到 Raw 文档根级。 */
+/** 合并表单字段到 Raw 文档根级。纯函数，不修改入参。 */
 export function mergeRootStringFields(
   document: unknown,
   fields: Record<RootMetaFormKey, string>,
@@ -47,7 +46,7 @@ export function mergeRootStringFields(
   return doc
 }
 
-/** 元数据 patch：浅合并到 Raw 文档根级。 */
+/** 元数据 patch：浅合并到 Raw 文档根级。纯函数，不修改入参。 */
 export function patchSceneMetadataRoot(
   document: unknown,
   patch: Record<string, unknown>,
@@ -62,7 +61,7 @@ export interface BuildCompactOptions {
   metaKeys?: readonly string[]
 }
 
-/** 将 Raw 文档打包为 Compact 信封（仅用于导出"下载 Compact"）。 */
+/** 将 Raw 文档打包为 Compact 信封。纯函数。 */
 export function buildCompactEnvelope(
   document: unknown,
   options: BuildCompactOptions = {},
@@ -82,38 +81,4 @@ export function buildCompactEnvelope(
     meta,
     payload: b64,
   }
-}
-
-export function downloadJson(baseName: string, obj: unknown, pretty?: boolean): void {
-  const text = `${pretty ? JSON.stringify(obj, null, 2) : JSON.stringify(obj)}\n`
-  downloadBlob(`${baseName}.json`, new Blob([text], { type: 'application/json' }))
-}
-
-export function downloadBlob(fileName: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  a.style.display = 'none'
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => {
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, 100)
-}
-
-export async function copyTextToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-  const ta = document.createElement('textarea')
-  ta.value = text
-  ta.style.position = 'fixed'
-  ta.style.opacity = '0'
-  document.body.appendChild(ta)
-  ta.select()
-  document.execCommand('copy')
-  document.body.removeChild(ta)
 }

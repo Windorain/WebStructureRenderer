@@ -3,9 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 
 import { listDevSceneIds } from '@/dev/devScenes'
 import { DEFAULT_PREVIEW_SCENE_ID } from '@/preview/previewSession'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
+import { useStatusMessage } from '@/workbench/composables/useStatusMessage'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
+const { setStatusMessage } = useStatusMessage()
 
 const ids = computed(() => listDevSceneIds())
 const selectedId = ref(DEFAULT_PREVIEW_SCENE_ID)
@@ -23,8 +25,8 @@ async function load(): Promise<void> {
   busy.value = true
   lastErr.value = ''
   try {
-    await ctx.loadLocalScene(selectedId.value)
-    ctx.connectionMessage.value = `已加载示例 ${selectedId.value}`
+    await ctx.loadBuiltinScene(selectedId.value)
+    setStatusMessage(`已加载示例 ${selectedId.value}`)
   } catch (e) {
     lastErr.value = e instanceof Error ? e.message : String(e)
   } finally {

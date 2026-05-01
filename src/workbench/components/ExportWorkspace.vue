@@ -2,17 +2,20 @@
 import { computed, ref, watch } from 'vue'
 import { loadStructureOrWorld } from '@/render/data/bundleResolve'
 import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
-import { buildCompactEnvelope, copyTextToClipboard, downloadBlob, downloadJson } from '@/workbench/sceneExportKit'
+import { buildCompactEnvelope } from '@/render/data/sceneExport'
+import { copyTextToClipboard, downloadBlob, downloadJson } from '@/util/browser'
 import { buildStructureBundleZip } from '@/workbench/structureBundleExport'
 import { bakeIsometricStructurePngDataUrl, dataUrlToPngBlob } from '@/workbench/exportIsometricImage'
 import { formatUnknownError } from '@/util/formatUnknownError'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
+import { useConnectionContext } from '@/workbench/connectionContext'
 import { t } from '@/workbench/i18n'
 
-const ctx = useWorkbenchContext()
-const doc = computed(() => ctx.scene.value)
+const scene = useSceneContext()
+const conn = useConnectionContext()
+const doc = computed(() => scene.scene.value)
 const baseName = computed(() => doc.value ? sceneStableStringIdFromDocument(doc.value) : 'scene')
-const showSdeSave = computed(() => ctx.workspaceMode.value === 'sde' && ctx.apiBase.value.length > 0)
+const showSdeSave = computed(() => scene.workspaceMode.value === 'sde' && conn.apiBase.value.length > 0)
 const feedback = ref('')
 
 function msg(s: string): void { feedback.value = s }
@@ -92,7 +95,7 @@ async function downloadIso(): Promise<void> {
 
       <section v-if="showSdeSave" class="ew-card">
         <h3>{{ t("sdeSync") }}</h3>
-        <button class="ew-btn ew-btn--primary" @click="void ctx.saveWorkspaceFull().then(() => msg('已同步到 SDE')).catch(e => msg(String(e)))">{{ t("putToSde") }}</button>
+        <button class="ew-btn ew-btn--primary" @click="void conn.pushToServer().then(() => msg('已同步到 SDE')).catch(e => msg(String(e)))">{{ t("putToSde") }}</button>
       </section>
     </div>
 

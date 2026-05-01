@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { t } from '@/workbench/i18n'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 import { loadStructureOrWorld, isWorldDocument } from '@/render/data/bundleResolve'
 import { buildBlockStatsEntries } from '@/render/interaction/blockStats'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 
 const entries = computed(() => {
   const doc = ctx.scene.value

@@ -2,11 +2,11 @@
 import { computed } from 'vue'
 import EmbedViewer from '@/app/EmbedViewer.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 import { wikiConfig } from '@/workbench/wikiConfig'
 import type { PreviewConfig } from '@/preview/previewConfig'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 
 function parseHex6(s: string): number {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(s.trim())

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { renderTooltipHtml } from './renderTooltipHtml'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 import { isWorldDocument } from '@/render/data/bundleResolve'
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 const selectedBlock = computed(() => ctx.selectedBlock.value)
 const tooltipText = ref('')
 const saveFeedback = ref('')
@@ -81,7 +81,7 @@ async function saveTooltip(): Promise<void> {
   const { zSlice, row, column } = selectedBlock.value.voxel
   try {
     setPaletteAndGrid(doc, zSlice, row, column, tooltipText.value)
-    ;(ctx as any).dirty.value = true
+    ctx.markDirty()
     void ctx.syncPreview()
     saveFeedback.value = '已保存'
   } catch (e) {

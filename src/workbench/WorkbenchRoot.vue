@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, provide, ref } from 'vue'
 
 import WorkbenchShell from '@/workbench/layout/WorkbenchShell.vue'
 import WorkbenchSettingsDrawer from '@/workbench/components/WorkbenchSettingsDrawer.vue'
@@ -11,31 +11,35 @@ import StatusBar from '@/workbench/components/StatusBar.vue'
 import ExportWorkspace from '@/workbench/components/ExportWorkspace.vue'
 import WikiViewerWorkspace from '@/workbench/components/WikiViewerWorkspace.vue'
 import { useNeiTheme } from '@/workbench/composables/useNeiTheme'
-import { provideWorkbenchContext } from '@/workbench/workbenchContext'
+import { provideSceneContext } from '@/workbench/sceneContext'
+import { provideConnectionContext } from '@/workbench/connectionContext'
 
-const ctx = provideWorkbenchContext()
+const scene = provideSceneContext()
+const connection = provideConnectionContext(scene)
 useNeiTheme()
 
 const workspace = ref<'preview' | 'wiki' | 'export'>('preview')
+const settingsOpen = ref(false)
+provide('workbenchSettingsOpen', settingsOpen)
 
-function openSettings(): void { ctx.settingsOpen.value = true }
+function openSettings(): void { settingsOpen.value = true }
 function resetLayout(): void {
   try { localStorage.removeItem('wsr-wb-left-w'); localStorage.removeItem('wsr-wb-right-w') } catch { /* */ }
   location.reload()
 }
 
 onMounted(async () => {
-  if (ctx.apiBase.value) {
-    await ctx.testConnection()
-    if (ctx.connectionOk.value) {
-      await ctx.refreshExportList()
-      await ctx.loadWorkspaceFromServer()
+  if (connection.apiBase.value) {
+    await connection.testConnection()
+    if (connection.connected.value) {
+      await connection.refreshExportList()
+      await connection.pullFromServer()
     }
   } else if (import.meta.env.DEV) {
     const q = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
     const sceneId = q?.get('sceneId')
     if (sceneId) {
-      try { await ctx.loadLocalScene(sceneId) } catch { /* ignore */ }
+      try { await scene.loadBuiltinScene(sceneId) } catch { /* ignore */ }
     }
   }
 })

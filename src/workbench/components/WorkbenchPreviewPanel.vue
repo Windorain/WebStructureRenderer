@@ -2,13 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 
 import AppShell from '@/app/AppShell.vue'
-import { useWorkbenchContext } from '@/workbench/workbenchContext'
+import { useSceneContext } from '@/workbench/sceneContext'
 
 const PREVIEW_H_STORAGE = 'wmsr-workbench-preview-h'
 const PREVIEW_H_DEFAULT = 520
 const PREVIEW_H_MIN = 260
 
-const ctx = useWorkbenchContext()
+const ctx = useSceneContext()
 
 const scene = computed(() => ctx.scene.value)
 const previewBusy = computed(() => ctx.previewBusy.value)
