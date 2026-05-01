@@ -313,6 +313,8 @@ export interface BlockPaletteEntry {
   meta: number
   facing?: FaceName
   nbt?: JsonNbt
+  /** Base64-encoded PNG rendered via renderBlockAsItem */
+  thumbnailPNG?: string
   /** 完整不透明立方体时邻面可剔除；缺省/非 true 视为不遮挡（旧 JSON 兼容） */
   occludesAdjacentFaces?: boolean
   renderMode: BlockRenderMode
