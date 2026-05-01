@@ -8,7 +8,6 @@ import { loadPreviewSessionFromDocument } from '@/preview/previewSession'
 import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
 import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
-import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 export type { PreviewFeatures }
 
@@ -20,9 +19,9 @@ export interface EmbedData {
 export interface EmbedUiOptions {
   blockIconCacheOptions?: Partial<BlockIconCacheOptions>
   initialLayerWorldY?: number
-  initialProjectionMode?: ProjectionMode
   /** World 多帧时指定起始帧，缺省为文档默认帧 */
   initialWorldFrameIndex?: number
+  initialCamera?: import('@/preview/previewConfig').InitialCamera
   sceneBackground?: number
   loadingMessage?: string
   okMessage?: (modelId: string) => string
@@ -63,8 +62,8 @@ export async function resolveBootstrapToPreviewConfig(
       ...ui.blockIconCacheOptions,
     },
     initialLayerWorldY: ui.initialLayerWorldY ?? defaultEmbedUi.initialLayerWorldY,
-    initialProjectionMode: ui.initialProjectionMode ?? defaultEmbedUi.initialProjectionMode,
     initialWorldFrameIndex: ui.initialWorldFrameIndex,
+    initialCamera: ui.initialCamera,
     sceneBackground: ui.sceneBackground ?? defaultEmbedUi.sceneBackground,
     loadingMessage: ui.loadingMessage ?? defaultEmbedUi.loadingMessage,
     okMessage: ui.okMessage ?? defaultEmbedUi.okMessage,

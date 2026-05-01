@@ -5,7 +5,15 @@
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 import type { MaterialLibraryApi } from '@/render/materials/simpleMaterialLibrary'
 import type { RenderBundle } from '@/render/schema/types'
-import type { ProjectionMode } from '@/render/viewport/renderViewport'
+
+export interface InitialCamera {
+  yawDeg?: number
+  elevationDeg?: number
+  /** 相机到轨道中心的距离（世界单位）；缺省由内容包围盒自动推算 */
+  distance?: number
+  /** 正交相机 `OrthographicCamera.zoom`，与 OrbitControls 滚轮一致；缺省为 1 */
+  zoom?: number
+}
 
 /** 功能块开关 */
 export interface PreviewFeatures {
@@ -37,9 +45,10 @@ export interface PreviewConfig {
   features: PreviewFeatures
   blockIconCacheOptions: BlockIconCacheOptions
   initialLayerWorldY: number
-  initialProjectionMode: ProjectionMode
   /** World 文档时：首次加载要展示的 `frames` 下标；缺省按文档 `playback` 解析 */
   initialWorldFrameIndex?: number
+  /** 初始摄像头位置；缺省为等轴视角 (yaw=225°, elevation=35.26°) */
+  initialCamera?: InitialCamera
   sceneBackground: number
   loadingMessage: string
   okMessage: (modelId: string) => string
@@ -63,7 +72,6 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
     clearAlpha: 0,
   },
   initialLayerWorldY: -1,
-  initialProjectionMode: 'orthographic',
   sceneBackground: 0x5a5a5a,
   loadingMessage: '正在加载数据与构建网格…',
   okMessage: () => '',

@@ -8,7 +8,6 @@ import { getDevSceneDocument, listDevSceneIds } from '@/dev/devScenes'
 import { DEFAULT_PREVIEW_SCENE_ID, loadPreviewSessionFromDocument } from '@/preview/previewSession'
 import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
 import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
-import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 function parseBool(s: string | null): boolean | undefined {
   if (s === null || s === '') return undefined
@@ -44,11 +43,6 @@ function parseUrlPreviewParams(
   if (layer !== null && layer !== '') {
     const n = Number(layer)
     if (Number.isFinite(n)) out.initialLayerWorldY = n
-  }
-
-  const proj = params.get('projection')
-  if (proj === 'orthographic' || proj === 'perspective') {
-    out.initialProjectionMode = proj as ProjectionMode
   }
 
   const stats = parseBool(params.get('stats'))

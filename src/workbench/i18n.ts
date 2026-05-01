@@ -87,8 +87,6 @@ const dict: Record<string, Record<Lang, string>> = {
   'bgMustBeHex': { zh: '场景背景色须为 #RRGGBB', en: 'Background must be #RRGGBB' },
   'iconClearMustBeHex': { zh: '图标 clearColor 须为 #RRGGBB', en: 'Icon clearColor must be #RRGGBB' },
   'noPreviewConfig': { zh: '(尚无预览配置，请先同步预览)', en: '(No preview config; sync preview first)' },
-  'orthographic': { zh: '正交', en: 'Orthographic' },
-  'perspective': { zh: '透视', en: 'Perspective' },
 }
 
 /** 获取翻译文本 */

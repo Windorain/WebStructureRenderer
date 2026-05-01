@@ -34,7 +34,6 @@ import {
   type BlockMeshBuildStats,
 } from '@/render/mesh/blockMesh'
 import type { StructureDefinition, World } from '@/render/schema/types'
-import type { ProjectionMode } from '@/render/viewport/renderViewport'
 import { formatUnknownError } from '@/util/formatUnknownError'
 
 import type { PreviewConfig } from './previewConfig'
@@ -52,14 +51,12 @@ export interface PreviewSceneStore {
   statusMessage: Ref<string>
   layerWorldY: Ref<number>
   meshBusy: Ref<boolean>
-  projectionMode: Ref<ProjectionMode>
   structureDefinition: ShallowRef<StructureDefinition | null>
   materialLibrary: ShallowRef<MaterialLibraryApi | null>
   blockIconCache: ShallowRef<BlockIconCache | null>
   sizeRow: ComputedRef<number>
   layerPreviewMode: ComputedRef<LayerPreviewMode>
   blockStatsEntries: ComputedRef<BlockStatRow[]>
-  projectionLabel: ComputedRef<string>
   layerPreviewLabel: ComputedRef<string>
   tooltipPalette: ShallowRef<string[]>
   registerScene(scene: THREE.Scene): void
@@ -108,8 +105,6 @@ export function createPreviewSceneStore(initialConfig: PreviewConfig): PreviewSc
   const statusMessage = ref(config.value.loadingMessage)
   const layerWorldY = ref(config.value.initialLayerWorldY)
   const meshBusy = ref(false)
-  const projectionMode = ref<ProjectionMode>(config.value.initialProjectionMode)
-
   const structureDefinition = shallowRef<StructureDefinition | null>(null)
   const materialLibrary = shallowRef<MaterialLibraryApi | null>(null)
   const blockIconCache = shallowRef<BlockIconCache | null>(null)
@@ -147,10 +142,6 @@ export function createPreviewSceneStore(initialConfig: PreviewConfig): PreviewSc
     if (!def) return []
     return buildBlockStatsEntries(def, layerPreviewMode.value)
   })
-
-  const projectionLabel = computed(() =>
-    projectionMode.value === 'perspective' ? '透视投影' : '正交投影',
-  )
 
   const layerPreviewLabel = computed(() =>
     layerWorldY.value < 0 ? 'ALL' : `Y = ${layerWorldY.value}`,
@@ -510,14 +501,12 @@ export function createPreviewSceneStore(initialConfig: PreviewConfig): PreviewSc
     statusMessage,
     layerWorldY,
     meshBusy,
-    projectionMode,
     structureDefinition,
     materialLibrary,
     blockIconCache,
     sizeRow,
     layerPreviewMode,
     blockStatsEntries,
-    projectionLabel,
     layerPreviewLabel,
     tooltipPalette,
     registerScene,

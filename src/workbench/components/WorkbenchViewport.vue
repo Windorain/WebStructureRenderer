@@ -17,9 +17,8 @@ import {
   createPreviewSceneStore,
 } from '@/preview/sceneStore'
 import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
-import type { ProjectionMode } from '@/render/viewport/renderViewport'
-import { t } from '@/workbench/i18n'
 import { useSceneContext } from '@/workbench/sceneContext'
+import { t } from '@/workbench/i18n'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
@@ -42,7 +41,6 @@ const {
   loadStatus,
   structureDefinition,
   materialLibrary,
-  projectionMode,
   layerPreviewMode,
   contentGroupRef,
   tooltipPalette,
@@ -93,14 +91,12 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
       v-if="loadStatus === 'ok' && structureDefinition && materialLibrary"
       :definition="structureDefinition"
       :material-library="materialLibrary"
-      :projection-mode="projectionMode"
       :content-group="contentGroupRef"
       :layer-preview-mode="layerPreviewMode"
       :scene-background="mergedConfig.sceneBackground"
       :edit-mode="true"
       :selected-voxel="ctx.selectedBlock.value?.voxel ?? null"
       @ready="onViewportReady"
-      @update:projection-mode="(m: ProjectionMode) => (store.projectionMode.value = m)"
       @hover-block="onViewportHover"
       @select-block="onViewportSelect"
     />

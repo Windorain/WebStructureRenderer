@@ -11,8 +11,11 @@ export const wikiConfig = reactive({
   },
   viewWidth: 800,
   viewHeight: 600,
-  projectionMode: 'orthographic' as 'orthographic' | 'perspective',
   sceneBackgroundHex: '#5a5a5a',
   iconSizePx: 128,
   iconOrthoHalf: 0.85,
+  cameraYaw: 225,
+  cameraElevation: 35,
+  /** 与视口滚轮相同：正交相机 zoom，1 = 默认 */
+  cameraZoom: 1,
 })

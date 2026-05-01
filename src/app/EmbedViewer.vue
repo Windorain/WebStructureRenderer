@@ -4,7 +4,7 @@
  * 所有外围 UI（侧栏、分层条、播放器、标题、状态栏）按 `mergedConfig.features` 开关。
  * 工作台模式下关闭外围组件，由外围 ViewportHost 提供等价 UI。
  */
-import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import type { Scene } from 'three'
 
 import BlockStatsSidebar from '@/app/components/BlockStatsSidebar.vue'
@@ -20,7 +20,6 @@ import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/scene
 import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
 import { blockRegistryKeyForPalette } from '@/render/data/blockRegistryResolve'
 import { renderTooltipHtml } from '@/workbench/components/renderTooltipHtml'
-import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
   mergedConfig: PreviewConfig
@@ -28,6 +27,10 @@ const props = defineProps<{
 
 const store = createPreviewSceneStore(props.mergedConfig)
 provide(PreviewSceneContextKey, store)
+
+watch(() => props.mergedConfig, (cfg) => {
+  store.config.value = cfg
+})
 
 const { hover, setHover, clearHover } = usePreviewTooltip()
 
@@ -39,7 +42,6 @@ const {
   materialLibrary,
   blockIconCache,
   blockStatsEntries,
-  projectionMode,
   layerPreviewMode,
   contentGroupRef,
   tooltipPalette,
@@ -150,8 +152,6 @@ async function onViewportReady(scene: Scene): Promise<void> {
   try { await store.rebuildContentMesh() } catch (e) { console.error('[StructureRenderer] onViewportReady', e) }
 }
 
-function onProjectionUpdate(mode: ProjectionMode): void { store.projectionMode.value = mode }
-
 function onViewportHover(
   payload: { blockId: string; clientX: number; clientY: number; source: 'viewport'; voxel: { column: number; row: number; zSlice: number } } | null,
 ): void {
@@ -193,10 +193,10 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
         <StructureViewport
           v-if="loadStatus === 'ok' && structureDefinition && materialLibrary"
           :definition="structureDefinition" :material-library="materialLibrary"
-          :projection-mode="projectionMode" :content-group="contentGroupRef"
+          :content-group="contentGroupRef"
           :layer-preview-mode="layerPreviewMode" :scene-background="mergedConfig.sceneBackground"
           :show-axes-gizmo="f.showAxesGizmo"
-          @ready="onViewportReady" @update:projection-mode="onProjectionUpdate"
+          @ready="onViewportReady"
           @hover-block="onViewportHover"
         />
       </div>

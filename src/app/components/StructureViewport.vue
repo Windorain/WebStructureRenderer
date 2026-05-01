@@ -18,14 +18,15 @@ import { pickVoxelFromPointer } from '@/render/interaction/voxelPick'
 import type { StructureDefinition } from '@/render/schema/types'
 import {
   RenderViewport,
-  type ProjectionMode,
 } from '@/render/viewport/renderViewport'
+
+/** 与历史上「先摆透视再同步正交」时采用的参考半视场角一致（原透视 FOV 50° 的一半），用于由距离推正交视锥高度 */
+const ORTHO_FRUSTUM_REF_HALF_FOV_DEG = 25
 
 const props = withDefaults(
   defineProps<{
     definition: StructureDefinition
     materialLibrary: MaterialLibraryApi
-    projectionMode: ProjectionMode
     contentGroup: THREE.Group | null
     layerPreviewMode: LayerPreviewMode
     sceneBackground?: number
@@ -46,7 +47,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   ready: [scene: THREE.Scene]
-  'update:projectionMode': [ProjectionMode]
   'hover-block': [
     payload: {
       blockId: string
@@ -67,6 +67,11 @@ const emit = defineEmits<{
 }>()
 
 const store = inject(PreviewSceneContextKey)
+
+/** 正交相机 zoom（与 OrbitControls 滚轮一致）；非法值回落为 1 */
+function clampOrthoZoom(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 1
+}
 
 const container = ref<HTMLDivElement | null>(null)
 
@@ -217,11 +222,7 @@ watch(() => props.definition, () => updateHighlight(), { flush: 'post' })
  * 时，某些帧的 mesh 会整体落在视锥外（scene 中仍有 group，表现为「全空」与 gizmo 一起像消失）。
  * 在 content 挂好后按当前 Group 的 AABB 对心并拉远等轴相机。
  */
-function fitIsometricOrbitToContentGroup(
-  vp: RenderViewport,
-  group: THREE.Group,
-  projection: ProjectionMode,
-): void {
+function fitIsometricOrbitToContentGroup(vp: RenderViewport, group: THREE.Group): void {
   group.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(group)
   if (box.isEmpty() || !Number.isFinite(box.min.x)) {
@@ -233,14 +234,26 @@ function fitIsometricOrbitToContentGroup(
   box.getSize(size)
   const maxDim = Math.max(size.x, size.y, size.z, 0.1)
   const dist = Math.max(8, maxDim * 2.2)
+  const cam = store?.config.value?.initialCamera
+  const finalDist = cam?.distance ?? dist
+  const o = vp.orthographicCamera
   vp.controls.target.copy(center)
-  applyDiagonalOrbitView(vp.perspectiveCamera, vp.controls, {
-    yawDeg: 225,
-    elevationFromHorizontalDeg: STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG,
-    distance: dist,
+  applyDiagonalOrbitView(o, vp.controls, {
+    yawDeg: cam?.yawDeg ?? 225,
+    elevationFromHorizontalDeg: cam?.elevationDeg ?? STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG,
+    distance: finalDist,
   })
-  vp.syncOrthographicFromPerspective()
-  vp.setMode(projection)
+  const orthoHeight = 2 * Math.abs(finalDist) * Math.tan(THREE.MathUtils.degToRad(ORTHO_FRUSTUM_REF_HALF_FOV_DEG))
+  const dom = vp.renderer.domElement
+  const aspect = dom.clientWidth / Math.max(dom.clientHeight, 1)
+  const halfH = orthoHeight / 2
+  o.top = halfH
+  o.bottom = -halfH
+  o.left = -halfH * aspect
+  o.right = halfH * aspect
+  o.zoom = clampOrthoZoom(cam?.zoom)
+  o.updateProjectionMatrix()
+  vp.controls.update()
 }
 
 watch(
@@ -249,16 +262,21 @@ watch(
     const vp = viewport
     if (!vp || !g) return
     // 仅在首次加载时对焦相机；切帧时不重置视角
-    if (!prev) fitIsometricOrbitToContentGroup(vp, g, props.projectionMode)
+    if (!prev) fitIsometricOrbitToContentGroup(vp, g)
   },
   { flush: 'post' },
 )
 
+/** 嵌入/Wiki 配置变更 `initialCamera.zoom` 时同步视口（拟合仅在首帧执行） */
 watch(
-  () => props.projectionMode,
-  (m) => {
-    viewport?.setMode(m)
+  () => store?.config.value?.initialCamera?.zoom,
+  (z) => {
+    const vp = viewport
+    if (!vp) return
+    vp.orthographicCamera.zoom = clampOrthoZoom(z)
+    vp.orthographicCamera.updateProjectionMatrix()
   },
+  { flush: 'post' },
 )
 
 watch(
@@ -306,13 +324,22 @@ onMounted(() => {
   const fallbackTarget = new THREE.Vector3(0, 2, 0)
   const fallbackPosition = new THREE.Vector3(8, 6, 10)
 
-  applyInitialCamera(vp.perspectiveCamera, vp.controls, def, fallbackTarget, fallbackPosition)
-  applyDiagonalOrbitView(vp.perspectiveCamera, vp.controls, {
+  const o = vp.orthographicCamera
+  applyInitialCamera(o, vp.controls, def, fallbackTarget, fallbackPosition)
+  applyDiagonalOrbitView(o, vp.controls, {
     yawDeg: 225,
     elevationFromHorizontalDeg: STANDARD_ISOMETRIC_ELEVATION_FROM_HORIZONTAL_DEG,
   })
-  vp.syncOrthographicFromPerspective()
-  vp.setMode(props.projectionMode)
+  const d0 = Math.max(0.1, o.position.distanceTo(vp.controls.target))
+  const orthoHeight0 = 2 * d0 * Math.tan(THREE.MathUtils.degToRad(ORTHO_FRUSTUM_REF_HALF_FOV_DEG))
+  const aspect0 = el.clientWidth / Math.max(el.clientHeight, 1)
+  const halfH0 = orthoHeight0 / 2
+  o.top = halfH0
+  o.bottom = -halfH0
+  o.left = -halfH0 * aspect0
+  o.right = halfH0 * aspect0
+  o.updateProjectionMatrix()
+  vp.controls.update()
 
   /**
    * 拖动预览高度时 ResizeObserver 会连续触发，若对 WebGL 每事件 setSize 可能触发驱动/context 异常
@@ -413,7 +440,7 @@ onBeforeUnmount(() => {
     class="wm-viewport"
     style="overflow: hidden"
   >
-    <button type="button" class="wm-reset-btn" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup, props.projectionMode) : null">⟲</button>
+    <button type="button" class="wm-reset-btn" title="复位视角" @click="viewport && props.contentGroup ? fitIsometricOrbitToContentGroup(viewport, props.contentGroup) : null">⟲</button>
   </div>
 </template>
 

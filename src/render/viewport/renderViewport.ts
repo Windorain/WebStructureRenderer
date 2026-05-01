@@ -3,8 +3,6 @@ import { MOUSE } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { WorldAxesGizmo } from './worldAxesGizmo'
 
-export type ProjectionMode = 'perspective' | 'orthographic'
-
 const DEFAULT_FRUSTUM_SIZE = 10
 
 export interface RenderViewportOptions {
@@ -14,16 +12,15 @@ export interface RenderViewportOptions {
   height: number
 }
 
+/**
+ * 视口：仅使用正交相机 + {@link OrbitControls}（旋转目标为轨道中心，滚轮缩放正交视锥）。
+ */
 export class RenderViewport {
   readonly renderer: THREE.WebGLRenderer
-
-  readonly perspectiveCamera: THREE.PerspectiveCamera
 
   readonly orthographicCamera: THREE.OrthographicCamera
 
   readonly controls: OrbitControls
-
-  private _mode: ProjectionMode
 
   private readonly container: HTMLElement
 
@@ -51,8 +48,6 @@ export class RenderViewport {
     this.renderer.setSize(w, h)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
 
-    this.perspectiveCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 500)
-
     const fs = DEFAULT_FRUSTUM_SIZE
     this.orthographicCamera = new THREE.OrthographicCamera(
       (-fs * aspect) / 2,
@@ -63,8 +58,7 @@ export class RenderViewport {
       500,
     )
 
-    this._mode = 'perspective'
-    this.controls = new OrbitControls(this.perspectiveCamera, this.renderer.domElement)
+    this.controls = new OrbitControls(this.orthographicCamera, this.renderer.domElement)
     this.controls.enableDamping = true
     this.controls.dampingFactor = 0.08
     this.controls.rotateSpeed = 0.9
@@ -93,48 +87,8 @@ export class RenderViewport {
     options.container.appendChild(el)
   }
 
-  get mode(): ProjectionMode {
-    return this._mode
-  }
-
-  get activeCamera(): THREE.Camera {
-    return this._mode === 'perspective' ? this.perspectiveCamera : this.orthographicCamera
-  }
-
-  /**
-   * 将正交相机与当前透视相机对齐（位置、朝向、up），在 applyInitialCamera(透视) 之后调用一次。
-   */
-  syncOrthographicFromPerspective(): void {
-    const p = this.perspectiveCamera
-    const o = this.orthographicCamera
-    o.position.copy(p.position)
-    o.quaternion.copy(p.quaternion)
-    o.up.copy(p.up)
-    o.updateProjectionMatrix()
-  }
-
-  setMode(mode: ProjectionMode): void {
-    if (mode === this._mode) return
-
-    const prev = this.activeCamera
-    this._mode = mode
-    const next = this.activeCamera
-
-    next.position.copy(prev.position)
-    next.quaternion.copy(prev.quaternion)
-    next.up.copy(prev.up)
-    if (next instanceof THREE.PerspectiveCamera || next instanceof THREE.OrthographicCamera) {
-      next.updateProjectionMatrix()
-    }
-
-    this.controls.object = next
-    this.controls.update()
-  }
-
-  toggleMode(): ProjectionMode {
-    const next = this._mode === 'perspective' ? 'orthographic' : 'perspective'
-    this.setMode(next)
-    return this._mode
+  get activeCamera(): THREE.OrthographicCamera {
+    return this.orthographicCamera
   }
 
   private isGlContextUsable(): boolean {
@@ -142,6 +96,9 @@ export class RenderViewport {
     return !gl.isContextLost()
   }
 
+  /**
+   * 随容器改变宽高比；保持当前垂直视锥半高（`top`）不变，仅重算 left/right。
+   */
   resize(width: number, height: number): void {
     if (!this.isGlContextUsable()) {
       return
@@ -150,16 +107,12 @@ export class RenderViewport {
     const h = Math.max(height, 1)
     const aspect = w / h
 
-    const p = this.perspectiveCamera
-    p.aspect = aspect
-    p.updateProjectionMatrix()
-
-    const fs = DEFAULT_FRUSTUM_SIZE
     const o = this.orthographicCamera
-    o.left = (-fs * aspect) / 2
-    o.right = (fs * aspect) / 2
-    o.top = fs / 2
-    o.bottom = -fs / 2
+    const halfH = o.top > 0 && o.bottom < 0 ? o.top : DEFAULT_FRUSTUM_SIZE / 2
+    o.left = -halfH * aspect
+    o.right = halfH * aspect
+    o.top = halfH
+    o.bottom = -halfH
     o.updateProjectionMatrix()
 
     this.renderer.setPixelRatio(window.devicePixelRatio)
@@ -170,12 +123,12 @@ export class RenderViewport {
     if (!this.isGlContextUsable()) {
       return
     }
-    this.renderer.render(scene, this.activeCamera)
+    this.renderer.render(scene, this.orthographicCamera)
     if (this.worldAxesGizmo.enabled) {
       this.renderer.getSize(this.rendererCssSize)
       this.worldAxesGizmo.renderOverlay(
         this.renderer,
-        this.activeCamera,
+        this.orthographicCamera,
         this.rendererCssSize.x,
         this.rendererCssSize.y,
       )

@@ -22,11 +22,16 @@ const mergedConfig = computed<PreviewConfig | null>(() => {
     features: { ...c.features, ...wikiConfig.features },
     debug: wikiConfig.features.debugStatusBar,
     sceneBackground: parseHex6(wikiConfig.sceneBackgroundHex),
-    initialProjectionMode: wikiConfig.projectionMode,
     blockIconCacheOptions: {
       ...c.blockIconCacheOptions,
       sizePx: wikiConfig.iconSizePx,
       orthoHalf: wikiConfig.iconOrthoHalf,
+    },
+    initialCamera: {
+      ...c.initialCamera,
+      yawDeg: wikiConfig.cameraYaw,
+      elevationDeg: wikiConfig.cameraElevation,
+      zoom: wikiConfig.cameraZoom,
     },
   }
 })
