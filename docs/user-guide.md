@@ -228,47 +228,6 @@ SDE 提供三种手持工具，需要 OP 权限：
 | 录制工具 (`sde_tool_record`) | 右键 | 与 `/sde record` 等效 |
 | 注解工具 (`sde_tool_noter`) | Shift + 右键 | 为方块添加注解文本（Tooltip） |
 
-### 自动化模式
-
-SDE 支持无人值守的全自动导出，适用于 CI/CD 或批量处理。
-
-配置文件（Forge 标准位置）中的 `automation` 类别：
-
-| 配置项 | 默认值 | 说明 |
-|------|------|------|
-| `autoLoadFirstSingleplayerWorld` | `false` | 自动加载第一个单人世界 |
-| `automationCommandFile` | `sde_automation_commands.txt` | 自动化命令文件路径 |
-| `commandDelayTicks` | `20` | 命令间延迟（tick） |
-| `exitGameAfterCommands` | `true` | 命令执行完毕后关闭游戏 |
-| `cleanupCommandFileAfterRun` | `true` | 执行后删除命令文件 |
-
-命令文件格式：每行一条聊天命令（`#` 开头为注释，空行忽略）。示例：
-
-```
-# 全自动导出脚本
-/sde start
-/sde pos1
-# (使用工具或提前设置好坐标)
-/sde record
-/sde export raw
-/sde web
-```
-
-### REST API
-
-嵌入式 Web 服务器提供以下 API 端点：
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET` | `/api/v1/ping` | 健康检查，返回 `{"ok": true}` |
-| `GET` | `/api/v1/exports` | 列出所有导出文件 |
-| `GET` | `/api/v1/exports/<name>` | 读取指定导出文件 |
-| `GET` | `/api/v1/workspace/document` | 读取工作区文档 |
-| `PUT` | `/api/v1/workspace/document` | 覆盖工作区文档 |
-| `PATCH` | `/api/v1/workspace/document` | 合并更新工作区文档 |
-
-认证方式：HTTP Header `Authorization: Bearer <token>` 或 URL 参数 `?token=<token>`。
-
 ### 输出文件
 
 所有导出文件位于 Minecraft 目录下的 `structure_exports/` 文件夹：
