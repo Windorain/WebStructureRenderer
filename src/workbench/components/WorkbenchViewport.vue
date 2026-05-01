@@ -33,11 +33,7 @@ const store = createPreviewSceneStore(props.mergedConfig)
 provide(PreviewSceneContextKey, store)
 
 watch(() => props.mergedConfig, async (cfg) => {
-  store.config.value = cfg
-  store.clearAllMeshStorage()
-  store.blockIconCache.value?.dispose()
-  store.blockIconCache.value = null
-  try { await store.loadStructureAndResources() } catch (e) { console.error('[Workbench] loadStructureAndResources on config change', e) }
+  try { await store.reloadFromConfig(cfg) } catch (e) { console.error('[Workbench] reloadFromConfig', e) }
 })
 
 const { hover, setHover, clearHover } = usePreviewTooltip()

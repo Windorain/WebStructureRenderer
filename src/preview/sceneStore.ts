@@ -76,6 +76,8 @@ export interface PreviewSceneStore {
   setCurrentWorldFrame(index: number): Promise<void>
   /** 清除所有已缓存的 mesh 与 icon 缓存（config 切换时调用） */
   clearAllMeshStorage(): void
+  /** 从新 config 重载结构数据并重建网格（保持现有 Three.js 场景） */
+  reloadFromConfig(cfg: PreviewConfig): Promise<void>
 }
 
 export const PreviewSceneContextKey: InjectionKey<PreviewSceneStore> = Symbol('PreviewSceneContext')
@@ -445,6 +447,17 @@ export function createPreviewSceneStore(initialConfig: PreviewConfig): PreviewSc
     return runMesh(() => presentContentMesh())
   }
 
+  async function reloadFromConfig(cfg: PreviewConfig): Promise<void> {
+    config.value = cfg
+    clearAllMeshStorage()
+    blockIconCache.value?.dispose()
+    blockIconCache.value = null
+    await loadStructureAndResources()
+    if (loadStatus.value === 'ok') {
+      await rebuildContentMesh()
+    }
+  }
+
   function detachAndDisposeMesh(): void {
     const scene = sceneRef.value
     const g = contentGroupRef.value
@@ -513,6 +526,7 @@ export function createPreviewSceneStore(initialConfig: PreviewConfig): PreviewSc
     detachAndDisposeMesh,
     disposeCachesAndLibrary,
     clearAllMeshStorage,
+    reloadFromConfig,
     contentGroupRef,
     hasWorldMultiFrame,
     worldFrameIndex,
