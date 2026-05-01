@@ -1,18 +1,18 @@
 /**
- * Compact 信封构建与元数据 patch（纯函数，不依赖浏览器 API）。
+ * Envelope 信封构建与元数据 patch（纯函数，不依赖浏览器 API）。
  */
 
 import pako from 'pako'
 
 import {
-  COMPACT_META_KEYS,
+  ENVELOPE_META_KEYS,
   ROOT_META_FORM_KEYS,
-  omitCompactMetaKeys,
-  pickCompactMeta,
+  omitEnvelopeMetaKeys,
+  pickEnvelopeMeta,
   type RootMetaFormKey,
 } from '@/render/data/compactMetaKeys'
-import { isCompactSceneEnvelope } from '@/render/data/compactSceneDocument'
-import type { CompactSceneEnvelope } from '@/render/schema/types'
+import { isEnvelopeDocument } from '@/render/data/compactSceneDocument'
+import type { EnvelopeDocument } from '@/render/schema/types'
 import { COMPACT_PAYLOAD_ENCODING } from '@/render/schema/types'
 
 export type { RootMetaFormKey }
@@ -57,26 +57,26 @@ export function patchSceneMetadataRoot(
   return { ...(document as Record<string, unknown>), ...patch }
 }
 
-export interface BuildCompactOptions {
+export interface BuildEnvelopeOptions {
   metaKeys?: readonly string[]
 }
 
-/** 将 Raw 文档打包为 Compact 信封。纯函数。 */
-export function buildCompactEnvelope(
+/** 将 Plain 文档打包为 Envelope 信封。纯函数。 */
+export function buildEnvelopePackage(
   document: unknown,
-  options: BuildCompactOptions = {},
-): CompactSceneEnvelope {
-  if (isCompactSceneEnvelope(document)) {
-    throw new Error('buildCompactEnvelope 仅接受 Raw 形文档')
+  options: BuildEnvelopeOptions = {},
+): EnvelopeDocument {
+  if (isEnvelopeDocument(document)) {
+    throw new Error('buildEnvelopePackage 仅接受 Plain 形文档')
   }
-  const keys = options.metaKeys ?? COMPACT_META_KEYS
+  const keys = options.metaKeys ?? ENVELOPE_META_KEYS
   const src = document as Record<string, unknown>
-  const meta = pickCompactMeta(src, keys)
-  const body = omitCompactMetaKeys(src, keys)
+  const meta = pickEnvelopeMeta(src, keys)
+  const body = omitEnvelopeMetaKeys(src, keys)
   const gz = pako.gzip(JSON.stringify(body))
   const b64 = uint8ToBase64(gz)
   return {
-    documentFormat: 'Compact',
+    documentFormat: 'Envelope',
     payloadEncoding: COMPACT_PAYLOAD_ENCODING,
     meta,
     payload: b64,

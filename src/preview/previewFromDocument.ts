@@ -12,7 +12,7 @@ import type { StructureData } from '@/render/schema/types'
 
 /**
  * 文档是否可能通过打包校验（用于 UI 提示，非严格等价于 validate）。
- * Compact 信封须先经 {@link normalizeSceneDocumentForWiki} 再调用；工作台预览链已按此处理。
+ * Envelope 信封须先经 {@link normalizeEnvelopeToPlain} 再调用；工作台预览链已按此处理。
  */
 export function documentLooksPreviewable(document: unknown): boolean {
   if (!document || typeof document !== 'object') return false

@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { loadStructureOrWorld } from '@/render/data/bundleResolve'
 import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
-import { buildCompactEnvelope } from '@/render/data/sceneExport'
+import { buildEnvelopePackage } from '@/render/data/sceneExport'
 import { copyTextToClipboard, downloadBlob, downloadJson } from '@/util/browser'
 import { buildStructureBundleZip } from '@/workbench/structureBundleExport'
 import { bakeIsometricStructurePngDataUrl, dataUrlToPngBlob } from '@/workbench/exportIsometricImage'
@@ -26,7 +26,7 @@ async function downloadRaw(): Promise<void> {
 }
 async function downloadCompact(): Promise<void> {
   if (!doc.value) return
-  try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-compact`, buildCompactEnvelope(raw), true); msg('已下载 Compact JSON') } catch (e) { msg(formatUnknownError(e)) }
+  try { const raw = doc.value as Record<string, unknown>; downloadJson(`${baseName.value}-envelope`, buildEnvelopePackage(raw), true); msg('已下载 Envelope JSON') } catch (e) { msg(formatUnknownError(e)) }
 }
 async function copyRawJson(): Promise<void> {
   if (!doc.value) return

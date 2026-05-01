@@ -3,10 +3,10 @@
  * 自包含，不依赖其他 context。
  *
  * 数据流（单向）：
- * 1. 入口：文件 / SDE 数据 / 内置示例 → loadSceneDocument → scene (Raw)
+ * 1. 入口：文件 / SDE 数据 / 内置示例 → loadSceneDocument → scene (Plain)
  * 2. 编辑：编辑器直接读写 ctx.scene，调用 syncPreview
  * 3. 预览：syncPreview() 浅拷贝 scene 后构建 PreviewConfig
- * 4. 导出：保存直接序列化 Raw；Compact 仅导出时 buildCompactEnvelope
+ * 4. 导出：保存直接序列化 Plain；Envelope 仅导出时 buildEnvelopePackage
  */
 
 import type { InjectionKey, Ref, ShallowRef } from 'vue'
@@ -16,7 +16,7 @@ import type { PreviewConfig } from '@/preview/previewConfig'
 import { DEFAULT_PREVIEW_SCENE_ID } from '@/preview/previewSession'
 import { getDevSceneDocument } from '@/dev/devScenes'
 import { formatSdeError } from '@/workbench/sdeApi'
-import { isCompactSceneEnvelope, normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
+import { isEnvelopeDocument, normalizeEnvelopeToPlain } from '@/render/data/compactSceneDocument'
 import { documentLooksPreviewable, previewConfigFromDocument } from '@/preview/previewFromDocument'
 import { downloadJson } from '@/util/browser'
 import { getShowSaveFilePicker } from '@/util/browser'
@@ -152,8 +152,8 @@ export function provideSceneContext(): SceneContext {
     opts?: { mode?: WorkbenchWorkspaceMode; fileName?: string },
   ): Promise<void> {
     let next: WorkbenchScene | null = null
-    if (doc && isCompactSceneEnvelope(doc)) {
-      next = (await normalizeSceneDocumentForWiki(doc)) as WorkbenchScene
+    if (doc && isEnvelopeDocument(doc)) {
+      next = (await normalizeEnvelopeToPlain(doc)) as WorkbenchScene
     } else if (doc && typeof doc === 'object') {
       next = cloneDocument(doc)
     }

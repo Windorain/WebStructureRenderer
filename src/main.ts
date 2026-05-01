@@ -15,15 +15,15 @@ export type { PreviewConfig } from './preview/previewConfig'
 
 export { loadPreviewSessionFromDocument } from './preview/previewSession'
 export {
-  normalizeSceneDocumentForWiki,
+  normalizeEnvelopeToPlain,
   readDocumentFormat,
-  isCompactSceneEnvelope,
+  isEnvelopeDocument,
   readSceneMetaField,
   sceneStableStringIdFromDocument,
 } from './render/data/compactSceneDocument'
-export { COMPACT_META_KEYS, ROOT_META_FORM_KEYS } from './render/data/compactMetaKeys'
-export type { CompactMetaKey, RootMetaFormKey } from './render/data/compactMetaKeys'
-export type { CompactSceneEnvelope, DocumentFormat } from './render/schema/types'
+export { ENVELOPE_META_KEYS, ROOT_META_FORM_KEYS } from './render/data/compactMetaKeys'
+export type { EnvelopeMetaKey, RootMetaFormKey } from './render/data/compactMetaKeys'
+export type { EnvelopeDocument, DocumentFormat } from './render/schema/types'
 export { COMPACT_PAYLOAD_ENCODING } from './render/schema/types'
 
 export {
@@ -37,8 +37,8 @@ export {
 
 export {
   patchSceneMetadataRoot,
-  buildCompactEnvelope,
-  type BuildCompactOptions,
+  buildEnvelopePackage,
+  type BuildEnvelopeOptions,
 } from './render/data/sceneExport'
 export { downloadJson, copyTextToClipboard } from './util/browser'
 export { previewConfigFromDocument, documentLooksPreviewable } from './preview/previewFromDocument'

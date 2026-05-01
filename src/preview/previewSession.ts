@@ -4,7 +4,7 @@
 
 import * as THREE from 'three'
 
-import { normalizeSceneDocumentForWiki } from '@/render/data/compactSceneDocument'
+import { normalizeEnvelopeToPlain } from '@/render/data/compactSceneDocument'
 import {
   buildMaterialRegistryFromSceneDocument,
   validateRenderBundle,
@@ -37,7 +37,7 @@ function loadTextureDataUrl(loader: THREE.TextureLoader, dataUrl: string): Promi
  * `AppShell` / `createPreviewSceneStore` 只消费 `PreviewConfig` 中这两部分 + UI 开关。
  */
 export async function loadPreviewSessionFromDocument(document: unknown): Promise<PreviewSessionResult> {
-  const normalized = await normalizeSceneDocumentForWiki(document)
+  const normalized = await normalizeEnvelopeToPlain(document)
   const renderBundle: RenderBundle = { document: normalized }
   validateRenderBundle(renderBundle)
 

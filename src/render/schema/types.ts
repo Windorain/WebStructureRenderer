@@ -85,7 +85,7 @@ export interface MeshCapturePayload {
 }
 
 /** 磁盘 / 传输层文档形态；Wiki 据 `documentFormat` 选择解析路径。 */
-export type DocumentFormat = 'Raw' | 'Compact'
+export type DocumentFormat = 'Plain' | 'Envelope'
 
 /** 与 SDE 写出一致：单 gzip 流再以标准 Base64 嵌入 JSON 字符串。 */
 export const COMPACT_PAYLOAD_ENCODING = 'gzip+base64' as const
@@ -93,8 +93,8 @@ export const COMPACT_PAYLOAD_ENCODING = 'gzip+base64' as const
 /**
  * Compact 信封：`meta` 为唯一元数据真源；`payload` 解压后为不含 id/label 等元数据键的 Raw 根 JSON（与 meta 合并后得到完整 Raw）。
  */
-export interface CompactSceneEnvelope {
-  documentFormat: 'Compact'
+export interface EnvelopeDocument {
+  documentFormat: 'Envelope'
   payloadEncoding: typeof COMPACT_PAYLOAD_ENCODING
   meta: Record<string, unknown>
   payload: string
