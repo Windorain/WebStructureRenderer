@@ -2,12 +2,29 @@
 import { computed, ref, watch } from 'vue'
 import { renderTooltipHtml } from './renderTooltipHtml'
 import { useSceneContext } from '@/workbench/sceneContext'
-import { isWorldDocument } from '@/render/data/bundleResolve'
+import { isWorldDocument, loadStructureOrWorld } from '@/render/data/bundleResolve'
+import { autoTooltipFromNbt } from '@/workbench/nbtTooltipTemplate'
+import type { BlockPaletteEntry } from '@/render/schema/types'
 
 const ctx = useSceneContext()
 const selectedBlock = computed(() => ctx.selectedBlock.value)
 const tooltipText = ref('')
 const saveFeedback = ref('')
+
+const paletteEntry = computed<BlockPaletteEntry | null>(() => {
+  if (!selectedBlock.value) return null
+  const doc = ctx.scene.value
+  if (!doc) return null
+  try {
+    const def = loadStructureOrWorld(doc, undefined)
+    return def.blockPalette.find(e => e.registryId === selectedBlock.value!.blockId) ?? null
+  } catch { return null }
+})
+
+function autoFillFromNbt(): void {
+  if (!paletteEntry.value?.nbt) return
+  tooltipText.value = autoTooltipFromNbt(paletteEntry.value.nbt)
+}
 
 function readCurrentTooltip(): string {
   const doc = ctx.scene.value
@@ -116,6 +133,7 @@ watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurre
         </div>
       </div>
       <div class="te-btns">
+        <button v-if="paletteEntry?.nbt" class="pe-btn" @click="autoFillFromNbt">从 NBT 生成</button>
         <button class="pe-btn pe-btn--primary" @click="void saveTooltip()">保存</button>
         <button class="pe-btn" @click="tooltipText = ''">清除</button>
       </div>
