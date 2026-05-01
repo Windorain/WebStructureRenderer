@@ -40,8 +40,11 @@ export function renderTooltipHtml(text: string): string {
   while (i < text.length) {
     if (text[i] === '§' && i + 1 < text.length) {
       const code = text[i + 1]
-      // 颜色码
+      // 颜色码：MC 规则中颜色码会重置之前所有格式（粗/斜/删除/下划线）
       if (MC_COLORS[code]) {
+        while (stack.length > 0) {
+          result += stack.pop()!.close
+        }
         result += `<span style="color:${MC_COLORS[code]}">`
         stack.push({ close: '</span>' })
         i += 2

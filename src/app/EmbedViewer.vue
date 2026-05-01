@@ -19,6 +19,7 @@ import { sceneDisplayTitleFromRootDocument } from '@/preview/sceneDisplayTitle'
 import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/sceneStore'
 import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
 import { blockRegistryKeyForPalette } from '@/render/data/blockRegistryResolve'
+import { renderTooltipHtml } from '@/workbench/components/renderTooltipHtml'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
@@ -113,7 +114,7 @@ const neiTooltipText = computed(() => {
   const h = hover.value
   if (!h || h.source !== 'sidebar') return ''
   const lines = neiTooltipMap.value.get(h.blockId)
-  return lines && lines.length > 0 ? lines.join('\n') : ''
+  return lines && lines.length > 0 ? lines.map(l => renderTooltipHtml(l)).join('<br>') : ''
 })
 
 const previewTitle = computed(() => {
