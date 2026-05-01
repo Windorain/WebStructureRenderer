@@ -18,6 +18,7 @@ import { readSceneMetaField } from '@/render/data/compactSceneDocument'
 import { sceneDisplayTitleFromRootDocument } from '@/preview/sceneDisplayTitle'
 import { PreviewSceneContextKey, createPreviewSceneStore } from '@/preview/sceneStore'
 import { usePreviewTooltip, resolvePreviewTooltipText } from '@/preview/tooltip'
+import { blockRegistryKeyForPalette } from '@/render/data/blockRegistryResolve'
 import type { ProjectionMode } from '@/render/viewport/renderViewport'
 
 const props = defineProps<{
@@ -92,6 +93,27 @@ const tooltipDisplayText = computed(() => {
   const h = hover.value
   if (!def || !h?.blockId) return ''
   return resolvePreviewTooltipText(def, tooltipPalette.value, h)
+})
+
+/** blockId → NEI tooltip 文本行（预计算映射） */
+const neiTooltipMap = computed<Map<string, string[]>>(() => {
+  const def = structureDefinition.value
+  if (!def) return new Map()
+  const map = new Map<string, string[]>()
+  for (const e of def.blockPalette) {
+    const key = blockRegistryKeyForPalette(e.registryId, e.meta)
+    if (!map.has(key) && e.tooltip && e.tooltip.length > 0) {
+      map.set(key, e.tooltip)
+    }
+  }
+  return map
+})
+
+const neiTooltipText = computed(() => {
+  const h = hover.value
+  if (!h || h.source !== 'sidebar') return ''
+  const lines = neiTooltipMap.value.get(h.blockId)
+  return lines && lines.length > 0 ? lines.join('\n') : ''
 })
 
 const previewTitle = computed(() => {
@@ -214,6 +236,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
     </div>
 
     <ToolTipBox v-if="hover && tooltipDisplayText" :text="tooltipDisplayText" :client-x="hover.clientX" :client-y="hover.clientY" />
+    <ToolTipBox v-if="hover && neiTooltipText" :text="neiTooltipText" :client-x="hover.clientX" :client-y="hover.clientY" />
     <ToolTipBox v-if="metaHintPointer && metaTooltipText" :text="metaTooltipText" :client-x="metaHintPointer.clientX" :client-y="metaHintPointer.clientY" />
   </div>
 </template>

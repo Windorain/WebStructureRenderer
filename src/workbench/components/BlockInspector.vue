@@ -70,6 +70,16 @@ const tooltipPreview = computed(() => {
 })
 
 const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tooltipPreview.value) : '')
+
+const neiTooltipLines = computed<string[]>(() => paletteEntry.value?.tooltip ?? [])
+
+function copyTooltipLine(line: string): void {
+  copyTextToClipboard(line)
+}
+
+function copyAllTooltip(): void {
+  copyTextToClipboard(neiTooltipLines.value.join('\n'))
+}
 </script>
 
 <template>
@@ -96,6 +106,22 @@ const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tool
       <div v-if="tooltipHtml" class="bi-preview" v-html="tooltipHtml" />
       <p v-else class="pe-muted">无注解</p>
 
+      <h3>NEI 导出 ToolTip</h3>
+      <template v-if="neiTooltipLines.length">
+        <div class="bi-tooltip-lines">
+          <div v-for="(line, idx) in neiTooltipLines" :key="idx"
+               class="bi-tooltip-row" title="点击复制原格式文本"
+               @click="copyTooltipLine(line)">
+            <span class="bi-tooltip-text" v-html="renderTooltipHtml(line)" />
+          </div>
+        </div>
+        <div class="bi-tooltip-actions">
+          <button class="pe-btn pe-btn--sm" @click="copyAllTooltip">复制全部</button>
+        </div>
+        <p class="pe-hint">由 SDE 在客户端 finalize 时抓取，非手工注解</p>
+      </template>
+      <p v-else class="pe-muted">无 NEI ToolTip 数据</p>
+
       <h3>材质引用</h3>
       <template v-if="materialIndices.length">
         <div v-for="mi in materialIndices" :key="mi" class="bi-mat-row">
@@ -121,6 +147,18 @@ const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tool
 .pe-panel { padding: 10px; font-size: 12px; }
 .pe-title { font-size: 13px; font-weight: 600; color: var(--nei-text); text-shadow: var(--nei-label-shadow); margin-bottom: 8px; }
 .pe-muted { font-size: 11px; color: var(--nei-muted); }
+.pe-hint { font-size: 10px; color: var(--nei-muted); margin-top: 3px; }
+.bi-tooltip-lines { display: flex; flex-direction: column; gap: 2px; }
+.bi-tooltip-row {
+  display: flex; align-items: center; padding: 2px 6px; border-radius: 3px;
+  border: 1px solid var(--nei-border); background: var(--nei-inset-bg); cursor: pointer;
+  transition: background 0.1s;
+}
+.bi-tooltip-row:hover { background: var(--nei-bg); border-color: var(--nei-highlight); }
+.bi-tooltip-row:active { background: var(--nei-btn-bg); }
+.bi-tooltip-text { font-size: 12px; color: var(--nei-text); word-break: break-word; user-select: none; }
+.bi-tooltip-actions { margin-top: 6px; }
+.pe-btn--sm { font-size: 10px; padding: 2px 8px; }
 h3 { font-size: 10px; font-weight: 600; color: var(--nei-label); text-transform: uppercase; letter-spacing: 0.3px; margin: 10px 0 4px; }
 .bi-table { width: 100%; border-collapse: collapse; }
 .bi-table td { padding: 2px 6px 2px 0; font-size: 11px; }

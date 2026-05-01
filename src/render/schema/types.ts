@@ -315,6 +315,8 @@ export interface BlockPaletteEntry {
   nbt?: JsonNbt
   /** Base64-encoded PNG rendered via renderBlockAsItem */
   thumbnailPNG?: string
+  /** NEI 风格 ToolTip 文本行（由 SDE 客户端 finalize 时通过 ItemStack.getTooltip() 生成） */
+  tooltip?: string[]
   /** 完整不透明立方体时邻面可剔除；缺省/非 true 视为不遮挡（旧 JSON 兼容） */
   occludesAdjacentFaces?: boolean
   renderMode: BlockRenderMode
