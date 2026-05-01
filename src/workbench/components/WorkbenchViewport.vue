@@ -27,9 +27,7 @@ const props = defineProps<{
 
 const ctx = useWorkbenchContext()
 
-const emit = defineEmits<{
-  (e: 'update:activeTool', v: string): void
-}>()
+defineEmits<{}>()
 
 const store = createPreviewSceneStore(props.mergedConfig)
 provide(PreviewSceneContextKey, store)
@@ -63,14 +61,6 @@ const tooltipDisplayText = computed(() => {
   if (!def || !h?.blockId) return ''
   return resolvePreviewTooltipText(def, tooltipPalette.value, h)
 })
-
-/* ---- ToolShelf ---- */
-const activeTool = ref('select')
-
-function setTool(tool: string): void {
-  activeTool.value = tool
-  emit('update:activeTool', tool)
-}
 
 type BottomTab = 'frame' | 'layer'
 const activeTab = ref<BottomTab>(hasWorldMultiFrame.value ? 'frame' : 'layer')
@@ -123,13 +113,7 @@ onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
     <div class="wv-shelf">
       <div class="wv-shelf-panel">
         <div class="wv-shelf-title">{{ t('tools') }}</div>
-        <button
-          v-for="tool in [{ id: 'select', label: t('select') }, { id: 'annotation', label: t('annotation') }]"
-          :key="tool.id"
-          class="wv-tool-btn"
-          :class="{ 'wv-tool-btn--active': activeTool === tool.id }"
-          @click="setTool(tool.id)"
-        >{{ tool.label }}</button>
+        <button class="wv-tool-btn wv-tool-btn--active">{{ t('select') }}</button>
       </div>
     </div>
 

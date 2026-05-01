@@ -17,7 +17,6 @@ const ctx = provideWorkbenchContext()
 useNeiTheme()
 
 const workspace = ref<'preview' | 'wiki' | 'export'>('preview')
-const activeTool = ref('select')
 
 function openSettings(): void { ctx.settingsOpen.value = true }
 function resetLayout(): void {
@@ -53,7 +52,7 @@ onMounted(async () => {
     </template>
     <template #tool-shelf />
     <template #viewport>
-      <ViewportHost @update:active-tool="activeTool = $event" />
+      <ViewportHost />
     </template>
     <template #properties>
       <PropertiesPanel />

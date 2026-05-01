@@ -6,10 +6,6 @@ import { ALL_FEATURES_OFF, type PreviewConfig } from '@/preview/previewConfig'
 
 const ctx = useWorkbenchContext()
 
-const emit = defineEmits<{
-  (e: 'update:activeTool', v: string): void
-}>()
-
 const mergedConfig = computed<PreviewConfig | null>(() => {
   const c = ctx.previewConfig.value
   if (!c) return null
@@ -22,7 +18,6 @@ const mergedConfig = computed<PreviewConfig | null>(() => {
     <WorkbenchViewport
       v-if="mergedConfig"
       :merged-config="mergedConfig"
-      @update:active-tool="emit('update:activeTool', $event)"
     />
     <div v-else class="vh-placeholder"><span class="vh-placeholder-text">No scene loaded</span></div>
   </div>

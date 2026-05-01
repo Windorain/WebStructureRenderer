@@ -43,7 +43,6 @@ const dict: Record<string, Record<Lang, string>> = {
   'wikiConfig': { zh: 'Wiki 配置', en: 'Wiki Config' },
   'tools': { zh: '工具', en: 'Tools' },
   'select': { zh: '选取', en: 'Select' },
-  'annotation': { zh: '注解', en: 'Annotation' },
   'previewMode': { zh: '预览模式', en: 'Preview Mode' },
   'editMode': { zh: '编辑模式', en: 'Edit Mode' },
   'connected': { zh: 'SDE 已连接', en: 'SDE Connected' },
