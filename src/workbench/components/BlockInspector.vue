@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { copyTextToClipboard } from '@/util/browser'
 import { renderTooltipHtml } from './renderTooltipHtml'
 import { useSceneContext } from '@/workbench/sceneContext'
 import { isWorldDocument, loadStructureOrWorld } from '@/render/data/bundleResolve'
 import type { BlockPaletteEntry } from '@/render/schema/types'
+
+function copyNbtToClipboard(): void {
+  if (!paletteEntry.value?.nbt) return
+  copyTextToClipboard(JSON.stringify(paletteEntry.value.nbt, null, 2))
+}
 
 const ctx = useSceneContext()
 const selectedBlock = computed(() => ctx.selectedBlock.value)
@@ -98,6 +104,15 @@ const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tool
         </div>
       </template>
       <p v-else class="pe-muted">无材质信息</p>
+
+      <h3>NBT 数据</h3>
+      <template v-if="paletteEntry?.nbt && Object.keys(paletteEntry.nbt).length">
+        <div class="bi-nbt-wrap">
+          <pre class="bi-nbt-pre">{{ JSON.stringify(paletteEntry.nbt, null, 2) }}</pre>
+          <button class="pe-btn" @click="copyNbtToClipboard">复制 NBT JSON</button>
+        </div>
+      </template>
+      <p v-else class="pe-muted">无 NBT 数据</p>
     </template>
   </div>
 </template>
@@ -119,4 +134,14 @@ h3 { font-size: 10px; font-weight: 600; color: var(--nei-label); text-transform:
 .bi-mat-row { display: flex; gap: 6px; padding: 2px 0; }
 .bi-mat-idx { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-label); min-width: 24px; }
 .bi-mat-name { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi-nbt-wrap { margin: 4px 0; }
+.bi-nbt-pre {
+  padding: 6px; margin: 4px 0;
+  background: var(--nei-inset-bg);
+  border: 1px solid var(--nei-border); border-radius: 4px;
+  font-size: 10px; max-height: 200px; overflow: auto;
+  white-space: pre-wrap; word-break: break-all;
+  font-family: ui-monospace, monospace;
+  color: var(--nei-text-dark);
+}
 </style>
