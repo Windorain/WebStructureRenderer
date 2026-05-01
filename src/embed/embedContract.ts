@@ -6,7 +6,6 @@ import type { PreviewConfig, PreviewFeatures } from '@/preview/previewConfig'
 import { defaultEmbedUi } from '@/preview/previewConfig'
 import { loadPreviewSessionFromDocument } from '@/preview/previewSession'
 import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
-import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
 import type { BlockIconCacheOptions } from '@/render/interaction/blockIconCache'
 
 export type { PreviewFeatures }
@@ -43,11 +42,8 @@ export async function resolveBootstrapToPreviewConfig(
 
   const { document } = options.data
   const { renderBundle, materialLibrary } = await loadPreviewSessionFromDocument(document)
-  const docMode = sceneDisplayModeFromDocument(renderBundle.document)
-  const docUi = previewFeaturesForDisplayMode(docMode)
   const features: PreviewFeatures = {
     ...defaultEmbedUi.features,
-    ...docUi,
     ...options.features,
   }
   const sceneId = sceneStableStringIdFromDocument(renderBundle.document)

@@ -7,7 +7,6 @@ export const ENVELOPE_META_KEYS = [
   'id',
   'label',
   'author',
-  'mode',
   'gtnhVersion',
   'structureId',
   'schemaVersion',
@@ -21,7 +20,6 @@ export const ROOT_META_FORM_KEYS = [
   'id',
   'label',
   'author',
-  'mode',
   'gtnhVersion',
   'structureId',
 ] as const

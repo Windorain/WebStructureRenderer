@@ -1,0 +1,30 @@
+<includeonly><div
+ class="web-structure-renderer"
+ data-wsr-structure="{{{结构名称}}}"
+ style="background:#0f172a;width:{{{宽度}}};height:{{{高度}}};"
+{{#if:{{{场景背景|}}}| data-wsr-scene-background="{{{场景背景}}}"}}
+{{#if:{{{初始偏航角|}}}| data-wsr-camera-yaw="{{{初始偏航角}}}"}}
+{{#if:{{{初始俯仰角|}}}| data-wsr-camera-elevation="{{{初始俯仰角}}}"}}
+{{#if:{{{初始缩放|}}}| data-wsr-camera-zoom="{{{初始缩放}}}"}}
+{{#if:{{{分层预览|}}}| data-wsr-feature-layer-bar="{{{分层预览}}}"}}
+{{#if:{{{标题栏|}}}| data-wsr-feature-title-bar="{{{标题栏}}}"}}
+{{#if:{{{播放条|}}}| data-wsr-feature-frame-controls="{{{播放条}}}"}}
+{{#if:{{{统计栏|}}}| data-wsr-feature-block-stats="{{{统计栏}}}"}}
+{{#if:{{{调试状态栏|}}}| data-wsr-feature-debug-status="{{{调试状态栏}}}"}}
+{{#if:{{{坐标轴|}}}| data-wsr-feature-axes-gizmo="{{{坐标轴}}}"}}
+></div></includeonly>
+<noinclude>
+== 用法 ==
+<pre>
+{{渲染器
+|结构名称=MEControllers5x5x5
+|宽度=500px
+|高度=500px
+}}
+</pre>
+
+{{渲染器
+|结构名称=MEControllers5x5x5
+|宽度=500px
+|高度=500px
+}}

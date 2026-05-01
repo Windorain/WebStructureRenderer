@@ -38,8 +38,6 @@ export async function previewConfigFromDocument(
   document: unknown,
   options: PreviewFromDocumentOptions = {},
 ): Promise<PreviewConfig> {
-  // 勿在此强制 true：`resolveBootstrapToPreviewConfig` 会据 `sceneDisplayModeFromDocument` 合并
-  // `previewFeaturesForDisplayMode`（simple → 关统计/分层；multiblock → 开）。
   return await resolveBootstrapToPreviewConfig({
     data: { document },
     features: options.features,

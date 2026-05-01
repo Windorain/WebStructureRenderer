@@ -1,5 +1,5 @@
 /**
- * StructureData：`geometryPhase` 区分扫描中间态与可渲染终态；根级 `mode` 仅表示 Wiki 展示策略（与几何管线无关）。
+ * StructureData：`geometryPhase` 区分扫描中间态与可渲染终态；预览 UI 由 `PreviewConfig.features` 控制。
  */
 
 /** 资源包定位符：namespace:path（不含 textures/ 与 .png），与 MC 习惯一致 */
@@ -193,16 +193,12 @@ export interface InitialCameraDef {
 
 export type JsonNbt = Record<string, unknown>
 
-/** Wiki 展示：多方块启用统计侧栏与分层条；简单模式关闭二者 */
-export type SceneDisplayMode = 'multiblock' | 'simple'
-
 /** 数据形态：scan=服务端扫描待客户端烘焙；baked=含 BakedQuads 可渲染 */
 export type StructureGeometryPhase = 'scan' | 'baked'
 
 /** 扫描中间态（SDE 写出；Wiki 不直接渲染） */
 export interface StructureDataScan {
   geometryPhase: 'scan'
-  mode: SceneDisplayMode
   id: string
   label?: string
   gtnhVersion?: string
@@ -234,7 +230,6 @@ export const TOOLTIP_GRID_NONE = -1
 /** 可渲染终态（palette + cellGrid） */
 export interface StructureDataBaked {
   geometryPhase: 'baked'
-  mode: SceneDisplayMode
   id: string
   label?: string
   gtnhVersion?: string
@@ -353,7 +348,6 @@ export interface Frame {
 export interface World {
   schemaVersion?: number
   id: string
-  mode?: SceneDisplayMode
   label?: string
   gtnhVersion?: string
   author?: string

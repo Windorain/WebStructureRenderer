@@ -7,7 +7,6 @@ import { defaultEmbedUi } from '@/preview/previewConfig'
 import { getDevSceneDocument, listDevSceneIds } from '@/dev/devScenes'
 import { DEFAULT_PREVIEW_SCENE_ID, loadPreviewSessionFromDocument } from '@/preview/previewSession'
 import { sceneStableStringIdFromDocument } from '@/render/data/compactSceneDocument'
-import { previewFeaturesForDisplayMode, sceneDisplayModeFromDocument } from '@/render/data/sceneDisplay'
 
 function parseBool(s: string | null): boolean | undefined {
   if (s === null || s === '') return undefined
@@ -125,14 +124,10 @@ export async function resolveDevPreviewConfigAsync(): Promise<PreviewConfig> {
   const stableId = sceneStableStringIdFromDocument(renderBundle.document)
   const docId = stableId !== 'scene' ? stableId : sceneId
 
-  const docMode = sceneDisplayModeFromDocument(renderBundle.document)
-  const docLayerStats = previewFeaturesForDisplayMode(docMode)
-
   const out: PreviewConfig = {
     ...mergedBase,
     features: {
       ...defaultDevPreviewBase.features,
-      ...docLayerStats,
       ...(urlFeatures ?? {}),
     },
     sceneId: typeof docId === 'string' && docId.length > 0 ? docId : sceneId,

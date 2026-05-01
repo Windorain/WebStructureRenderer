@@ -14,12 +14,16 @@ export function mount(
 ): void {
   const el =
     target == null
-      ? document.querySelector('#web-structure-renderer')
+      ? document.querySelector('.web-structure-renderer') ??
+        document.querySelector('#web-structure-renderer')
       : typeof target === 'string'
         ? document.querySelector(target)
         : target
   if (!el) {
-    console.warn('[StructureRenderer] mount: 未找到挂载节点', target ?? '#web-structure-renderer')
+    console.warn(
+      '[StructureRenderer] mount: 未找到挂载节点',
+      target ?? '.web-structure-renderer / #web-structure-renderer',
+    )
     return
   }
   createApp(EmbedRoot, { bootstrap: options }).mount(el)
