@@ -51,10 +51,10 @@ export const defaultEmbedUi: Omit<PreviewConfig, 'renderBundle' | 'materialLibra
   features: {
     blockStatsSidebar: false,
     layerBar: false,
-    frameControls: true,
-    titleBar: true,
+    frameControls: false,
+    titleBar: false,
     debugStatusBar: false,
-    showAxesGizmo: true,
+    showAxesGizmo: false,
   },
   blockIconCacheOptions: {
     sizePx: 128,
