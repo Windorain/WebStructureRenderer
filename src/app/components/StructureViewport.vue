@@ -87,6 +87,8 @@ let rafHoverPending = false
 let lastPointer: { clientX: number; clientY: number } | null = null
 let activeScene: THREE.Scene | null = null
 let clickDownAt: { x: number; y: number } | null = null
+/** 分层 / 网格重建会先清空 {@link PreviewSceneContextKey} 的 contentGroup，`null→Group` 并非首次进入场景 */
+let skipNextContentGroupAutoFit = false
 
 function runPick(): void {
   const vp = viewport
@@ -260,9 +262,18 @@ watch(
   () => props.contentGroup,
   (g, prev) => {
     const vp = viewport
-    if (!vp || !g) return
-    // 仅在首次加载时对焦相机；切帧时不重置视角
-    if (!prev) fitIsometricOrbitToContentGroup(vp, g)
+    if (!vp) return
+    if (!g) {
+      if (prev) skipNextContentGroupAutoFit = true
+      return
+    }
+    if (!prev) {
+      if (skipNextContentGroupAutoFit) {
+        skipNextContentGroupAutoFit = false
+        return
+      }
+      fitIsometricOrbitToContentGroup(vp, g)
+    }
   },
   { flush: 'post' },
 )
