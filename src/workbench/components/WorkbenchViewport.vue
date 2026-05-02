@@ -79,6 +79,14 @@ function onViewportSelect(
   ctx.setSelectedBlock(p ? { blockId: p.blockId, voxel: p.voxel } : null)
 }
 
+watch(
+  worldFrameIndex,
+  (i) => {
+    ctx.setPreviewWorldFrameIndex(i)
+  },
+  { immediate: true },
+)
+
 onMounted(async () => { await store.loadStructureAndResources() })
 onBeforeUnmount(() => { store.disposeCachesAndLibrary() })
 </script>

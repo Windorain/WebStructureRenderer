@@ -3,8 +3,9 @@ import { computed } from 'vue'
 import { copyTextToClipboard } from '@/util/browser'
 import { renderTooltipHtml } from './renderTooltipHtml'
 import { useSceneContext } from '@/workbench/sceneContext'
-import { isWorldDocument, loadStructureOrWorld } from '@/render/data/bundleResolve'
-import type { BlockPaletteEntry } from '@/render/schema/types'
+import { isWorldDocument, resolveRenderBundle } from '@/render/data/bundleResolve'
+import { findBlockPaletteEntryByBlockId } from '@/render/data/blockRegistryResolve'
+import type { BlockPaletteEntry, RenderBundle } from '@/render/schema/types'
 
 function copyNbtToClipboard(): void {
   if (!paletteEntry.value?.nbt) return
@@ -19,8 +20,10 @@ const paletteEntry = computed<BlockPaletteEntry | null>(() => {
   const doc = ctx.scene.value
   if (!doc) return null
   try {
-    const def = loadStructureOrWorld(doc, undefined)
-    return def.blockPalette.find(e => e.registryId === selectedBlock.value!.blockId) ?? null
+    const frameIdx = isWorldDocument(doc) ? ctx.previewWorldFrameIndex.value : undefined
+    const bundle = { document: doc } as RenderBundle
+    const { definition } = resolveRenderBundle(bundle, frameIdx)
+    return findBlockPaletteEntryByBlockId(definition, selectedBlock.value.blockId) ?? null
   } catch { return null }
 })
 
@@ -54,7 +57,10 @@ const tooltipPreview = computed(() => {
     tp = doc.tooltipPalette
     const frames = doc.frames
     if (Array.isArray(frames) && frames.length > 0) {
-      ttg = ((frames[0] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined)?.cellTooltipGrid
+      const n = frames.length
+      const raw = Math.floor(ctx.previewWorldFrameIndex.value)
+      const idx = ((raw % n) + n) % n
+      ttg = ((frames[idx] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined)?.cellTooltipGrid
     }
   } else {
     tp = (doc as Record<string, unknown>).tooltipPalette
@@ -64,9 +70,9 @@ const tooltipPreview = computed(() => {
   if (!Array.isArray(ttg)) return ''
   const zArr = ttg[zSlice]; if (!Array.isArray(zArr)) return ''
   const rArr = zArr[row]; if (!Array.isArray(rArr)) return ''
-  const idx = rArr[column]
-  if (typeof idx !== 'number' || idx < 0) return ''
-  return String(tp[idx] ?? '')
+  const palIdx = rArr[column]
+  if (typeof palIdx !== 'number' || palIdx < 0) return ''
+  return String(tp[palIdx] ?? '')
 })
 
 const tooltipHtml = computed(() => tooltipPreview.value ? renderTooltipHtml(tooltipPreview.value) : '')
@@ -103,7 +109,10 @@ function copyAllTooltip(): void {
       </template>
 
       <h3>注解</h3>
-      <div v-if="tooltipHtml" class="bi-preview" v-html="tooltipHtml" />
+      <div v-if="tooltipHtml" class="wm-tooltip-surface wm-tooltip-surface--inline">
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div class="wm-tooltip-body" v-html="tooltipHtml" />
+      </div>
       <p v-else class="pe-muted">无注解</p>
 
       <h3>NEI 导出 ToolTip</h3>
@@ -165,10 +174,6 @@ h3 { font-size: 10px; font-weight: 600; color: var(--nei-label); text-transform:
 .bi-table td:first-child { color: var(--nei-label); width: 80px; }
 .bi-td-val { font-family: ui-monospace, monospace; color: var(--nei-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--nei-bg); padding: 1px 4px; border: 1px solid var(--nei-border); }
 .bi-pos { font-family: ui-monospace, monospace; font-size: 12px; color: var(--nei-text-dark); }
-.bi-preview { padding: 6px; border-radius: 4px; border: var(--nei-bevel-w) solid; border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow); background: var(--nei-inset-bg); font-size: 12px; color: var(--nei-text); min-height: 20px; word-break: break-word; }
-.bi-preview :deep(strong) { font-weight: 700; }
-.bi-preview :deep(em) { font-style: italic; }
-.bi-preview :deep(code) { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.2); padding: 1px 3px; border-radius: 2px; }
 .bi-mat-row { display: flex; gap: 6px; padding: 2px 0; }
 .bi-mat-idx { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-label); min-width: 24px; }
 .bi-mat-name { font-family: ui-monospace, monospace; font-size: 11px; color: var(--nei-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

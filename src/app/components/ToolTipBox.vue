@@ -54,7 +54,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <div ref="root" class="wm-tooltip-box" role="tooltip" :style="boxStyle">
+    <div ref="root" class="wm-tooltip-box wm-tooltip-surface" role="tooltip" :style="boxStyle">
       <!-- eslint-disable-next-line vue/no-v-html -->
       <div class="wm-tooltip-body" v-html="html" />
     </div>

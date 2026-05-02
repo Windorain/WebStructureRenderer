@@ -17,6 +17,8 @@ import { DEFAULT_PREVIEW_SCENE_ID } from '@/preview/previewSession'
 import { getDevSceneDocument } from '@/dev/devScenes'
 import { formatSdeError } from '@/workbench/sdeApi'
 import { isEnvelopeDocument, normalizeEnvelopeToPlain } from '@/render/data/compactSceneDocument'
+import { isWorldDocument } from '@/render/data/bundleResolve'
+import { getDefaultFrameIndex } from '@/render/data/worldPlayback'
 import { documentLooksPreviewable, previewConfigFromDocument } from '@/preview/previewFromDocument'
 import { downloadJson } from '@/util/browser'
 import { getShowSaveFilePicker } from '@/util/browser'
@@ -41,6 +43,8 @@ export interface SceneContext {
   readonly dirty: Ref<boolean>
   readonly selectedBlock: Ref<SelectedBlock | null>
   readonly sceneLoadEpoch: Ref<number>
+  /** World 多帧：与预览视口一致的当前 `frames` 下标（单结构恒为 0） */
+  readonly previewWorldFrameIndex: Ref<number>
 
   // --- 预览派生状态 ---
   readonly previewConfig: ShallowRef<PreviewConfig | null>
@@ -54,6 +58,7 @@ export interface SceneContext {
 
   // --- Setters ---
   setSelectedBlock(v: SelectedBlock | null): void
+  setPreviewWorldFrameIndex(index: number): void
   setWorkspaceMode(mode: WorkbenchWorkspaceMode): void
   markDirty(): void
   markClean(): void
@@ -96,6 +101,7 @@ export function provideSceneContext(): SceneContext {
   const dirty = ref(false)
   const selectedBlock = ref<SelectedBlock | null>(null)
   const sceneLoadEpoch = ref(0)
+  const previewWorldFrameIndex = ref(0)
 
   // 预览派生状态
   const previewConfig = shallowRef<PreviewConfig | null>(null)
@@ -114,6 +120,7 @@ export function provideSceneContext(): SceneContext {
     previewConfig.value = null
     previewEpoch.value = 0
     sceneLoadEpoch.value = 0
+    previewWorldFrameIndex.value = 0
     previewError.value = null
     localFileName.value = null
     fileSaveHandle.value = null
@@ -158,6 +165,11 @@ export function provideSceneContext(): SceneContext {
       next = cloneDocument(doc)
     }
     scene.value = next
+    if (next && isWorldDocument(next)) {
+      previewWorldFrameIndex.value = getDefaultFrameIndex(next)
+    } else {
+      previewWorldFrameIndex.value = 0
+    }
     if (next) {
       sceneLoadEpoch.value += 1
     }
@@ -245,6 +257,11 @@ export function provideSceneContext(): SceneContext {
     selectedBlock.value = v
   }
 
+  function setPreviewWorldFrameIndex(index: number): void {
+    const i = Math.floor(index)
+    previewWorldFrameIndex.value = Number.isFinite(i) && i >= 0 ? i : 0
+  }
+
   function setWorkspaceMode(mode: WorkbenchWorkspaceMode): void {
     if (workspaceMode.value === mode) return
     resetSession()
@@ -264,6 +281,7 @@ export function provideSceneContext(): SceneContext {
     dirty: dirty as unknown as Ref<boolean>,
     selectedBlock: selectedBlock as unknown as Ref<SelectedBlock | null>,
     sceneLoadEpoch: sceneLoadEpoch as unknown as Ref<number>,
+    previewWorldFrameIndex: previewWorldFrameIndex as unknown as Ref<number>,
     previewConfig: previewConfig as unknown as ShallowRef<PreviewConfig | null>,
     previewEpoch: previewEpoch as unknown as Ref<number>,
     previewBusy: previewBusy as unknown as Ref<boolean>,
@@ -271,6 +289,7 @@ export function provideSceneContext(): SceneContext {
     workspaceMode: workspaceMode as unknown as Ref<WorkbenchWorkspaceMode>,
     localFileName: localFileName as unknown as Ref<string | null>,
     setSelectedBlock,
+    setPreviewWorldFrameIndex,
     setWorkspaceMode,
     markDirty,
     markClean,

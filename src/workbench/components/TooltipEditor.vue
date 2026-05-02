@@ -2,9 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { renderTooltipHtml } from './renderTooltipHtml'
 import { useSceneContext } from '@/workbench/sceneContext'
-import { isWorldDocument, loadStructureOrWorld } from '@/render/data/bundleResolve'
+import { isWorldDocument, resolveRenderBundle } from '@/render/data/bundleResolve'
+import { findBlockPaletteEntryByBlockId } from '@/render/data/blockRegistryResolve'
 import { autoTooltipFromNbt } from '@/workbench/nbtTooltipTemplate'
-import type { BlockPaletteEntry } from '@/render/schema/types'
+import type { BlockPaletteEntry, RenderBundle } from '@/render/schema/types'
 
 const ctx = useSceneContext()
 const selectedBlock = computed(() => ctx.selectedBlock.value)
@@ -16,8 +17,9 @@ const paletteEntry = computed<BlockPaletteEntry | null>(() => {
   const doc = ctx.scene.value
   if (!doc) return null
   try {
-    const def = loadStructureOrWorld(doc, undefined)
-    return def.blockPalette.find(e => e.registryId === selectedBlock.value!.blockId) ?? null
+    const frameIdx = isWorldDocument(doc) ? ctx.previewWorldFrameIndex.value : undefined
+    const { definition } = resolveRenderBundle({ document: doc } as RenderBundle, frameIdx)
+    return findBlockPaletteEntryByBlockId(definition, selectedBlock.value.blockId) ?? null
   } catch { return null }
 })
 
@@ -35,7 +37,10 @@ function readCurrentTooltip(): string {
     tp = doc.tooltipPalette
     const frames = doc.frames
     if (Array.isArray(frames) && frames.length > 0) {
-      ttg = ((frames[0] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined)?.cellTooltipGrid
+      const n = frames.length
+      const raw = Math.floor(ctx.previewWorldFrameIndex.value)
+      const fIdx = ((raw % n) + n) % n
+      ttg = ((frames[fIdx] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined)?.cellTooltipGrid
     }
   } else {
     tp = doc.tooltipPalette
@@ -45,9 +50,9 @@ function readCurrentTooltip(): string {
   if (!Array.isArray(ttg)) return ''
   const zArr = ttg[zSlice]; if (!Array.isArray(zArr)) return ''
   const rArr = zArr[row]; if (!Array.isArray(rArr)) return ''
-  const idx = rArr[column]
-  if (typeof idx !== 'number' || idx < 0) return ''
-  return String(tp[idx] ?? '')
+  const palIdx = rArr[column]
+  if (typeof palIdx !== 'number' || palIdx < 0) return ''
+  return String(tp[palIdx] ?? '')
 }
 
 function buildEmptyTooltipGrid(doc: Record<string, unknown>): number[][][] {
@@ -74,7 +79,10 @@ function setPaletteAndGrid(doc: Record<string, unknown>, z: number, r: number, c
     if (idx === -1 && text) { idx = tp.length; tp.push(text) }
     const frames = doc.frames
     if (Array.isArray(frames) && frames.length > 0) {
-      const st = (frames[0] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined
+      const n = frames.length
+      const raw = Math.floor(ctx.previewWorldFrameIndex.value)
+      const fIdx = ((raw % n) + n) % n
+      const st = (frames[fIdx] as Record<string, unknown>)?.structure as Record<string, unknown> | undefined
       if (st) {
         if (!Array.isArray(st.cellTooltipGrid)) st.cellTooltipGrid = buildEmptyTooltipGrid(st)
         const ttg = st.cellTooltipGrid as number[][][]
@@ -108,7 +116,11 @@ async function saveTooltip(): Promise<void> {
 
 const previewHtml = computed(() => tooltipText.value ? renderTooltipHtml(tooltipText.value) : '')
 
-watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurrentTooltip() : '' }, { immediate: true })
+watch(
+  () => [selectedBlock.value, ctx.previewWorldFrameIndex.value] as const,
+  () => { tooltipText.value = selectedBlock.value ? readCurrentTooltip() : '' },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -129,7 +141,11 @@ watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurre
         </div>
         <div class="te-col">
           <span class="te-label">预览</span>
-          <div class="te-preview" v-html="previewHtml" />
+          <div class="wm-tooltip-surface wm-tooltip-surface--inline te-tooltip-preview-min">
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div v-if="previewHtml" class="wm-tooltip-body" v-html="previewHtml" />
+            <div v-else class="wm-tooltip-body te-preview-empty">（空）</div>
+          </div>
         </div>
       </div>
       <div class="te-btns">
@@ -158,15 +174,8 @@ watch(selectedBlock, () => { tooltipText.value = selectedBlock.value ? readCurre
   background: var(--nei-inset-bg); color: var(--nei-text); font-size: 12px;
   font-family: ui-monospace, monospace; resize: vertical; box-sizing: border-box;
 }
-.te-preview {
-  padding: 6px; border-radius: 4px; border: var(--nei-bevel-w) solid;
-  border-color: var(--nei-shadow) var(--nei-highlight) var(--nei-highlight) var(--nei-shadow);
-  background: var(--nei-inset-bg); min-height: 60px; font-size: 12px; color: var(--nei-text); word-break: break-word;
-}
-.te-preview :deep(strong) { font-weight: 700; }
-.te-preview :deep(em) { font-style: italic; }
-.te-preview :deep(code) { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.2); padding: 1px 3px; border-radius: 2px; }
-.te-preview :deep(span) { color: inherit; }
+.te-tooltip-preview-min { min-height: 60px; }
+.te-preview-empty { opacity: 0.65; font-style: italic; }
 .te-btns { display: flex; gap: 6px; }
 .pe-btn {
   padding: 4px 10px; border-radius: 4px; border: var(--nei-bevel-w) solid;
