@@ -8,6 +8,8 @@
     "build:lib": "vite build",
     "build:workbench": "vite build --config vite.workbench.config.ts",
     "build:all": "npm run build:lib && npm run build:workbench",
+    "export:huiji-workbench": "node scripts/huiji/export-workbench-pages.mjs",
+    "build:huiji-workbench": "vite build --config vite.wiki-workbench.config.ts && npm run export:huiji-workbench",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -3,6 +3,8 @@
 node_modules/
 dist/
 dist-workbench/
+dist-workbench-huiji/
+dist-huiji/
 *.local
 .DS_Store
 .claude

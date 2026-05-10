@@ -1,0 +1,25 @@
+{
+  "settings": {
+    "rights": [],
+    "default": true,
+    "package": false,
+    "hidden": false,
+    "skins": [],
+    "actions": [],
+    "category": "",
+    "supportsUrlLoad": false
+  },
+  "module": {
+    "scripts": [
+      "StructureWorkbench.js"
+    ],
+    "styles": [
+      "StructureWorkbench.css"
+    ],
+    "datas": [],
+    "peers": [],
+    "dependencies": [],
+    "messages": [],
+    "type": ""
+  }
+}

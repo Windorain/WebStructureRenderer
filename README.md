@@ -21,6 +21,7 @@
 | `npm run build` | 类型检查并完整构建（库 + Workbench） |
 | `npm run build:lib` | 仅构建可嵌入的库（`dist/`） |
 | `npm run build:workbench` | 仅构建 Workbench（`dist-workbench/`） |
+| `npm run build:huiji-workbench` | 构建 wiki 专用 Workbench 并导出 wiki 零件页文本（`dist-huiji/`） |
 | `npm run preview` | 本地预览生产构建结果 |
 
 ## 说明

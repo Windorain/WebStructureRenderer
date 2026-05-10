@@ -1,0 +1,30 @@
+<includeonly><div
+ class="web-structure-workbench"
+ data-wsw-root="1"
+ data-wsw-mode="{{{模式|{{{mode|mini}}}}}}"
+{{#if:{{{数据页|{{{data|}}}}}}| data-wsw-data="{{{数据页|{{{data}}}}}}"}}
+></div></includeonly>
+<noinclude>
+== 用法 ==
+=== 最小化模式 ===
+<pre>
+{{结构工作台
+|数据页=Data:Structures/沙盒.json
+|模式=mini
+}}
+</pre>
+
+=== 非 mini 模式 ===
+<pre>
+{{结构工作台
+|data=Data:Structures/沙盒.json
+|mode=full
+}}
+</pre>
+
+== 示例入口 ==
+{{结构工作台
+|数据页=Data:Structures/沙盒.json
+|模式=mini
+}}
+</noinclude>
