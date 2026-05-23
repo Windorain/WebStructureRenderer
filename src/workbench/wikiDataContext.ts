@@ -11,6 +11,7 @@ export interface WikiDataContext {
   readonly wikiDataTitle: Ref<string | null>
   readonly wikiDataRevisionId: Ref<number | null>
   readonly wikiDataSummaryPreview: Ref<string>
+  readonly wikiDataSummaryDraft: Ref<string>
   readonly wikiDataSummaryTooLong: Ref<boolean>
   readonly wikiDataSummaryByteLength: Ref<number>
   readonly wikiDataSummaryMaxBytes: Ref<number>
@@ -20,6 +21,9 @@ export interface WikiDataContext {
   loadWikiDataPage(title: string): Promise<void>
   saveToWikiDataPage(): Promise<void>
   refreshWikiSummaryPreview(): void
+  setWikiDataSummaryDraft(text: string): void
+  resetWikiDataSummaryDraft(): void
+  syncWikiSummaryFromAuto(summary: string): void
 }
 
 export const wikiDataContextKey: InjectionKey<WikiDataContext> = Symbol('wikiDataContext')
@@ -100,25 +104,57 @@ export function provideWikiDataContext(scene: SceneContext): WikiDataContext {
   const wikiDataTitle = ref<string | null>(null)
   const wikiDataRevisionId = ref<number | null>(null)
   const wikiDataSummaryPreview = ref('')
+  const wikiDataSummaryDraft = ref('')
   const wikiDataSummaryTooLong = ref(false)
   const wikiDataSummaryByteLength = ref(0)
   const wikiDataSummaryMaxBytes = ref(WIKI_EDIT_SUMMARY_MAX_BYTES)
   const wikiDataError = ref<string | null>(null)
   const wikiDataOriginalDocument: ShallowRef<WorkbenchScene | null> = shallowRef(null)
+  let wikiDataSummaryTouched = false
+
+  function measureSummary(text: string): { byteLength: number; tooLong: boolean } {
+    const byteLength = new TextEncoder().encode(text).length
+    return {
+      byteLength,
+      tooLong: byteLength > wikiDataSummaryMaxBytes.value,
+    }
+  }
+
+  function applySummaryDraft(text: string, markTouched = true): void {
+    if (markTouched) {
+      wikiDataSummaryTouched = true
+    }
+    wikiDataSummaryDraft.value = text
+    const measured = measureSummary(text)
+    wikiDataSummaryByteLength.value = measured.byteLength
+    wikiDataSummaryTooLong.value = measured.tooLong
+  }
+
+  function setWikiDataSummaryDraft(text: string): void {
+    applySummaryDraft(text, true)
+  }
+
+  function resetWikiDataSummaryDraft(): void {
+    wikiDataSummaryTouched = false
+    applySummaryDraft(wikiDataSummaryPreview.value, false)
+  }
+
+  function syncWikiSummaryFromAuto(summary: string): void {
+    wikiDataSummaryPreview.value = summary
+    if (!wikiDataSummaryTouched) {
+      applySummaryDraft(summary, false)
+    }
+  }
 
   function refreshWikiSummaryPreview(): void {
     const current = scene.scene.value
     const original = wikiDataOriginalDocument.value
     if (!current || !original) {
-      wikiDataSummaryPreview.value = ''
-      wikiDataSummaryTooLong.value = false
-      wikiDataSummaryByteLength.value = 0
+      syncWikiSummaryFromAuto('')
       return
     }
     const result = buildWikiEditSummary(original, current, wikiDataSummaryMaxBytes.value)
-    wikiDataSummaryPreview.value = result.summary
-    wikiDataSummaryTooLong.value = result.tooLong
-    wikiDataSummaryByteLength.value = result.byteLength
+    syncWikiSummaryFromAuto(result.summary)
   }
 
   async function loadWikiDataPage(title: string): Promise<void> {
@@ -136,6 +172,7 @@ export function provideWikiDataContext(scene: SceneContext): WikiDataContext {
       wikiDataTitle.value = normalized
       wikiDataRevisionId.value = data.revid
       wikiDataOriginalDocument.value = cloneDocument(scene.scene.value)
+      wikiDataSummaryTouched = false
       refreshWikiSummaryPreview()
     } catch (e) {
       wikiDataError.value = e instanceof Error ? e.message : String(e)
@@ -155,17 +192,18 @@ export function provideWikiDataContext(scene: SceneContext): WikiDataContext {
         throw new Error('缺少原始 wiki 文档快照')
       }
       const result = buildWikiEditSummary(original, doc, wikiDataSummaryMaxBytes.value)
-      wikiDataSummaryPreview.value = result.summary
-      wikiDataSummaryTooLong.value = result.tooLong
-      wikiDataSummaryByteLength.value = result.byteLength
-      if (result.tooLong) {
-        throw new Error(`编辑摘要超出限制：${result.byteLength}/${result.maxBytes} bytes`)
-      }
       if (!result.entries.length) {
         throw new Error('没有可保存的审计字段变化')
       }
+      const summary = wikiDataSummaryDraft.value
+      const summaryMeasure = measureSummary(summary)
+      wikiDataSummaryByteLength.value = summaryMeasure.byteLength
+      wikiDataSummaryTooLong.value = summaryMeasure.tooLong
+      if (summaryMeasure.tooLong) {
+        throw new Error(`编辑摘要超出限制：${summaryMeasure.byteLength}/${wikiDataSummaryMaxBytes.value} bytes，请手动缩短后再保存`)
+      }
       const text = `${JSON.stringify(buildEnvelopePackage(doc), null, 2)}\n`
-      await saveWikiDataPage(title, text, result.summary, wikiDataRevisionId.value)
+      await saveWikiDataPage(title, text, summary, wikiDataRevisionId.value)
       const fetched = await fetchWikiDataPage(title)
       wikiDataRevisionId.value = fetched.revid
       await scene.loadSceneDocument(fetched.document, {
@@ -177,6 +215,7 @@ export function provideWikiDataContext(scene: SceneContext): WikiDataContext {
       }
       wikiDataOriginalDocument.value = cloneDocument(scene.scene.value)
       scene.markClean()
+      wikiDataSummaryTouched = false
       wikiDataError.value = null
       refreshWikiSummaryPreview()
     } catch (e) {
@@ -189,6 +228,7 @@ export function provideWikiDataContext(scene: SceneContext): WikiDataContext {
     wikiDataTitle: wikiDataTitle as unknown as Ref<string | null>,
     wikiDataRevisionId: wikiDataRevisionId as unknown as Ref<number | null>,
     wikiDataSummaryPreview: wikiDataSummaryPreview as unknown as Ref<string>,
+    wikiDataSummaryDraft: wikiDataSummaryDraft as unknown as Ref<string>,
     wikiDataSummaryTooLong: wikiDataSummaryTooLong as unknown as Ref<boolean>,
     wikiDataSummaryByteLength: wikiDataSummaryByteLength as unknown as Ref<number>,
     wikiDataSummaryMaxBytes: wikiDataSummaryMaxBytes as unknown as Ref<number>,
@@ -197,6 +237,9 @@ export function provideWikiDataContext(scene: SceneContext): WikiDataContext {
     loadWikiDataPage,
     saveToWikiDataPage,
     refreshWikiSummaryPreview,
+    setWikiDataSummaryDraft,
+    resetWikiDataSummaryDraft,
+    syncWikiSummaryFromAuto,
   }
 
   provide(wikiDataContextKey, ctx)

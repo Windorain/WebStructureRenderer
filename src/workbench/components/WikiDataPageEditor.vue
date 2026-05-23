@@ -9,9 +9,15 @@ const scene = useSceneContext()
 const ctx = useWikiDataContext()
 const inputTitle = ref('')
 const localError = ref('')
+const summaryDraft = computed({
+  get: () => ctx.wikiDataSummaryDraft.value,
+  set: (value: string) => ctx.setWikiDataSummaryDraft(value),
+})
 
 const hasDataPage = computed(() => ctx.wikiDataTitle.value !== null)
-const canSaveDataPage = computed(() => hasDataPage.value && inputTitle.value === ctx.wikiDataTitle.value)
+const canSaveDataPage = computed(
+  () => hasDataPage.value && inputTitle.value === ctx.wikiDataTitle.value && !ctx.wikiDataSummaryTooLong.value,
+)
 const diffResult = computed(() => {
   const original = ctx.wikiDataOriginalDocument.value
   const current = scene.scene.value
@@ -21,14 +27,10 @@ const diffResult = computed(() => {
 
 watch(diffResult, (res) => {
   if (!res) {
-    ctx.wikiDataSummaryPreview.value = ''
-    ctx.wikiDataSummaryTooLong.value = false
-    ctx.wikiDataSummaryByteLength.value = 0
+    ctx.syncWikiSummaryFromAuto('')
     return
   }
-  ctx.wikiDataSummaryPreview.value = res.summary
-  ctx.wikiDataSummaryTooLong.value = res.tooLong
-  ctx.wikiDataSummaryByteLength.value = res.byteLength
+  ctx.syncWikiSummaryFromAuto(res.summary)
 }, { immediate: true })
 
 watch(
@@ -57,11 +59,8 @@ async function savePage(): Promise<void> {
   }
 }
 
-function newSummaryText(): string {
-  if (!ctx.wikiDataTitle.value) return '未加载 Data 页面'
-  if (!diffResult.value) return '无可保存变更'
-  if (diffResult.value.tooLong) return `摘要超限 ${diffResult.value.byteLength}/${diffResult.value.maxBytes} bytes`
-  return diffResult.value.summary
+function restoreAutoSummary(): void {
+  ctx.resetWikiDataSummaryDraft()
 }
 </script>
 
@@ -86,14 +85,26 @@ function newSummaryText(): string {
     </p>
 
     <label class="wd-field wd-field--stack">
-      <span>审计摘要预览</span>
-      <textarea class="wd-summary" rows="6" readonly :value="newSummaryText()" />
+      <span>编辑摘要</span>
+      <textarea
+        v-model="summaryDraft"
+        class="wd-summary"
+        rows="6"
+        placeholder="可手动修改摘要，留空则由你自己决定是否提交"
+      />
     </label>
+
+    <div class="wd-summary-tools">
+      <button class="pe-btn" :disabled="!ctx.wikiDataSummaryPreview.value" @click="restoreAutoSummary()">恢复自动摘要</button>
+      <p v-if="ctx.wikiDataSummaryPreview.value" class="wd-auto">
+        自动建议: {{ ctx.wikiDataSummaryPreview.value }}
+      </p>
+    </div>
 
     <p v-if="ctx.wikiDataSummaryPreview.value" class="wd-count">
       {{ ctx.wikiDataSummaryByteLength.value }}/{{ ctx.wikiDataSummaryMaxBytes.value }} bytes
     </p>
-    <p v-if="ctx.wikiDataSummaryTooLong.value" class="wd-error">摘要超出限制，需缩小变更或拆分保存</p>
+    <p v-if="ctx.wikiDataSummaryTooLong.value" class="wd-error">当前摘要超出限制，请手动缩短后再保存</p>
     <p v-if="localError || ctx.wikiDataError.value" class="wd-error">{{ localError || ctx.wikiDataError.value }}</p>
   </div>
 </template>
@@ -130,6 +141,8 @@ function newSummaryText(): string {
 }
 .wd-field--stack { margin-top: 8px; }
 .wd-summary { resize: vertical; min-height: 96px; }
+.wd-summary-tools { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.wd-auto { margin: 0; font-size: 10px; color: var(--nei-muted); white-space: pre-wrap; word-break: break-word; }
 .wd-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; font-size: 10px; color: var(--nei-muted); }
 .wd-count { margin: 6px 0 0; font-size: 10px; color: var(--nei-muted); }
 .wd-error { margin: 6px 0 0; font-size: 11px; color: var(--nei-error-text); white-space: pre-wrap; }
