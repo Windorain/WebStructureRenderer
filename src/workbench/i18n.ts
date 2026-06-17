@@ -36,6 +36,7 @@ const dict: Record<string, Record<Lang, string>> = {
   'wiki': { zh: 'Wiki 查看器', en: 'Wiki Viewer' },
   'export': { zh: '导出', en: 'Export' },
   'sceneInfo': { zh: '场景信息', en: 'Scene Info' },
+  'wikiDataPage': { zh: 'Wiki 数据页', en: 'Wiki Data Page' },
   'previewConfig': { zh: '预览配置', en: 'Preview Config' },
   'blockInspector': { zh: '方块检查器', en: 'Block Inspector' },
   'tooltipEditor': { zh: '注解编辑', en: 'Tooltip Editor' },

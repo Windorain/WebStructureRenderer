@@ -12,13 +12,14 @@ export function cloneDocument(doc: unknown): WorkbenchScene | null {
   return JSON.parse(JSON.stringify(doc)) as WorkbenchScene
 }
 
-/** 从 URL query 解析初始 apiBase 与 token */
-export function parseWorkbenchQuery(): { apiBase: string; token: string } {
-  if (typeof window === 'undefined') return { apiBase: '', token: '' }
+/** 从 URL query 解析初始 apiBase、token 与 Data 页面标题。 */
+export function parseWorkbenchQuery(): { apiBase: string; token: string; dataTitle: string } {
+  if (typeof window === 'undefined') return { apiBase: '', token: '', dataTitle: '' }
   const q = new URLSearchParams(window.location.search)
   const apiBase = (q.get('apiBase') ?? q.get('api') ?? '').trim().replace(/\/+$/, '')
   const token = (q.get('token') ?? '').trim()
-  return { apiBase, token }
+  const dataTitle = (q.get('data') ?? q.get('page') ?? '').trim()
+  return { apiBase, token, dataTitle }
 }
 
 /** 去除尾部斜杠并 trim */
